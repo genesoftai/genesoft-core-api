@@ -66,5 +66,3 @@ export class MetadataController {
         };
     }
 }
-// https://genesoft-dev.s3.ap-southeast-1.amazonaws.com/21619673-406f-4a73-9a83-ba3dce66380c/image/png/34583bad-ada2-4ec5-8383-c41c0d906df4
-// https://genesoft-dev.s3.ap-southeast-1.amazonaws.com/21619673-406f-4a73-9a83-ba3dce66380c/image/png/3d0e96e4-a886-4365-887b-168c0602ddf7
