@@ -15,7 +15,7 @@ export class Branding {
     projectId: string;
 
     @Column({ name: "logo_url", type: "text", nullable: true })
-    logoUrl: string;
+    logo_url: string;
 
     @Column({ nullable: true })
     color: string;
@@ -27,8 +27,8 @@ export class Branding {
     perception: string;
 
     @CreateDateColumn({ name: "created_at" })
-    createdAt: Date;
+    created_at: Date;
 
     @UpdateDateColumn({ name: "updated_at" })
-    updatedAt: Date;
+    updated_at: Date;
 }

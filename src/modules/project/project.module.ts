@@ -9,6 +9,9 @@ import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
 import { Github } from "./entity/github.entity";
 import { Feedback } from "./entity/feedback.entity";
+import { ReferenceLink } from "../metadata/entity/reference-link.entity";
+import { File } from "../metadata/entity/file.entity";
+import { AWSConfigurationModule } from "../configuration/aws";
 
 @Module({
     imports: [
@@ -20,7 +23,10 @@ import { Feedback } from "./entity/feedback.entity";
             WebApplication,
             Github,
             Feedback,
+            File,
+            ReferenceLink,
         ]),
+        AWSConfigurationModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],

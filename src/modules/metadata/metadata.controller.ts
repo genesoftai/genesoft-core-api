@@ -35,10 +35,6 @@ export class MetadataController {
         @Param("organization_id") organizationId: string,
         @Body() payload: UploadFileDto,
     ) {
-        console.log({
-            message: "payload in controller of /metadata/file/:organization_id",
-            payload,
-        });
         const fileRefId = uuidv4();
         const fileKey = `${organizationId}/${payload.file_type}/${fileRefId}`;
         await this.awsS3Service.uploadFileToS3Bucket({
@@ -47,7 +43,7 @@ export class MetadataController {
             body: file.buffer,
             contentType: file.mimetype,
         });
-        // TODO: save file record
+
         const fileRecord = await this.metadataService.saveFile({
             name: payload.name,
             description: payload.description,

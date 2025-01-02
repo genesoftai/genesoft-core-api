@@ -108,17 +108,6 @@ export class AwsS3Service {
                 new PutObjectCommand(command),
             );
 
-            this.logger.log({
-                message: `${this.serviceName}.uploadFilesToBucket: Success on uploading file to AWS S3`,
-                metadata: {
-                    command,
-                    bucketName,
-                    key,
-                    contentEncoding,
-                    contentType,
-                    result,
-                },
-            });
             return result;
         } catch (error) {
             this.logError({

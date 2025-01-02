@@ -6,7 +6,7 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { Project } from "./entity/project.entity";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { Page } from "./entity/page.entity";
@@ -15,6 +15,18 @@ import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
 import { Github } from "./entity/github.entity";
 import { Feedback } from "./entity/feedback.entity";
+import { File } from "@modules/metadata/entity/file.entity";
+import {
+    UpdateProjectDto,
+    BrandingDto,
+    FeatureDto,
+    PageDto,
+} from "./dto/update-project.dto";
+import { ReferenceLink } from "@modules/metadata/entity/reference-link.entity";
+import { getS3FileUrl } from "@/utils/aws/s3";
+
+import { FileWithUrl } from "./type/file";
+import { AWSConfigurationService } from "../configuration/aws";
 
 @Injectable()
 export class ProjectService {
@@ -37,6 +49,11 @@ export class ProjectService {
         private githubRepoRepository: Repository<Github>,
         @InjectRepository(Feedback)
         private feedbackRepository: Repository<Feedback>,
+        @InjectRepository(File)
+        private fileRepository: Repository<File>,
+        @InjectRepository(ReferenceLink)
+        private referenceLinkRepository: Repository<ReferenceLink>,
+        private awsConfigurationService: AWSConfigurationService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -136,7 +153,7 @@ export class ProjectService {
         // Create and associate branding if provided
         if (payload.branding) {
             const brandingEntity = new Branding();
-            brandingEntity.logoUrl = payload.branding.logo_url;
+            brandingEntity.logo_url = payload.branding.logo_url;
             brandingEntity.color = payload.branding.color;
             brandingEntity.theme = payload.branding.theme;
             brandingEntity.perception = payload.branding.perception;
@@ -203,16 +220,22 @@ export class ProjectService {
         return this.getProjectById(project.id);
     }
 
-    async updateProject(
+    async updateProjectInfo(
         id: string,
-        payload: Partial<Project>,
+        payload: UpdateProjectDto,
     ): Promise<Project> {
         this.logger.log({
             message: `${this.serviceName}.updateProject: Updating project`,
             metadata: { id, payload, timestamp: new Date() },
         });
 
-        await this.projectRepository.update(id, payload);
+        await this.projectRepository.update(id, {
+            name: payload.name,
+            description: payload.description,
+            purpose: payload.purpose,
+            target_audience: payload.target_audience,
+        });
+
         const updated = await this.getProjectById(id);
 
         this.logger.log({
@@ -220,6 +243,204 @@ export class ProjectService {
             metadata: { id, timestamp: new Date() },
         });
         return updated;
+    }
+    async updateBranding(id: string, payload: BrandingDto): Promise<Project> {
+        this.logger.log({
+            message: `${this.serviceName}.updateBranding: Updating project branding`,
+            metadata: { id, brandingData: payload, timestamp: new Date() },
+        });
+
+        const existingBranding = await this.brandingRepository.findOne({
+            where: { projectId: id },
+        });
+
+        if (!existingBranding) {
+            await this.brandingRepository.insert({
+                projectId: id,
+                logo_url: payload.logo_url,
+                color: payload.color,
+                theme: payload.theme,
+                perception: payload.perception,
+            });
+
+            const newBranding = await this.brandingRepository.findOne({
+                where: { projectId: id },
+            });
+
+            await this.projectRepository.update(id, {
+                branding_id: newBranding.id,
+            });
+        } else {
+            await this.brandingRepository.update(
+                { projectId: id },
+                {
+                    logo_url: payload.logo_url,
+                    color: payload.color,
+                    theme: payload.theme,
+                    perception: payload.perception,
+                },
+            );
+        }
+
+        this.logger.log({
+            message: `${this.serviceName}.updateBranding: Branding updated`,
+            metadata: {
+                id,
+                timestamp: new Date(),
+            },
+        });
+
+        return this.getProjectById(id);
+    }
+
+    async addPage(id: string, payload: PageDto): Promise<Project> {
+        this.logger.log({
+            message: `${this.serviceName}.addPage: Adding page`,
+            metadata: { id, pageData: payload, timestamp: new Date() },
+        });
+
+        const pageEntity = new Page();
+        pageEntity.name = payload.name;
+        pageEntity.description = payload.description;
+        pageEntity.file_ids = payload.file_ids;
+        pageEntity.reference_link_ids = payload.reference_link_ids;
+        pageEntity.project_id = id;
+
+        const page = await this.pageRepository.save(pageEntity);
+
+        this.logger.log({
+            message: `${this.serviceName}.addPage: Page added`,
+            metadata: {
+                pageId: page.id,
+                projectId: id,
+                timestamp: new Date(),
+            },
+        });
+
+        return this.getProjectById(id);
+    }
+
+    async addFeature(id: string, payload: FeatureDto): Promise<Project> {
+        this.logger.log({
+            message: `${this.serviceName}.addFeature: Adding feature`,
+            metadata: {
+                id,
+                featureData: payload,
+                timestamp: new Date(),
+            },
+        });
+
+        const featureEntity = new Feature();
+        featureEntity.name = payload.name;
+        featureEntity.description = payload.description;
+        featureEntity.file_ids = payload.file_ids;
+        featureEntity.reference_link_ids = payload.reference_link_ids;
+        featureEntity.project_id = id;
+
+        const feature = await this.featureRepository.save(featureEntity);
+
+        this.logger.log({
+            message: `${this.serviceName}.addFeature: Feature added`,
+            metadata: {
+                featureId: feature.id,
+                projectId: id,
+                timestamp: new Date(),
+            },
+        });
+
+        return this.getProjectById(id);
+    }
+
+    async updatePage(id: string, payload: PageDto): Promise<Page> {
+        this.logger.log({
+            message: `${this.serviceName}.updatePage: Updating page`,
+            metadata: { id, pageData: payload, timestamp: new Date() },
+        });
+
+        try {
+            const page = await this.pageRepository.findOne({ where: { id } });
+            if (!page) {
+                throw new NotFoundException(`Page not found`);
+            }
+
+            await this.pageRepository.update(id, {
+                ...payload,
+            });
+
+            return this.pageRepository.findOne({ where: { id } });
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.updatePage: Error to update page`,
+                metadata: { id, error, timestamp: new Date() },
+            });
+            throw error;
+        }
+    }
+
+    async updateFeature(id: string, payload: FeatureDto): Promise<Feature> {
+        this.logger.log({
+            message: `${this.serviceName}.updateFeature: Updating feature`,
+            metadata: { id, featureData: payload, timestamp: new Date() },
+        });
+
+        try {
+            const feature = await this.featureRepository.findOne({
+                where: { id },
+            });
+            if (!feature) {
+                throw new NotFoundException(`Feature not found`);
+            }
+
+            await this.featureRepository.update(id, {
+                ...payload,
+            });
+
+            return this.featureRepository.findOne({ where: { id } });
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.updateFeature: Error to update feature`,
+                metadata: { id, error, timestamp: new Date() },
+            });
+            throw error;
+        }
+    }
+
+    async deletePage(id: string): Promise<void> {
+        this.logger.log({
+            message: `${this.serviceName}.deletePage: Deleting page`,
+            metadata: { id, timestamp: new Date() },
+        });
+
+        const page = await this.pageRepository.findOne({ where: { id } });
+        if (!page) {
+            throw new NotFoundException(`Page with id ${id} not found`);
+        }
+
+        await this.pageRepository.delete(id);
+
+        this.logger.log({
+            message: `${this.serviceName}.deletePage: Page deleted`,
+            metadata: { id, timestamp: new Date() },
+        });
+    }
+
+    async deleteFeature(id: string): Promise<void> {
+        this.logger.log({
+            message: `${this.serviceName}.deleteFeature: Deleting feature`,
+            metadata: { id, timestamp: new Date() },
+        });
+
+        const feature = await this.featureRepository.findOne({ where: { id } });
+        if (!feature) {
+            throw new NotFoundException(`Feature with id ${id} not found`);
+        }
+
+        await this.featureRepository.delete(id);
+
+        this.logger.log({
+            message: `${this.serviceName}.deleteFeature: Feature deleted`,
+            metadata: { id, timestamp: new Date() },
+        });
     }
 
     async deleteProject(id: string): Promise<void> {
@@ -234,5 +455,55 @@ export class ProjectService {
             message: `${this.serviceName}.deleteProject: Project deleted`,
             metadata: { id, timestamp: new Date() },
         });
+    }
+
+    async getPageFiles(id: string): Promise<FileWithUrl[]> {
+        const page = await this.pageRepository.findOne({ where: { id } });
+        const files = await this.fileRepository.find({
+            where: { id: In(page.file_ids) },
+            order: { created_at: "DESC" },
+        });
+        return files.map((file) => ({
+            ...file,
+            url: getS3FileUrl(
+                this.awsConfigurationService.awsS3BucketName,
+                this.awsConfigurationService.awsRegion,
+                file.path,
+            ),
+        }));
+    }
+
+    async getPageReferenceLinks(id: string): Promise<ReferenceLink[]> {
+        const page = await this.pageRepository.findOne({ where: { id } });
+        const referenceLinks = await this.referenceLinkRepository.find({
+            where: { id: In(page.reference_link_ids) },
+            order: { created_at: "DESC" },
+        });
+        return referenceLinks;
+    }
+
+    async getFeatureFiles(id: string): Promise<FileWithUrl[]> {
+        const feature = await this.featureRepository.findOne({
+            where: { id },
+        });
+        const files = await this.fileRepository.find({
+            where: { id: In(feature.file_ids) },
+        });
+        return files.map((file) => ({
+            ...file,
+            url: getS3FileUrl(
+                this.awsConfigurationService.awsS3BucketName,
+                this.awsConfigurationService.awsRegion,
+                file.path,
+            ),
+        }));
+    }
+
+    async getFeatureReferenceLinks(id: string): Promise<ReferenceLink[]> {
+        const feature = await this.featureRepository.findOne({ where: { id } });
+        const referenceLinks = await this.referenceLinkRepository.find({
+            where: { id: In(feature.reference_link_ids) },
+        });
+        return referenceLinks;
     }
 }
