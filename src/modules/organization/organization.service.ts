@@ -10,6 +10,7 @@ import { Repository } from "typeorm";
 import { Organization } from "./entity/organization.entity";
 import { User } from "../user/entity/user.entity";
 import { CreateOrganizationDto } from "./dto/create-organization.dto";
+import { Project } from "../project/entity/project.entity";
 
 @Injectable()
 export class OrganizationService {
@@ -22,6 +23,8 @@ export class OrganizationService {
         private organizationRepository: Repository<Organization>,
         @InjectRepository(User)
         private userRepository: Repository<User>,
+        @InjectRepository(Project)
+        private projectRepository: Repository<Project>,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -80,6 +83,13 @@ export class OrganizationService {
         });
 
         return organizationWithUsers;
+    }
+
+    async getOrganizationProjects(id: string): Promise<object> {
+        const projects = await this.projectRepository.find({
+            where: { organization_id: id },
+        });
+        return projects;
     }
 
     async createOrganization(

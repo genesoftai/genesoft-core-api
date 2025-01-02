@@ -44,4 +44,9 @@ export class OrganizationController {
     async deleteOrganization(@Param("id") id: string): Promise<void> {
         return await this.organizationService.deleteOrganization(id);
     }
+
+    @Get(":id/projects")
+    async getOrganizationProjects(@Param("id") id: string): Promise<object> {
+        return await this.organizationService.getOrganizationProjects(id);
+    }
 }
