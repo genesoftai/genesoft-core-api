@@ -16,4 +16,24 @@ export class AppConfigurationService {
     get databaseUrl() {
         return this.configService.get("app.databaseUrl");
     }
+
+    get databaseHost() {
+        return this.configService.get("app.databaseHost");
+    }
+
+    get databasePort() {
+        return this.configService.get("app.databasePort");
+    }
+
+    get databaseUser() {
+        return this.configService.get("app.databaseUser");
+    }
+
+    get databasePassword() {
+        return this.configService.get("app.databasePassword");
+    }
+
+    get databaseName() {
+        return this.configService.get("app.databaseName");
+    }
 }

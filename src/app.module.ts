@@ -2,7 +2,7 @@ import { Logger, Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ConfigModule } from "@nestjs/config";
 import * as winston from "winston";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { UserModule } from "./modules/user/user.module";
@@ -45,6 +45,11 @@ import { AppConfigurationService } from "./modules/configuration/app/app.service
                 url: appConfigurationService.databaseUrl,
                 entities: ["dist/**/*.entity{.ts,.js}"],
                 synchronize: false,
+                host: appConfigurationService.databaseHost,
+                port: appConfigurationService.databasePort,
+                username: appConfigurationService.databaseUser,
+                password: appConfigurationService.databasePassword,
+                database: appConfigurationService.databaseName,
             }),
         }),
         OrganizationModule,
