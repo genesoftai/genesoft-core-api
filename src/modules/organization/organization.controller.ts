@@ -6,12 +6,15 @@ import {
     Body,
     Patch,
     Delete,
+    UseGuards,
 } from "@nestjs/common";
 import { OrganizationService } from "./organization.service";
 import { Organization } from "./entity/organization.entity";
 import { CreateOrganizationDto } from "./dto/create-organization.dto";
+import { AuthGuard } from "../auth/auth.guard";
 
 @Controller("organization")
+@UseGuards(AuthGuard)
 export class OrganizationController {
     constructor(private readonly organizationService: OrganizationService) {}
 

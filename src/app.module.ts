@@ -13,6 +13,8 @@ import {
 } from "nest-winston";
 import { AWSConfigurationModule } from "./modules/configuration/aws";
 import { MetadataModule } from "./modules/metadata/metadata.module";
+import { GithubConfigurationModule } from "./modules/configuration/github";
+import { AuthModule } from "./modules/auth/auth.module";
 
 @Module({
     imports: [
@@ -39,9 +41,9 @@ import { MetadataModule } from "./modules/metadata/metadata.module";
                 type: "postgres",
                 url: configService.get("DATABASE_URL"),
                 entities: [__dirname + "/**/*.entity{.ts,.js}"],
-                synchronize: false, // Set to true only in development
+                synchronize: false,
                 ssl: {
-                    rejectUnauthorized: false, // Needed for some hosting providers
+                    rejectUnauthorized: false,
                 },
                 logging: true,
             }),
@@ -52,6 +54,8 @@ import { MetadataModule } from "./modules/metadata/metadata.module";
         ProjectModule,
         AWSConfigurationModule,
         MetadataModule,
+        GithubConfigurationModule,
+        AuthModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

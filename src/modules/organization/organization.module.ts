@@ -1,13 +1,17 @@
 import { Logger, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { Organization } from "./entity/organization.entity";
 import { OrganizationController } from "./organization.controller";
 import { OrganizationService } from "./organization.service";
-import { Organization } from "./entity/organization.entity";
+import { AuthModule } from "../auth/auth.module";
 import { User } from "../user/entity/user.entity";
 import { Project } from "../project/entity/project.entity";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Organization, User, Project])],
+    imports: [
+        TypeOrmModule.forFeature([Organization, User, Project]),
+        AuthModule,
+    ],
     controllers: [OrganizationController],
     providers: [OrganizationService, Logger],
     exports: [OrganizationService],

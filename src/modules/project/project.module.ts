@@ -7,11 +7,12 @@ import { Branding } from "./entity/branding.entity";
 import { Page } from "./entity/page.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
-import { Github } from "./entity/github.entity";
+import { GithubRepository } from "@modules/github/entity/github-repository.entity";
 import { Feedback } from "./entity/feedback.entity";
 import { ReferenceLink } from "../metadata/entity/reference-link.entity";
 import { File } from "../metadata/entity/file.entity";
 import { AWSConfigurationModule } from "../configuration/aws";
+import { AuthModule } from "../auth/auth.module";
 
 @Module({
     imports: [
@@ -21,12 +22,13 @@ import { AWSConfigurationModule } from "../configuration/aws";
             Page,
             Feature,
             WebApplication,
-            Github,
+            GithubRepository,
             Feedback,
             File,
             ReferenceLink,
         ]),
         AWSConfigurationModule,
+        AuthModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],

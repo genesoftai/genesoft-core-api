@@ -6,6 +6,7 @@ import {
     Param,
     Patch,
     Post,
+    UseGuards,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
@@ -15,8 +16,10 @@ import {
     PageDto,
     FeatureDto,
 } from "./dto/update-project.dto";
+import { AuthGuard } from "../auth/auth.guard";
 
 @Controller("project")
+@UseGuards(AuthGuard)
 export class ProjectController {
     constructor(private readonly projectService: ProjectService) {}
 
