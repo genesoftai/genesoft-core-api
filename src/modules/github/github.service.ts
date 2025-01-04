@@ -1,0 +1,417 @@
+import {
+    BadRequestException,
+    Inject,
+    Injectable,
+    Logger,
+    LoggerService,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { GithubRepository } from "@modules/github/entity/github-repository.entity";
+import {
+    GetAllRepositoryEnvQuery,
+    GetGithubRepositoryFromGithubDto,
+    GetRepositoryTreesQuery,
+} from "./dto/get-github-repository.dto";
+import { CreateGithubRepositoryUsingTemplateDto } from "./dto/create-github-repository.dto";
+import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
+import { AxiosError } from "axios";
+import { HttpService } from "@nestjs/axios";
+import {
+    ProjectTemplate,
+    ProjectTemplateName,
+} from "@/modules/constants/project";
+import { Repository } from "typeorm";
+import { Project } from "../project/entity/project.entity";
+import { GenericObject } from "@/modules/types/common";
+import { GetRepositoryContentDto } from "./dto/get-repository-content.dto";
+import {
+    MergeGithubBrachDto,
+    UpdateRepositoryContentDto,
+} from "./dto/update-repository-content.dto";
+import { GithubConfigurationService } from "../configuration/github";
+
+@Injectable()
+export class GithubService {
+    private readonly serviceName: string;
+    private readonly githubApiBaseEndpoint: string;
+    private readonly githubAccessToken: string;
+    private readonly githubOwner: string;
+    @Inject() httpService: HttpService;
+
+    constructor(
+        @InjectRepository(GithubRepository)
+        private readonly githubRepositoryRepository: Repository<GithubRepository>,
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
+        private readonly githubConfigurationService: GithubConfigurationService,
+        @Inject(Logger) private readonly logger: LoggerService,
+    ) {
+        this.serviceName = GithubService.name;
+        this.githubApiBaseEndpoint =
+            this.githubConfigurationService.githubBaseApiEndpoint;
+        this.githubAccessToken =
+            this.githubConfigurationService.githubAccessToken;
+        this.githubOwner = this.githubConfigurationService.githubOwner;
+    }
+
+    async getGithubRepositoryFromGithub({
+        repositoryName,
+    }: GetGithubRepositoryFromGithubDto) {
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repositoryName}`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+        return lastValueFrom(
+            this.httpService
+                .get(url, {
+                    headers,
+                })
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error(error?.response?.data);
+                        throw error;
+                    }),
+                ),
+        );
+    }
+
+    async createRepositoryFromTemplate({
+        projectTemplateName,
+        description,
+        projectId,
+    }: CreateGithubRepositoryUsingTemplateDto) {
+        let templateRepo = "";
+        if (projectTemplateName === ProjectTemplateName.NestJsApi) {
+            templateRepo = ProjectTemplate.NestJsApi;
+        } else if (projectTemplateName === ProjectTemplateName.NextJsWeb) {
+            templateRepo = ProjectTemplate.NextJsWeb;
+        } else {
+            throw new BadRequestException(
+                `${this.serviceName}.createRepositoryFromTemplate: Not Support Template`,
+            );
+        }
+
+        if (!projectTemplateName) {
+            throw new BadRequestException(
+                `${this.serviceName}.createRepositoryFromTemplate: Project Template Name required`,
+            );
+        }
+
+        if (!projectId) {
+            throw new BadRequestException(
+                `${this.serviceName}.createRepositoryFromTemplate: Project Id required`,
+            );
+        }
+
+        const name = `${projectTemplateName}_${projectId}`;
+
+        this.logger.log({
+            message: `${this.serviceName}.createRepositoryFromTemplate: Create Repository from Template`,
+            metadata: {
+                apiEndpoint: `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${templateRepo}/generate`,
+                body: {
+                    owner: this.githubOwner,
+                    name,
+                    description,
+                    include_all_branches: true,
+                    private: true,
+                },
+                headers: {
+                    Authorization: `Bearer ${this.githubAccessToken}`,
+                },
+            },
+        });
+
+        const { data } = await lastValueFrom(
+            this.httpService
+                .post(
+                    `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${templateRepo}/generate`,
+                    {
+                        owner: this.githubOwner,
+                        name,
+                        description,
+                        include_all_branches: true,
+                        private: true,
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.githubAccessToken}`,
+                        },
+                    },
+                )
+                .pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.createRepositoryFromTemplate: Error create repository from template`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        const githubRepository = await this.githubRepositoryRepository.save({
+            isPrivate: data.private,
+            repoId: data.id,
+            owner: data.owner.login,
+            name: data.name,
+            fullName: data.full_name,
+            project,
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}.createRepositoryFromTemplate: Success create repository from template`,
+            metadata: {
+                projectTemplateName,
+                projectId,
+                description,
+                templateRepo,
+                data,
+                githubRepository,
+            },
+        });
+
+        return githubRepository;
+    }
+
+    async getRepositoryContent({
+        repository,
+        path,
+        ref,
+    }: GetRepositoryContentDto) {
+        let url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/contents/${path}`;
+        if (ref) {
+            url = `${url}?ref=${ref}`;
+        }
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+        const response = await lastValueFrom(
+            this.httpService
+                .get(url, {
+                    headers,
+                })
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.getRepositoryContent: Error get repository content`,
+                            metadata: { error: error.response.data },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+        return {
+            response,
+            content: atob(response.content),
+        };
+    }
+
+    async getAllEnvVars({ repository, branch }: GetAllRepositoryEnvQuery) {
+        const allSrcFilesPath: string[] =
+            await this.getAllSrcFilesPathInRepository({
+                repository,
+                branch,
+            });
+        const allEnvVars = [];
+        for (const path of allSrcFilesPath) {
+            const { content } = await this.getRepositoryContent({
+                repository,
+                path,
+                ref: branch,
+            });
+            const envs = await this.getEnvVarsInContent({ content });
+            for (const env of envs) {
+                if (!allEnvVars.includes(env)) {
+                    allEnvVars.push(env);
+                }
+            }
+        }
+        return allEnvVars;
+    }
+
+    async getEnvVarsInContent({ content }: { content: string }) {
+        const allEnv = [];
+        if (content.includes("process.env")) {
+            // Regular expression pattern to match and capture process.env variables
+            const regexPattern = /process\.env\.([A-Za-z_]+)/g;
+
+            // Executing the regex pattern on the sample string
+            let match;
+            while ((match = regexPattern.exec(content)) !== null) {
+                // match[1] contains the captured variable name
+                allEnv.push(match[1]);
+            }
+        }
+        return allEnv;
+    }
+
+    async getRepositoryTrees({ repository, branch }: GetRepositoryTreesQuery) {
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/git/trees/${branch}?recursive=1`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+        const response = await lastValueFrom(
+            this.httpService
+                .get(url, {
+                    headers,
+                })
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.getRepositoryTrees: Error get repository trees`,
+                            metadata: { error: error.response.data },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+        return response;
+    }
+
+    // Get all files in src/ to read process.env so we can know exactly all environment variables for deployment
+    async getAllSrcFilesPathInRepository({
+        repository,
+        branch,
+    }: GetAllRepositoryEnvQuery): Promise<string[]> {
+        const response = await this.getRepositoryTrees({ repository, branch });
+        const tree = response.tree; // tree is array of files in that repo
+        const allSrcFiles: string[] = [];
+        if (tree.length > 0) {
+            for (const file of tree) {
+                const path = file.path;
+                const pathElements = path.split("/");
+                if (
+                    path.includes("src") &&
+                    pathElements[pathElements.length - 1].includes(".")
+                ) {
+                    allSrcFiles.push(path);
+                }
+            }
+        }
+        return allSrcFiles;
+    }
+
+    async updateRepositoryContent(payload: UpdateRepositoryContentDto) {
+        const { repository, path, message, content } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/contents/${path}`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+        const body: GenericObject = {
+            message,
+            content: Buffer.from(content).toString("base64"),
+        };
+
+        if (payload.sha) {
+            body.sha = payload.sha;
+        } else {
+            try {
+                const existingContent = await this.getRepositoryContent({
+                    path,
+                    repository,
+                    ref: "dev",
+                });
+                if (existingContent) {
+                    body.sha = existingContent.response.sha;
+                }
+            } catch (error) {
+                if (error?.status !== 404) {
+                    this.logger.error({
+                        message: `${this.serviceName}.updateRepositoryContent: Failed to get content from Github Repository`,
+                        metadata: { error },
+                    });
+                }
+            }
+        }
+        if (payload.branch) {
+            body.branch = payload.branch;
+        }
+        if (payload.committer) {
+            body.committer = payload.committer;
+        }
+        if (payload.author) {
+            body.author = payload.author;
+        }
+
+        this.logger.log({
+            message: `${this.serviceName}.updateRepositoryContent: Updating Content on Github Repository`,
+            metadata: { url, body },
+        });
+
+        const { data } = await lastValueFrom(
+            this.httpService
+                .put(url, body, {
+                    headers,
+                })
+                .pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.updateRepositoryContent: Error update repository content`,
+                            metadata: { error: error.response.data },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.updateRepositoryContent: Success update repository content`,
+            metadata: {
+                ...payload,
+                data,
+                // content: atob(data.content),
+            },
+        });
+
+        return data;
+    }
+
+    async mergeBranch(payload: MergeGithubBrachDto) {
+        const { repo, base, head, commitMessage } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repo}/merges`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+
+        const { data } = await lastValueFrom(
+            this.httpService
+                .post(
+                    url,
+                    { base, head, commitMessage },
+                    {
+                        headers,
+                    },
+                )
+                .pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.mergeBranch: Error merge branch`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.mergeBranch: Success merge branch`,
+            metadata: {
+                ...payload,
+                data,
+            },
+        });
+
+        return data;
+    }
+}
