@@ -1,19 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class AppConfigurationService {
-  constructor(private configService: ConfigService) {}
+    constructor(private configService: ConfigService) {}
 
-  get port() {
-    return this.configService.get('app.port');
-  }
+    get port() {
+        return this.configService.get("app.port");
+    }
 
-  get curlentApiKey() {
-    return this.configService.get('app.curlentApiKey');
-  }
-
-  get freeTierMonthlyReportLimit() {
-    return this.configService.get('app.freeTierMonthlyReportLimit');
-  }
+    get genesoftApiKey() {
+        return this.configService.get("app.genesoftApiKey");
+    }
 }

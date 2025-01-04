@@ -7,14 +7,17 @@ import {
     Post,
     UploadedFile,
     UseInterceptors,
+    UseGuards,
 } from "@nestjs/common";
 import { MetadataService } from "./metadata.service";
 import { v4 as uuidv4 } from "uuid";
 import { AwsS3Service } from "../aws/aws-s3.service";
 import { AWSConfigurationService } from "../configuration/aws";
 import { getS3FileUrl } from "@/utils/aws/s3";
+import { AuthGuard } from "../auth/auth.guard";
 
 @Controller("metadata")
+@UseGuards(AuthGuard)
 export class MetadataController {
     constructor(
         private readonly metadataService: MetadataService,

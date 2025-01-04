@@ -13,7 +13,6 @@ import { Page } from "./entity/page.entity";
 import { Branding } from "./entity/branding.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
-import { Github } from "./entity/github.entity";
 import { Feedback } from "./entity/feedback.entity";
 import { File } from "@modules/metadata/entity/file.entity";
 import {
@@ -27,6 +26,7 @@ import { getS3FileUrl } from "@/utils/aws/s3";
 
 import { FileWithUrl } from "./type/file";
 import { AWSConfigurationService } from "../configuration/aws";
+import { GithubRepository } from "../github/entity/github-repository.entity";
 
 @Injectable()
 export class ProjectService {
@@ -45,8 +45,8 @@ export class ProjectService {
         private featureRepository: Repository<Feature>,
         @InjectRepository(WebApplication)
         private webApplicationRepository: Repository<WebApplication>,
-        @InjectRepository(Github)
-        private githubRepoRepository: Repository<Github>,
+        @InjectRepository(GithubRepository)
+        private githubRepoRepository: Repository<GithubRepository>,
         @InjectRepository(Feedback)
         private feedbackRepository: Repository<Feedback>,
         @InjectRepository(File)

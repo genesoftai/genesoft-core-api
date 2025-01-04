@@ -6,8 +6,8 @@ import {
     UpdateDateColumn,
 } from "typeorm";
 
-@Entity("github")
-export class Github {
+@Entity("github_repository")
+export class GithubRepository {
     @PrimaryGeneratedColumn("uuid")
     id: string;
 
