@@ -12,4 +12,8 @@ export class AppConfigurationService {
     get genesoftApiKey() {
         return this.configService.get("app.genesoftApiKey");
     }
+
+    get databaseUrl() {
+        return this.configService.get("app.databaseUrl");
+    }
 }

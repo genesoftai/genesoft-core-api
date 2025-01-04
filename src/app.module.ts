@@ -15,6 +15,8 @@ import { AWSConfigurationModule } from "./modules/configuration/aws";
 import { MetadataModule } from "./modules/metadata/metadata.module";
 import { GithubConfigurationModule } from "./modules/configuration/github";
 import { AuthModule } from "./modules/auth/auth.module";
+import { AppConfigurationModule } from "./modules/configuration/app/app.module";
+import { AppConfigurationService } from "./modules/configuration/app/app.service";
 
 @Module({
     imports: [
@@ -36,14 +38,14 @@ import { AuthModule } from "./modules/auth/auth.module";
             isGlobal: true,
         }),
         TypeOrmModule.forRootAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
+            imports: [ConfigModule, AppConfigurationModule],
+            inject: [AppConfigurationService],
+            useFactory: (appConfigurationService: AppConfigurationService) => ({
                 type: "postgres",
-                url: configService.get("DATABASE_URL"),
-                entities: [__dirname + "/**/*.entity{.ts,.js}"],
+                url: appConfigurationService.databaseUrl,
+                entities: ["dist/**/*.entity{.ts,.js}"],
                 synchronize: false,
             }),
-            inject: [ConfigService],
         }),
         OrganizationModule,
         UserModule,
