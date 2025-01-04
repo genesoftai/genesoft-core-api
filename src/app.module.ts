@@ -42,10 +42,6 @@ import { AuthModule } from "./modules/auth/auth.module";
                 url: configService.get("DATABASE_URL"),
                 entities: [__dirname + "/**/*.entity{.ts,.js}"],
                 synchronize: false,
-                ssl: {
-                    rejectUnauthorized: false,
-                },
-                logging: true,
             }),
             inject: [ConfigService],
         }),
