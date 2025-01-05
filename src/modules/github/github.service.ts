@@ -61,6 +61,7 @@ export class GithubService {
         const headers = {
             Authorization: `Bearer ${this.githubAccessToken}`,
         };
+
         return lastValueFrom(
             this.httpService
                 .get(url, {
@@ -107,20 +108,29 @@ export class GithubService {
 
         const name = `${projectTemplateName}_${projectId}`;
 
+        const type =
+            projectTemplateName === ProjectTemplateName.NestJsApi
+                ? "api"
+                : "web";
+
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+
+        const body = {
+            owner: this.githubOwner,
+            name,
+            description,
+            include_all_branches: true,
+            private: true,
+        };
+
         this.logger.log({
             message: `${this.serviceName}.createRepositoryFromTemplate: Create Repository from Template`,
             metadata: {
                 apiEndpoint: `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${templateRepo}/generate`,
-                body: {
-                    owner: this.githubOwner,
-                    name,
-                    description,
-                    include_all_branches: true,
-                    private: true,
-                },
-                headers: {
-                    Authorization: `Bearer ${this.githubAccessToken}`,
-                },
+                headers,
+                body,
             },
         });
 
@@ -128,17 +138,9 @@ export class GithubService {
             this.httpService
                 .post(
                     `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${templateRepo}/generate`,
+                    body,
                     {
-                        owner: this.githubOwner,
-                        name,
-                        description,
-                        include_all_branches: true,
-                        private: true,
-                    },
-                    {
-                        headers: {
-                            Authorization: `Bearer ${this.githubAccessToken}`,
-                        },
+                        headers,
                     },
                 )
                 .pipe(
@@ -157,12 +159,13 @@ export class GithubService {
         });
 
         const githubRepository = await this.githubRepositoryRepository.save({
-            isPrivate: data.private,
-            repoId: data.id,
+            project_id: project.id,
+            type,
+            repo_id: data.id.toString(),
             owner: data.owner.login,
             name: data.name,
-            fullName: data.full_name,
-            project,
+            full_name: data.full_name,
+            is_active: true,
         });
 
         this.logger.log({
@@ -320,7 +323,7 @@ export class GithubService {
                 const existingContent = await this.getRepositoryContent({
                     path,
                     repository,
-                    ref: "dev",
+                    ref: payload.ref,
                 });
                 if (existingContent) {
                     body.sha = existingContent.response.sha;

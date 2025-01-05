@@ -1,5 +1,5 @@
-import { ApiProperty } from "@nestjs/swagger"
-import { IsString, IsNotEmpty, IsOptional } from "class-validator"
+import { ApiProperty } from "@nestjs/swagger";
+import { IsString, IsNotEmpty, IsOptional } from "class-validator";
 
 export class GetRepositoryContentDto {
     @ApiProperty({
@@ -7,14 +7,14 @@ export class GetRepositoryContentDto {
     })
     @IsString()
     @IsNotEmpty()
-    repository: string
+    repository: string;
 
     @ApiProperty({
         description: "path of content in repository",
     })
     @IsString()
     @IsNotEmpty()
-    path: string
+    path: string;
 
     @ApiProperty({
         description:
@@ -22,5 +22,5 @@ export class GetRepositoryContentDto {
     })
     @IsString()
     @IsOptional()
-    ref?: string
+    ref?: string;
 }
