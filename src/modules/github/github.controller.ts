@@ -51,19 +51,19 @@ export class GithubController {
         );
     }
 
-    @Get("content")
+    @Get("repository/content")
     @UseGuards(AuthGuard)
     getRepositoryContent(@Query() query: GetRepositoryContentDto) {
         return this.githubService.getRepositoryContent(query);
     }
 
-    @Put("content")
+    @Put("repository/content")
     @UseGuards(AuthGuard)
     updateRepositoryContent(@Body() body: UpdateRepositoryContentDto) {
         return this.githubService.updateRepositoryContent(body);
     }
 
-    @Post("branch/merge")
+    @Post("repository/branch/merge")
     @UseGuards(AuthGuard)
     mergeBrach(@Body() payload: MergeGithubBrachDto) {
         return this.githubService.mergeBranch(payload);

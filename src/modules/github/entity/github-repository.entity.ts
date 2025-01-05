@@ -14,7 +14,7 @@ export class GithubRepository {
     @Column({ name: "project_id" })
     project_id: string;
 
-    @Column({ nullable: true })
+    @Column({ name: "type", nullable: true })
     type: string;
 
     @Column({ name: "repo_id" })

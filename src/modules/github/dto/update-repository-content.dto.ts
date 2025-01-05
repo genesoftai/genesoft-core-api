@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional } from "class-validator"
-import { ApiProperty } from "@nestjs/swagger"
+import { IsString, IsNotEmpty, IsOptional } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 
 export class UpdateRepositoryContentDto {
     @ApiProperty({
@@ -7,28 +7,35 @@ export class UpdateRepositoryContentDto {
     })
     @IsString()
     @IsNotEmpty()
-    repository: string
+    repository: string;
 
     @ApiProperty({
         description: "path of content in repository",
     })
     @IsString()
     @IsNotEmpty()
-    path: string
+    path: string;
 
     @ApiProperty({
         description: "The commit message.",
     })
     @IsString()
     @IsNotEmpty()
-    message: string
+    message: string;
 
     @ApiProperty({
         description: "The new file content, using Base64 encoding.",
     })
     @IsString()
     @IsNotEmpty()
-    content: string
+    content: string;
+
+    @ApiProperty({
+        description: "ref to get repository content",
+    })
+    @IsString()
+    @IsOptional()
+    ref?: string;
 
     @ApiProperty({
         description:
@@ -36,7 +43,7 @@ export class UpdateRepositoryContentDto {
     })
     @IsString()
     @IsOptional()
-    sha?: string
+    sha?: string;
 
     @ApiProperty({
         description:
@@ -44,7 +51,7 @@ export class UpdateRepositoryContentDto {
     })
     @IsString()
     @IsOptional()
-    branch?: string
+    branch?: string;
 
     @ApiProperty({
         description:
@@ -52,7 +59,7 @@ export class UpdateRepositoryContentDto {
     })
     @IsString()
     @IsOptional()
-    committer?: object
+    committer?: object;
 
     @ApiProperty({
         description:
@@ -60,7 +67,7 @@ export class UpdateRepositoryContentDto {
     })
     @IsString()
     @IsOptional()
-    author?: object
+    author?: object;
 }
 
 export class MergeGithubBrachDto {
@@ -70,7 +77,7 @@ export class MergeGithubBrachDto {
     })
     @IsString()
     @IsOptional()
-    repo: string
+    repo: string;
 
     @ApiProperty({
         description:
@@ -78,7 +85,7 @@ export class MergeGithubBrachDto {
     })
     @IsString()
     @IsOptional()
-    base: string
+    base: string;
 
     @ApiProperty({
         description:
@@ -86,12 +93,12 @@ export class MergeGithubBrachDto {
     })
     @IsString()
     @IsNotEmpty()
-    head: string
+    head: string;
 
     @ApiProperty({
         description: "commitMessage",
     })
     @IsString()
     @IsOptional()
-    commitMessage: string
+    commitMessage: string;
 }

@@ -11,12 +11,11 @@ import {
     WinstonModule,
     utilities as nestWinstonModuleUtilities,
 } from "nest-winston";
-import { AWSConfigurationModule } from "./modules/configuration/aws";
 import { MetadataModule } from "./modules/metadata/metadata.module";
-import { GithubConfigurationModule } from "./modules/configuration/github";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AppConfigurationModule } from "./modules/configuration/app/app.module";
 import { AppConfigurationService } from "./modules/configuration/app/app.service";
+import { GithubModule } from "./modules/github/github.module";
 
 @Module({
     imports: [
@@ -55,10 +54,9 @@ import { AppConfigurationService } from "./modules/configuration/app/app.service
         OrganizationModule,
         UserModule,
         ProjectModule,
-        AWSConfigurationModule,
         MetadataModule,
-        GithubConfigurationModule,
         AuthModule,
+        GithubModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],
