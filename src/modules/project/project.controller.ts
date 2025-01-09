@@ -33,6 +33,26 @@ export class ProjectController {
         return this.projectService.getProjectById(id);
     }
 
+    @Get(":id/info")
+    async getProjectInfo(@Param("id") id: string) {
+        return this.projectService.getProjectInfo(id);
+    }
+
+    @Get(":id/pages")
+    async getProjectPages(@Param("id") id: string) {
+        return this.projectService.getProjectPages(id);
+    }
+
+    @Get(":id/features")
+    async getProjectFeatures(@Param("id") id: string) {
+        return this.projectService.getProjectFeatures(id);
+    }
+
+    @Get(":id/branding")
+    async getProjectBranding(@Param("id") id: string) {
+        return this.projectService.getProjectBranding(id);
+    }
+
     @Patch(":id/info")
     async updateProjectInfo(
         @Param("id") id: string,
