@@ -13,6 +13,7 @@ import { ReferenceLink } from "../metadata/entity/reference-link.entity";
 import { File } from "../metadata/entity/file.entity";
 import { AWSConfigurationModule } from "../configuration/aws";
 import { AuthModule } from "../auth/auth.module";
+import { GithubModule } from "../github/github.module";
 
 @Module({
     imports: [
@@ -29,6 +30,7 @@ import { AuthModule } from "../auth/auth.module";
         ]),
         AWSConfigurationModule,
         AuthModule,
+        GithubModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],

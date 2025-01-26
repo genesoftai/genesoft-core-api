@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from "class-validator";
+import { IsString, IsNotEmpty, IsOptional, IsObject } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class UpdateRepositoryContentDto {
@@ -57,7 +57,7 @@ export class UpdateRepositoryContentDto {
         description:
             "The person that committed the file. Default: the authenticated user.",
     })
-    @IsString()
+    @IsObject()
     @IsOptional()
     committer?: object;
 
@@ -65,7 +65,7 @@ export class UpdateRepositoryContentDto {
         description:
             "The author of the file. Default: The committer or the authenticated user if you omit committer.",
     })
-    @IsString()
+    @IsObject()
     @IsOptional()
     author?: object;
 }
