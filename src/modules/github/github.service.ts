@@ -57,6 +57,10 @@ export class GithubService {
     async getGithubRepositoryFromGithub({
         repositoryName,
     }: GetGithubRepositoryFromGithubDto) {
+        this.logger.log({
+            message: `${this.serviceName}.getGithubRepositoryFromGithub: Get Github Repository From Github`,
+            metadata: { repositoryName },
+        });
         const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repositoryName}`;
         const headers = {
             Authorization: `Bearer ${this.githubAccessToken}`,
@@ -188,6 +192,10 @@ export class GithubService {
         path,
         ref,
     }: GetRepositoryContentDto) {
+        this.logger.log({
+            message: `${this.serviceName}.getRepositoryContent: Get Repository Content`,
+            metadata: { repository, path, ref },
+        });
         let url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/contents/${path}`;
         if (ref) {
             url = `${url}?ref=${ref}`;
@@ -258,6 +266,10 @@ export class GithubService {
     }
 
     async getRepositoryTrees({ repository, branch }: GetRepositoryTreesQuery) {
+        this.logger.log({
+            message: `${this.serviceName}.getRepositoryTrees: Get Repository Trees`,
+            metadata: { repository, branch },
+        });
         const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/git/trees/${branch}?recursive=1`;
         const headers = {
             Authorization: `Bearer ${this.githubAccessToken}`,

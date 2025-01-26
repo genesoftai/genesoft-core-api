@@ -16,6 +16,8 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { AppConfigurationModule } from "./modules/configuration/app/app.module";
 import { AppConfigurationService } from "./modules/configuration/app/app.service";
 import { GithubModule } from "./modules/github/github.module";
+import { DevelopmentModule } from "./modules/development/development.module";
+import { EmailModule } from "./modules/email/email.module";
 
 @Module({
     imports: [
@@ -44,11 +46,6 @@ import { GithubModule } from "./modules/github/github.module";
                 url: appConfigurationService.databaseUrl,
                 entities: ["dist/**/*.entity{.ts,.js}"],
                 synchronize: false,
-                host: appConfigurationService.databaseHost,
-                port: appConfigurationService.databasePort,
-                username: appConfigurationService.databaseUser,
-                password: appConfigurationService.databasePassword,
-                database: appConfigurationService.databaseName,
             }),
         }),
         OrganizationModule,
@@ -57,6 +54,8 @@ import { GithubModule } from "./modules/github/github.module";
         MetadataModule,
         AuthModule,
         GithubModule,
+        DevelopmentModule,
+        EmailModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

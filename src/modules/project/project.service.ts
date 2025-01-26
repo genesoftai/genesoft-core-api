@@ -27,6 +27,8 @@ import { getS3FileUrl } from "@/utils/aws/s3";
 import { FileWithUrl } from "./type/file";
 import { AWSConfigurationService } from "../configuration/aws";
 import { GithubRepository } from "../github/entity/github-repository.entity";
+import { ProjectTemplateName } from "../constants/project";
+import { GithubService } from "../github/github.service";
 
 @Injectable()
 export class ProjectService {
@@ -54,6 +56,7 @@ export class ProjectService {
         @InjectRepository(ReferenceLink)
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
+        private githubService: GithubService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -267,6 +270,18 @@ export class ProjectService {
                 });
             }
         }
+
+        await this.githubService.createRepositoryFromTemplate({
+            projectTemplateName: ProjectTemplateName.NextJsWeb,
+            description: `NextJS (web) project for ${project.description}`,
+            projectId: project.id,
+        });
+
+        await this.githubService.createRepositoryFromTemplate({
+            projectTemplateName: ProjectTemplateName.NestJsApi,
+            description: `NestJS (API) project for ${project.description}`,
+            projectId: project.id,
+        });
 
         this.logger.log({
             message: `${this.serviceName}.createProject: Project created`,
