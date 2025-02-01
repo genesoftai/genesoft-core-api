@@ -2,6 +2,7 @@ import {
     Body,
     Controller,
     Get,
+    Param,
     Post,
     Put,
     Query,
@@ -21,6 +22,10 @@ import {
     MergeGithubBrachDto,
     UpdateRepositoryContentDto,
 } from "./dto/update-repository-content.dto";
+import {
+    CreatePullRequestDto,
+    MergePullRequestDto,
+} from "./dto/pull-requests.dto";
 
 @ApiTags("Github")
 @Controller("github")
@@ -73,5 +78,63 @@ export class GithubController {
     @UseGuards(AuthGuard)
     getAllEnvVars(@Query() payload: GetAllRepositoryEnvQuery) {
         return this.githubService.getAllEnvVars(payload);
+    }
+
+    @Post("repository/pull-request")
+    @UseGuards(AuthGuard)
+    createPullRequest(@Body() payload: CreatePullRequestDto) {
+        return this.githubService.createPullRequest(payload);
+    }
+
+    @Put("repository/pull-request/merge")
+    @UseGuards(AuthGuard)
+    mergePullRequest(@Body() payload: MergePullRequestDto) {
+        return this.githubService.mergePullRequest(payload);
+    }
+
+    @Get("repository/workflows/:repository/runs/:branch")
+    @UseGuards(AuthGuard)
+    getWorkflowRuns(
+        @Param("repository") repository: string,
+        @Param("branch") branch: string,
+    ) {
+        return this.githubService.getWorkflowRuns({ repository, branch });
+    }
+
+    @Get("repository/workflows/:repository/runs/:run_id/logs")
+    @UseGuards(AuthGuard)
+    getWorkflowRunLogs(
+        @Param("repository") repository: string,
+        @Param("run_id") run_id: string,
+    ) {
+        return this.githubService.getWorkflowRunLogs({ repository, run_id });
+    }
+
+    @Get(
+        "repository/workflows/:repository/runs/:run_id/logs/failure/:failed_step",
+    )
+    @UseGuards(AuthGuard)
+    getWorkflowRunFailureLogs(
+        @Param("repository") repository: string,
+        @Param("run_id") run_id: string,
+        @Param("failed_step") failed_step: number,
+    ) {
+        return this.githubService.getWorkflowRunFailureLogs({
+            repository,
+            run_id,
+            failed_step,
+        });
+    }
+
+    @Get("repository/workflow/project/:project_id/run/latest/:branch")
+    @UseGuards(AuthGuard)
+    getLatestWorkflowRun(
+        @Param("project_id") project_id: string,
+        @Param("branch") branch: string,
+    ) {
+        return this.githubService.getLatestWorkflowRun({
+            project_id,
+            branch,
+        });
     }
 }
