@@ -29,6 +29,17 @@ import {
     UpdateRepositoryContentDto,
 } from "./dto/update-repository-content.dto";
 import { GithubConfigurationService } from "../configuration/github";
+import {
+    CreatePullRequestDto,
+    MergePullRequestDto,
+} from "./dto/pull-requests.dto";
+import {
+    GetLatestWorkflowRunDto,
+    GetWorkflowRunFailureLogsDto,
+    GetWorkflowRunLogsDto,
+    GetWorkflowRunsDto,
+} from "./dto/workflow.dto";
+import * as AdmZip from "adm-zip";
 
 @Injectable()
 export class GithubService {
@@ -428,5 +439,339 @@ export class GithubService {
         });
 
         return data;
+    }
+
+    async createPullRequest(payload: CreatePullRequestDto) {
+        const { repository, title, head, base } = payload;
+
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/pulls`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+            // Accept: "application/vnd.github+json",
+        };
+
+        const body = {
+            title,
+            head,
+            base,
+        };
+
+        this.logger.log({
+            message: `${this.serviceName}.createPullRequest: Creating pull request`,
+            metadata: { url, body },
+        });
+
+        const { data } = await lastValueFrom(
+            this.httpService
+                .post(url, body, {
+                    headers,
+                })
+                .pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.createPullRequest: Error creating pull request`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.createPullRequest: Successfully created pull request`,
+            metadata: {
+                ...payload,
+                data,
+            },
+        });
+
+        return data;
+    }
+
+    async mergePullRequest(payload: MergePullRequestDto) {
+        const {
+            repository,
+            pull_number,
+            commit_title,
+            commit_message,
+            merge_method,
+        } = payload;
+
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/pulls/${pull_number}/merge`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+            // Accept: "application/vnd.github+json",
+        };
+
+        const body = {
+            commit_title,
+            commit_message,
+            merge_method,
+        };
+
+        this.logger.log({
+            message: `${this.serviceName}.mergePullRequest: Merging pull request`,
+            metadata: { url, body },
+        });
+
+        const { data } = await lastValueFrom(
+            this.httpService
+                .put(url, body, {
+                    headers,
+                })
+                .pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.mergePullRequest: Error merging pull request`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.mergePullRequest: Successfully merged pull request`,
+            metadata: {
+                ...payload,
+                data,
+            },
+        });
+
+        return data;
+    }
+
+    async getWorkflowRuns(payload: GetWorkflowRunsDto) {
+        const { repository, branch } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/actions/runs?branch=${branch}`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+
+        this.logger.log({
+            message: `${this.serviceName}.getWorkflows: Getting workflows`,
+            metadata: { url, headers },
+        });
+
+        const response = await lastValueFrom(
+            this.httpService.get(url, { headers }).pipe(
+                concatMap((res) => of(res.data)),
+                retry(2),
+                catchError((error: AxiosError) => {
+                    this.logger.error({
+                        message: `${this.serviceName}.getWorkflows: Error getting workflows`,
+                        metadata: { error },
+                    });
+                    throw error;
+                }),
+            ),
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.getWorkflows: Successfully got workflows`,
+            metadata: {
+                response,
+            },
+        });
+
+        return response;
+    }
+
+    async getLatestWorkflowRun(payload: GetLatestWorkflowRunDto) {
+        const { project_id, branch } = payload;
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: {
+                project_id,
+                type: "api",
+            },
+        });
+        const response = await this.getWorkflowRuns({
+            repository: repository.name,
+            branch,
+        });
+        const latestWorkflowRun = response.workflow_runs[0];
+
+        if (latestWorkflowRun.conclusion !== "failure") {
+            return {
+                latestWorkflowRun,
+                logs: "",
+                status: "success",
+            };
+        }
+
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+
+        const jobsResponse = await lastValueFrom(
+            this.httpService.get(latestWorkflowRun.jobs_url, { headers }).pipe(
+                concatMap((res) => of(res.data)),
+                retry(2),
+                catchError((error: AxiosError) => {
+                    this.logger.error({
+                        message: `${this.serviceName}.getWorkflowRunFailureLogs: Error getting workflow run logs`,
+                        metadata: { error },
+                    });
+                    throw error;
+                }),
+            ),
+        );
+        const job = jobsResponse.jobs[0];
+
+        const failedStep = job?.steps?.find(
+            (step) => step.conclusion === "failure",
+        );
+
+        if (!failedStep) {
+            return {
+                latestWorkflowRun,
+                logs: "",
+                status: "failed",
+            };
+        }
+
+        const logs = await this.getWorkflowRunFailureLogs({
+            repository: repository.name,
+            run_id: latestWorkflowRun.id,
+            failed_step: failedStep.number,
+        });
+
+        return {
+            latestWorkflowRun,
+            logs,
+            status: "failed",
+        };
+    }
+
+    async getWorkflowRunLogs(payload: GetWorkflowRunLogsDto) {
+        const { repository, run_id } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/actions/runs/${run_id}/logs`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "Accept-Encoding": "gzip, deflate, br",
+        };
+
+        const response = await lastValueFrom(
+            this.httpService
+                .get(url, {
+                    headers,
+                    responseType: "arraybuffer",
+                })
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.getWorkflowRunLogs: Error getting workflow run logs`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        const logs = this.extractZipData(response);
+        const filteredBuildLogsKey = Object.keys(logs).filter((key) =>
+            key.includes("build/"),
+        );
+        this.logger.log({
+            message: `${this.serviceName}.getWorkflowRunLogs: Filtered build logs key`,
+            metadata: {
+                filteredBuildLogsKey,
+            },
+        });
+        const sortedBuildLogsKey = filteredBuildLogsKey.sort((keyA, keyB) => {
+            const numA = parseInt(keyA.split("/")[1].split("_")[0] || "0");
+            const numB = parseInt(keyB.split("/")[1].split("_")[0] || "0");
+            return numA - numB;
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}.getWorkflowRunLogs: Sorted build logs key`,
+            metadata: {
+                sortedBuildLogsKey,
+            },
+        });
+        // const filteredLogs = logs.filter((log) => log.includes("##[section]"));
+        let formattedLogs = "";
+
+        // Combine all log files into a single string with file headers
+        sortedBuildLogsKey.forEach((filename) => {
+            formattedLogs += `
+        Log file name:${filename}
+        Logs:
+        ${logs[filename]}\
+
+        `;
+        });
+
+        return formattedLogs.trim();
+    }
+
+    async getWorkflowRunFailureLogs(payload: GetWorkflowRunFailureLogsDto) {
+        const { repository, run_id, failed_step } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/actions/runs/${run_id}/logs`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "Accept-Encoding": "gzip, deflate, br",
+        };
+
+        const response = await lastValueFrom(
+            this.httpService
+                .get(url, {
+                    headers,
+                    responseType: "arraybuffer",
+                })
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.getWorkflowRunLogs: Error getting workflow run logs`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        const logs = this.extractZipData(response);
+        const fileNames = Object.keys(logs);
+        const failedStepFileName = fileNames.find((fileName) =>
+            fileName.includes(`build/${failed_step}`),
+        );
+        const failedStepLogs = logs[failedStepFileName];
+
+        this.logger.log({
+            message: `${this.serviceName}.getWorkflowRunFailureLogs: Failed step logs`,
+            metadata: {
+                failedStepLogs,
+            },
+        });
+
+        const formattedLog = `
+        Log file name for failed step:${failedStepFileName}
+        Logs for failed step:
+        ${failedStepLogs}`;
+
+        return formattedLog.trim();
+    }
+
+    extractZipData(buffer: Buffer): Record<string, string> {
+        const zip = new AdmZip(buffer);
+        const zipEntries = zip.getEntries();
+        const extractedFiles: Record<string, string> = {};
+
+        zipEntries.forEach((entry) => {
+            if (!entry.isDirectory) {
+                const fileName = entry.entryName;
+                const fileContent = entry.getData().toString("utf8");
+                extractedFiles[fileName] = fileContent;
+            }
+        });
+
+        return extractedFiles;
     }
 }
