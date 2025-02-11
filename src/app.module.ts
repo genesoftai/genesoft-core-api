@@ -21,6 +21,7 @@ import { EmailModule } from "./modules/email/email.module";
 import { RepositoryBuildModule } from "./modules/repository-build/repository-build.module";
 import { FrontendInfraModule } from "./frontend-infra/frontend-infra.module";
 import { BackendInfraModule } from "./backend-infra/backend-infra.module";
+import { FeedbackModule } from "module/feedback/feedback.module";
 
 @Module({
     imports: [
@@ -62,6 +63,7 @@ import { BackendInfraModule } from "./backend-infra/backend-infra.module";
         RepositoryBuildModule,
         FrontendInfraModule,
         BackendInfraModule,
+        FeedbackModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

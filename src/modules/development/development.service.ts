@@ -24,6 +24,9 @@ import { GENESOFT_SUPPORT_EMAIL } from "@/modules/constants/genesoft";
 import { Project } from "@/modules/project/entity/project.entity";
 import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
+import { CreateIterationDto } from "./dto/create-iteration.dto";
+import { ProjectService } from "../project/project.service";
+import { RepositoryBuildService } from "../repository-build/repository-build.service";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -45,32 +48,105 @@ export class DevelopmentService {
         private organizationRepository: Repository<Organization>,
         @InjectRepository(User)
         private userRepository: Repository<User>,
+        private readonly projectService: ProjectService,
+        private readonly repositoryBuildService: RepositoryBuildService,
     ) {}
 
     // Iteration CRUD
-    async createIteration(data: Partial<Iteration>): Promise<Iteration> {
+    async createIteration(payload: CreateIterationDto): Promise<Iteration> {
+        if (payload.type === IterationType.Feedback && !payload.feedback_id) {
+            throw new BadRequestException(
+                "Feedback ID is required for feedback iteration",
+            );
+        }
         try {
-            const iteration = this.iterationRepository.create(data);
+            let updatedRequirements = "";
+            if (
+                payload.type === IterationType.Requirements &&
+                payload.is_updated_requirements
+            ) {
+                const updatedRequirementsSet =
+                    await this.projectService.getUpdatedRequirements(
+                        payload.project_id,
+                    );
+                if (
+                    updatedRequirementsSet.pages.length === 0 &&
+                    updatedRequirementsSet.features.length === 0 &&
+                    updatedRequirementsSet.branding.length === 0
+                ) {
+                    throw new BadRequestException(
+                        "No updated requirements found",
+                    );
+                }
+                updatedRequirements =
+                    this.projectService.formatUpdatedRequirements(
+                        updatedRequirementsSet,
+                    );
+            }
+            const iteration = this.iterationRepository.create(payload);
             const savedIteration =
                 await this.iterationRepository.save(iteration);
-            if (data.type === IterationType.Feedback) {
-                // TODO: Call Project Management AI agent team to list tasks
-            } else if (data.type === IterationType.Requirements) {
-                // TODO: Call Project Management AI agent team to list tasks
+            if (payload.type === IterationType.Feedback) {
                 const response = await lastValueFrom(
                     this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
+                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/feedback`,
                         {
-                            project_id: data.project_id,
-                            input: `Plan and Prioritize Frontend team and Backend team tasks for develop web application follow project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend`,
+                            project_id: payload.project_id,
+                            input: `Plan and Prioritize Frontend (NextJs) team and Backend (NestJs) team tasks for improve web application follow customer feedback that discussed with Project Manager AI Agent on Feedback Messages, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend. Make sure tasks are aligned with customer feedback and project requirements.`,
                             iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${data.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${data.project_id}`,
+                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                            feedback_id: payload.feedback_id,
                         },
                     ),
                 );
                 this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully`,
+                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for start feedback iteration`,
+                    metadata: { response: response.data },
+                });
+            } else if (
+                payload.type === IterationType.Requirements &&
+                payload.is_updated_requirements
+            ) {
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Updated requirements`,
+                    metadata: { updatedRequirements },
+                });
+                const response = await lastValueFrom(
+                    this.httpService.put(
+                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
+                        {
+                            project_id: payload.project_id,
+                            input: `Plan and Prioritize Frontend team and Backend team tasks for develop web application follow updated project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend. The updated requirements contains pages, branding, features. Develop further only updated requirements don't develop whole existing requirements again but can also edit to follow updated requirements.`,
+                            iteration_id: savedIteration.id,
+                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                            updated_requirements: updatedRequirements,
+                        },
+                    ),
+                );
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
+                    metadata: { response: response.data },
+                });
+            } else if (
+                payload.type === IterationType.Requirements &&
+                !payload.is_updated_requirements
+            ) {
+                const response = await lastValueFrom(
+                    this.httpService.post(
+                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
+                        {
+                            project_id: payload.project_id,
+                            input: `Plan and Prioritize Frontend team and Backend team tasks for develop web application follow project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend`,
+                            iteration_id: savedIteration.id,
+                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                        },
+                    ),
+                );
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for start requirements iteration`,
                     metadata: { response: response.data },
                 });
             }
@@ -78,7 +154,7 @@ export class DevelopmentService {
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createIteration: Failed to create iteration`,
-                metadata: { data, error: error.message },
+                metadata: { data: payload, error: error.message },
             });
             throw error;
         }
@@ -157,6 +233,47 @@ export class DevelopmentService {
             this.logger.error({
                 message: `${this.serviceName}.deleteIteration: Failed to delete iteration`,
                 metadata: { id, error: error.message },
+            });
+            throw error;
+        }
+    }
+
+    async getIterationPastSteps(
+        iterationId: string,
+        team: string,
+    ): Promise<object> {
+        try {
+            const iterationTasks = await this.iterationTaskRepository.find({
+                where: {
+                    iteration_id: iterationId,
+                    status: IterationTaskStatus.Done,
+                    team: team,
+                },
+            });
+
+            this.logger.log({
+                message: `${this.serviceName}.getIterationPastSteps: Iteration tasks`,
+                metadata: { iterationTasks },
+            });
+            const pastStepsInTasks = {};
+            iterationTasks.forEach((task) => {
+                this.logger.log({
+                    message: `${this.serviceName}.getIterationPastSteps: Task result`,
+                    metadata: { taskResult: task },
+                });
+
+                if (task?.result?.past_steps) {
+                    const subtasks = task?.result?.past_steps.map(
+                        (step) => step,
+                    );
+                    pastStepsInTasks[task?.name] = subtasks;
+                }
+            });
+            return pastStepsInTasks;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.getIterationPastSteps: Failed to get iteration past steps`,
+                metadata: { iterationId, error: error.message },
             });
             throw error;
         }
@@ -420,37 +537,29 @@ export class DevelopmentService {
             const project = await this.projectRepository.findOne({
                 where: { id: iteration.project_id },
             });
-            this.logger.log({
-                message: `${this.serviceName}.updateIterationTaskStatus: Project`,
-                metadata: { project },
-            });
             const organization = await this.organizationRepository.findOne({
                 where: { id: project.organization_id },
-            });
-            this.logger.log({
-                message: `${this.serviceName}.updateIterationTaskStatus: Organization`,
-                metadata: { organization },
             });
             const users = await this.userRepository.find({
                 where: { organization_id: organization.id },
             });
-            this.logger.log({
-                message: `${this.serviceName}.updateIterationTaskStatus: Users`,
-                metadata: { users },
-            });
             const result = await this.updateIterationTask(id, {
                 status: payload.status,
             });
-            this.logger.log({
-                message: `${this.serviceName}.updateIterationTaskStatus: Result`,
-                metadata: { result },
-            });
             try {
                 const usersEmails = users.map((user) => user.email);
+
+                let statusText = "In Progress";
+                if (payload.status === "done") {
+                    statusText = "Completed";
+                } else if (payload.status === "failed") {
+                    statusText = "Failed";
+                }
+
                 const emailSent = await this.emailService.sendEmail({
                     from: GENESOFT_SUPPORT_EMAIL,
                     to: usersEmails,
-                    subject: "Iteration Task Result",
+                    subject: `${project.name}: Task ${statusText} for ${iteration.type} development round`,
                     html: `
                     <div style="font-family: Arial, sans-serif; padding: 20px;">
                         <h2>Project: ${project.name}</h2>
@@ -463,7 +572,7 @@ export class DevelopmentService {
                         <p><strong>Task Name:</strong> ${iterationTask.name}</p>
                         <p><strong>Description:</strong> ${iterationTask.description}</p>
                         <p><strong>Team:</strong> ${iterationTask.team}</p>
-                        <p><strong>Status:</strong> ${payload.status}</p>
+                        <p><strong>Status:</strong> ${statusText}</p>
                     </div>
                 `,
                 });
@@ -565,6 +674,18 @@ export class DevelopmentService {
                 await this.updateIteration(iterationId, {
                     status: IterationStatus.Done,
                 });
+
+                const iteration = await this.getIterationById(iterationId);
+                this.repositoryBuildService.checkRepositoryBuild({
+                    project_id: iteration.project_id,
+                    iteration_id: iteration.id,
+                    template: ProjectTemplateName.NextJsWeb,
+                });
+                this.repositoryBuildService.checkRepositoryBuild({
+                    project_id: iteration.project_id,
+                    iteration_id: iteration.id,
+                    template: ProjectTemplateName.NestJsApi,
+                });
                 return null;
             }
 
@@ -649,5 +770,19 @@ export class DevelopmentService {
             });
             throw error;
         }
+    }
+
+    async triggerAiAgentToUpdateRequirements(projectId: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        const iteration = await this.createIteration({
+            project_id: project.id,
+            type: IterationType.Requirements,
+            is_updated_requirements: true,
+        });
+
+        return iteration;
     }
 }

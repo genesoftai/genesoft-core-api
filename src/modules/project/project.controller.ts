@@ -124,4 +124,9 @@ export class ProjectController {
     async getFeatureReferenceLinks(@Param("featureId") featureId: string) {
         return this.projectService.getFeatureReferenceLinks(featureId);
     }
+
+    @Get(":id/updated-requirements")
+    async getUpdatedRequirements(@Param("id") id: string) {
+        return this.projectService.getUpdatedRequirements(id);
+    }
 }
