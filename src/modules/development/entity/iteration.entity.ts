@@ -26,9 +26,9 @@ export class Iteration {
     @Column({ name: "working_time", type: "decimal", default: 0.0 })
     working_time: number;
 
-    @CreateDateColumn({ name: "created_at", type: "timestamptz" })
+    @CreateDateColumn({ name: "created_at" })
     created_at: Date;
 
-    @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
+    @UpdateDateColumn({ name: "updated_at" })
     updated_at: Date;
 }

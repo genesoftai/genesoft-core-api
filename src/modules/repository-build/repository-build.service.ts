@@ -1,3 +1,4 @@
+import { EmailService } from "./../email/email.service";
 import {
     BadRequestException,
     Injectable,
@@ -22,6 +23,10 @@ import { HttpService } from "@nestjs/axios";
 import { catchError, concatMap, of, lastValueFrom, retry } from "rxjs";
 import { AxiosError } from "axios";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent";
+import { Iteration } from "../development/entity/iteration.entity";
+import { Project } from "../project/entity/project.entity";
+import { User } from "../user/entity/user.entity";
+import { AppConfigurationService } from "../configuration/app/app.service";
 
 @Injectable()
 export class RepositoryBuildService {
@@ -37,7 +42,96 @@ export class RepositoryBuildService {
         private readonly frontendInfraService: FrontendInfraService,
         private readonly httpService: HttpService,
         private readonly aiAgentConfigurationService: AiAgentConfigurationService,
+        private readonly emailService: EmailService,
+        @InjectRepository(Iteration)
+        private readonly iterationRepository: Repository<Iteration>,
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
+        private readonly appConfigurationService: AppConfigurationService,
     ) {}
+
+    private async sendBuildFailureEmail(
+        iterationId: string,
+        type: "frontend" | "backend",
+    ) {
+        const iteration = await this.iterationRepository.findOne({
+            where: { id: iterationId },
+        });
+
+        const project = await this.projectRepository.findOne({
+            where: { id: iteration.project_id },
+        });
+
+        const users = await this.userRepository.find({
+            where: { organization_id: project.organization_id },
+        });
+        const emails = users.map((user) => user.email);
+
+        await this.emailService.sendEmail({
+            from: "Genesoft AI Support <support@genesoftai.com>",
+            topic: `Technical Difficulties for ${project.name} to build your web application`,
+            to: emails,
+            subject: `Technical Issues Detected in ${type === "frontend" ? "Web" : "Backend"} Development`,
+            html: `
+                <p>Hello, ${emails.join(", ")},</p>
+                <p>We've encountered some technical difficulties while building your ${type === "frontend" ? "web application" : "backend service"} for iteration ${iterationId}.</p>
+                <p>Our team has been notified and is actively working to resolve these issues.</p>
+                <p>We will inform you once the issues have been resolved.</p>
+                <p>We apologize for any inconvenience caused.</p>
+
+                <p>Details:</p>
+                <p>Project: ${project.name}</p>
+                <p>Project ID: ${project.id}</p>
+                <p>Iteration ID: ${iterationId}</p>
+
+            `,
+        });
+    }
+
+    private async sendBuildSuccessEmail(
+        iterationId: string,
+        type: "frontend" | "backend",
+    ) {
+        const iteration = await this.iterationRepository.findOne({
+            where: { id: iterationId },
+        });
+
+        const project = await this.projectRepository.findOne({
+            where: { id: iteration.project_id },
+        });
+
+        const users = await this.userRepository.find({
+            where: { organization_id: project.organization_id },
+        });
+        const emails = users.map((user) => user.email);
+
+        await this.emailService.sendEmail({
+            from: "Genesoft AI Support <support@genesoftai.com>",
+            topic: `Web application development completed for ${project.name}`,
+            to: emails,
+            subject: `${project.name} web application is ready for review`,
+            html: `
+                <p>Hello, ${emails.join(", ")},</p>
+                <p>Your ${type === "frontend" ? "web application" : "backend service"} development for ${project.name} has been completed successfully.</p>
+                <p>Your web application is now ready for your review.</p>
+                <p>Please review the changes and provide your feedback.</p>
+
+                <p>Details:</p>
+                <p>Project: ${project.name}</p>
+                <p>Project ID: ${project.id}</p>
+                <p>Iteration ID: ${iterationId}</p>
+
+                <p>Review latest version of your web application at <a href="${this.appConfigurationService.genesoftWebBaseUrl}/dashboard/project/manage/${project.id}">${project.name} on Genesoft AI</a></p>
+
+                <p>Thank you for using Genesoft AI.</p>
+
+                <p>Best regards,</p>
+                <p>Genesoft AI Team</p>
+            `,
+        });
+    }
 
     async checkRepositoryBuild(payload: CheckRepositoryBuildDto) {
         const repository = await this.githubRepositoryRepository.findOne({
@@ -56,6 +150,7 @@ export class RepositoryBuildService {
 
         throw new BadRequestException("Invalid template");
     }
+
     async checkFrontendBuild(payload: CheckFrontendRepositoryBuildDto) {
         const { project_id, iteration_id } = payload;
         if (!project_id || !iteration_id) {
@@ -64,7 +159,7 @@ export class RepositoryBuildService {
 
         const repositoryBuildExisting =
             await this.repositoryBuildRepository.findOne({
-                where: { project_id, iteration_id },
+                where: { project_id, iteration_id, type: ProjectType.Web },
             });
 
         let repositoryBuild;
@@ -91,6 +186,22 @@ export class RepositoryBuildService {
                 project_id,
             );
 
+        if (deployment.status === "success") {
+            await this.sendBuildSuccessEmail(iteration_id, "frontend");
+            return {
+                status: "success",
+                deployment: repositoryBuild,
+            };
+        }
+
+        if (repositoryBuild.fix_attempts >= 10) {
+            await this.sendBuildFailureEmail(iteration_id, "frontend");
+            return {
+                status: "failed",
+                deployment: repositoryBuild,
+            };
+        }
+
         if (deployment.status === "failed") {
             const currentAttempts = repositoryBuild.fix_attempts + 1;
             await this.triggerFrontendBuilderAgent({
@@ -116,11 +227,6 @@ export class RepositoryBuildService {
                 deployment,
             };
         }
-
-        return {
-            status: "success",
-            deployment,
-        };
     }
 
     async checkBackendBuild(payload: CheckBackendRepositoryBuildDto) {
@@ -130,7 +236,7 @@ export class RepositoryBuildService {
         }
         const repositoryBuildExisting =
             await this.repositoryBuildRepository.findOne({
-                where: { project_id, iteration_id },
+                where: { project_id, iteration_id, type: ProjectType.Api },
             });
         let repositoryBuild;
         if (!repositoryBuildExisting) {
@@ -146,11 +252,27 @@ export class RepositoryBuildService {
         } else {
             repositoryBuild = repositoryBuildExisting;
         }
-
         const deployment = await this.githubService.getLatestWorkflowRun({
             project_id,
             branch: "staging",
         });
+
+        if (repositoryBuild.fix_attempts >= 10) {
+            await this.sendBuildFailureEmail(iteration_id, "backend");
+            return {
+                status: "failed",
+                deployment: repositoryBuild,
+            };
+        }
+
+        if (deployment.status === "success") {
+            await this.sendBuildSuccessEmail(iteration_id, "backend");
+            return {
+                status: "success",
+                deployment: repositoryBuild,
+            };
+        }
+
         if (deployment.status === "failed") {
             const repository = await this.githubRepositoryRepository.findOne({
                 where: { project_id, type: ProjectType.Api },
@@ -178,10 +300,6 @@ export class RepositoryBuildService {
                 deployment,
             };
         }
-        return {
-            status: "success",
-            deployment,
-        };
     }
 
     async triggerBackendBuilderAgent(payload: TriggerBackendBuilderAgentDto) {

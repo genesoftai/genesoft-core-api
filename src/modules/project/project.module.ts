@@ -8,12 +8,13 @@ import { Page } from "./entity/page.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
 import { GithubRepository } from "@modules/github/entity/github-repository.entity";
-import { Feedback } from "./entity/feedback.entity";
+import { Feedback } from "../../../module/feedback/entity/feedback.entity";
 import { ReferenceLink } from "../metadata/entity/reference-link.entity";
 import { File } from "../metadata/entity/file.entity";
 import { AWSConfigurationModule } from "../configuration/aws";
 import { AuthModule } from "../auth/auth.module";
 import { GithubModule } from "../github/github.module";
+import { Iteration } from "../development/entity/iteration.entity";
 
 @Module({
     imports: [
@@ -27,6 +28,7 @@ import { GithubModule } from "../github/github.module";
             Feedback,
             File,
             ReferenceLink,
+            Iteration,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -34,5 +36,6 @@ import { GithubModule } from "../github/github.module";
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],
+    exports: [ProjectService],
 })
 export class ProjectModule {}

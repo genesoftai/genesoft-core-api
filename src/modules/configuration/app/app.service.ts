@@ -36,4 +36,8 @@ export class AppConfigurationService {
     get databaseName() {
         return this.configService.get("app.databaseName");
     }
+
+    get genesoftWebBaseUrl() {
+        return this.configService.get("app.genesoftWebBaseUrl");
+    }
 }

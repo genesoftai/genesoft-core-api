@@ -11,6 +11,8 @@ import { EmailModule } from "../email/email.module";
 import { Project } from "../project/entity/project.entity";
 import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
+import { ProjectModule } from "../project/project.module";
+import { RepositoryBuildModule } from "../repository-build/repository-build.module";
 
 @Module({
     imports: [
@@ -25,6 +27,8 @@ import { User } from "../user/entity/user.entity";
         HttpModule,
         AiAgentConfigurationModule,
         EmailModule,
+        ProjectModule,
+        RepositoryBuildModule,
     ],
     controllers: [DevelopmentController],
     providers: [DevelopmentService, Logger],

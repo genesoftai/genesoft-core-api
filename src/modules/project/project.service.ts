@@ -6,14 +6,14 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { In, MoreThan, Repository } from "typeorm";
 import { Project } from "./entity/project.entity";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { Page } from "./entity/page.entity";
 import { Branding } from "./entity/branding.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
-import { Feedback } from "./entity/feedback.entity";
+import { Feedback } from "../../../module/feedback/entity/feedback.entity";
 import { File } from "@modules/metadata/entity/file.entity";
 import {
     UpdateProjectDto,
@@ -29,6 +29,13 @@ import { AWSConfigurationService } from "../configuration/aws";
 import { GithubRepository } from "../github/entity/github-repository.entity";
 import { ProjectTemplateName } from "../constants/project";
 import { GithubService } from "../github/github.service";
+import {
+    formatBasicInfo,
+    formatBranding,
+    formatFeatures,
+    formatPages,
+} from "@/utils/project/documentation";
+import { Iteration } from "../development/entity/iteration.entity";
 
 @Injectable()
 export class ProjectService {
@@ -57,6 +64,8 @@ export class ProjectService {
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
         private githubService: GithubService,
+        @InjectRepository(Iteration)
+        private iterationRepository: Repository<Iteration>,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -106,11 +115,26 @@ export class ProjectService {
             feedbacks,
         ] = await Promise.all([
             this.brandingRepository.findOne({ where: { projectId: id } }),
-            this.pageRepository.find({ where: { project_id: id } }),
-            this.featureRepository.find({ where: { project_id: id } }),
-            this.webApplicationRepository.find({ where: { project_id: id } }),
-            this.githubRepoRepository.find({ where: { project_id: id } }),
-            this.feedbackRepository.find({ where: { project_id: id } }),
+            this.pageRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.featureRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.webApplicationRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.githubRepoRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.feedbackRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
         ]);
 
         // Combine all data
@@ -579,5 +603,135 @@ export class ProjectService {
             where: { id: In(feature.reference_link_ids) },
         });
         return referenceLinks;
+    }
+
+    async getOverallProjectDocumentation(id: string): Promise<string> {
+        const info = await this.getProjectInfo(id);
+        const features = await this.getProjectFeatures(id);
+        const pages = await this.getProjectPages(id);
+        const branding = await this.getProjectBranding(id);
+
+        const formattedInfo = formatBasicInfo(info);
+        const formattedFeatures = formatFeatures(features);
+        const formattedPages = formatPages(pages);
+        const formattedBranding = formatBranding(branding);
+
+        const documentation = `
+Project Documentation
+Overview of the project follow customer requirements that need to be implemented web application
+====================
+
+${formattedInfo}
+
+${formattedFeatures}
+
+${formattedPages}
+
+${formattedBranding}
+`;
+
+        return documentation;
+    }
+
+    async getUpdatedRequirements(id: string) {
+        const latestIteration = await this.iterationRepository.findOne({
+            where: { project_id: id },
+            order: { created_at: "DESC" },
+        });
+        const latestIterationCreationTime = latestIteration.created_at;
+
+        this.logger.log({
+            message: `${this.serviceName}.getUpdatedRequirements: Latest iteration completed time`,
+            metadata: {
+                latestIterationCompletedTime: latestIterationCreationTime,
+                timestamp: new Date(),
+            },
+        });
+
+        // Get updated branding requirements after latest iteration
+        const branding = await this.brandingRepository.find({
+            where: {
+                projectId: id,
+                updated_at: latestIterationCreationTime
+                    ? MoreThan(latestIterationCreationTime)
+                    : undefined,
+            },
+        });
+
+        // Get updated page requirements after latest iteration
+        const pages = await this.pageRepository.find({
+            where: {
+                project_id: id,
+                updated_at: latestIterationCreationTime
+                    ? MoreThan(latestIterationCreationTime)
+                    : undefined,
+            },
+        });
+
+        // Get updated feature requirements after latest iteration
+        const features = await this.featureRepository.find({
+            where: {
+                project_id: id,
+                updated_at: latestIterationCreationTime
+                    ? MoreThan(latestIterationCreationTime)
+                    : undefined,
+            },
+        });
+        this.logger.log({
+            message: `${this.serviceName}.getUpdatedRequirements: Updated requirements`,
+            metadata: {
+                branding,
+                pages,
+                features,
+            },
+        });
+
+        return {
+            branding,
+            pages,
+            features,
+        };
+    }
+
+    formatUpdatedRequirements(requirements: {
+        branding: any[];
+        pages: any[];
+        features: any[];
+    }): string {
+        let formattedUpdatedRequirements =
+            "Updated Project Requirements:\n=========================\n\n";
+
+        // Format branding requirements
+        if (requirements.branding && requirements.branding.length > 0) {
+            const branding = requirements.branding[0];
+            formattedUpdatedRequirements +=
+                "Branding Updated Requirements:\n-------------------\n";
+            formattedUpdatedRequirements += `Logo URL: ${branding.logo_url || "Not specified"}\n`;
+            formattedUpdatedRequirements += `Theme Color: ${branding.color || "Not specified"}\n`;
+            formattedUpdatedRequirements += `Theme Mode: ${branding.theme || "Not specified"}\n`;
+            formattedUpdatedRequirements += `Brand Perception: ${branding.perception || "Not specified"}\n\n`;
+        }
+
+        // Format pages requirements
+        if (requirements.pages && requirements.pages.length > 0) {
+            formattedUpdatedRequirements +=
+                "Page Updated Requirements:\n----------------\n";
+            for (const page of requirements.pages) {
+                formattedUpdatedRequirements += `Page: ${page.name || "Unnamed"}\n`;
+                formattedUpdatedRequirements += `Description: ${page.description || "No description"}\n\n`;
+            }
+        }
+
+        // Format feature requirements
+        if (requirements.features && requirements.features.length > 0) {
+            formattedUpdatedRequirements +=
+                "Feature Updated Requirements:\n-------------------\n";
+            for (const feature of requirements.features) {
+                formattedUpdatedRequirements += `Feature: ${feature.name || "Unnamed"}\n`;
+                formattedUpdatedRequirements += `Description: ${feature.description || "No description"}\n\n`;
+            }
+        }
+
+        return formattedUpdatedRequirements;
     }
 }

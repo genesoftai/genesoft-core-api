@@ -204,4 +204,21 @@ export class DevelopmentController {
     ): Promise<IterationTask | null> {
         return this.developmentService.triggerNextIterationTask(id);
     }
+
+    @Get("iteration/:id/past-steps/:team")
+    getIterationPastSteps(
+        @Param("id") id: string,
+        @Param("team") team: string,
+    ): Promise<object> {
+        return this.developmentService.getIterationPastSteps(id, team);
+    }
+
+    @Post("project/:projectId/update-requirements")
+    triggerAiAgentToUpdateRequirements(
+        @Param("projectId") projectId: string,
+    ): Promise<Iteration> {
+        return this.developmentService.triggerAiAgentToUpdateRequirements(
+            projectId,
+        );
+    }
 }

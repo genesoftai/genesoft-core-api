@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty } from "class-validator";
+import { IsString, IsOptional, IsNotEmpty, IsBoolean } from "class-validator";
 
 export class CreateIterationDto {
     @IsString()
@@ -12,4 +12,8 @@ export class CreateIterationDto {
     @IsString()
     @IsOptional()
     feedback_id?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    is_updated_requirements?: boolean;
 }
