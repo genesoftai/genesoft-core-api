@@ -13,11 +13,12 @@ import {
     CheckBackendRepositoryBuildDto,
     CheckFrontendRepositoryBuildDto,
     CheckRepositoryBuildDto,
+    CheckRepositoryBuildOverviewDto,
     TriggerBackendBuilderAgentDto,
     TriggerFrontendBuilderAgentDto,
 } from "./dto/repository-build.dto";
 import { ProjectTemplateName, ProjectType } from "@/modules/constants/project";
-import { FrontendInfraService } from "@/frontend-infra/frontend-infra.service";
+import { FrontendInfraService } from "@/modules/frontend-infra/frontend-infra.service";
 import { RepositoryBuild } from "@/modules/repository-build/entity/repository-build.entity";
 import { HttpService } from "@nestjs/axios";
 import { catchError, concatMap, of, lastValueFrom, retry } from "rxjs";
@@ -27,6 +28,7 @@ import { Iteration } from "../development/entity/iteration.entity";
 import { Project } from "../project/entity/project.entity";
 import { User } from "../user/entity/user.entity";
 import { AppConfigurationService } from "../configuration/app/app.service";
+import { GENESOFT_AI_EMAIL } from "../constants/genesoft";
 
 @Injectable()
 export class RepositoryBuildService {
@@ -72,7 +74,7 @@ export class RepositoryBuildService {
         await this.emailService.sendEmail({
             from: "Genesoft AI Support <support@genesoftai.com>",
             topic: `Technical Difficulties for ${project.name} to build your web application`,
-            to: emails,
+            to: [...emails, GENESOFT_AI_EMAIL],
             subject: `Technical Issues Detected in ${type === "frontend" ? "Web" : "Backend"} Development`,
             html: `
                 <p>Hello, ${emails.join(", ")},</p>
@@ -110,7 +112,7 @@ export class RepositoryBuildService {
         await this.emailService.sendEmail({
             from: "Genesoft AI Support <support@genesoftai.com>",
             topic: `Web application development completed for ${project.name}`,
-            to: emails,
+            to: [...emails, GENESOFT_AI_EMAIL],
             subject: `${project.name} web application is ready for review`,
             html: `
                 <p>Hello, ${emails.join(", ")},</p>
@@ -134,14 +136,6 @@ export class RepositoryBuildService {
     }
 
     async checkRepositoryBuild(payload: CheckRepositoryBuildDto) {
-        const repository = await this.githubRepositoryRepository.findOne({
-            where: { id: payload.project_id },
-        });
-
-        if (!repository) {
-            throw new NotFoundException("Repository not found");
-        }
-
         if (payload.template === ProjectTemplateName.NextJsWeb) {
             return this.checkFrontendBuild(payload);
         } else if (payload.template === ProjectTemplateName.NestJsApi) {
@@ -149,6 +143,37 @@ export class RepositoryBuildService {
         }
 
         throw new BadRequestException("Invalid template");
+    }
+
+    async checkRepositoryBuildOverview(
+        payload: CheckRepositoryBuildOverviewDto,
+    ) {
+        const iteration = await this.iterationRepository.findOne({
+            where: { project_id: payload.project_id },
+            order: { created_at: "DESC" },
+        });
+
+        if (!iteration) {
+            throw new NotFoundException("Iteration not found");
+        }
+
+        await this.checkRepositoryBuild({
+            project_id: payload.project_id,
+            iteration_id: iteration.id,
+            template: ProjectTemplateName.NextJsWeb,
+        });
+
+        await this.checkRepositoryBuild({
+            project_id: payload.project_id,
+            iteration_id: iteration.id,
+            template: ProjectTemplateName.NestJsApi,
+        });
+
+        return {
+            status: "success",
+            message:
+                "Repository build overview checked and trigger ai agent if errors",
+        };
     }
 
     async checkFrontendBuild(payload: CheckFrontendRepositoryBuildDto) {

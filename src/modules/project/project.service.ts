@@ -1,4 +1,5 @@
 import {
+    forwardRef,
     Inject,
     Injectable,
     Logger,
@@ -13,7 +14,7 @@ import { Page } from "./entity/page.entity";
 import { Branding } from "./entity/branding.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
-import { Feedback } from "../../../module/feedback/entity/feedback.entity";
+import { Feedback } from "../feedback/entity/feedback.entity";
 import { File } from "@modules/metadata/entity/file.entity";
 import {
     UpdateProjectDto,
@@ -36,6 +37,14 @@ import {
     formatPages,
 } from "@/utils/project/documentation";
 import { Iteration } from "../development/entity/iteration.entity";
+import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
+import { Supabase } from "../supabase/entity/supabase.entity";
+import { VercelProject } from "@/modules/frontend-infra/entity/vercel-project.entity";
+import { BackendInfraService } from "@/modules/backend-infra/backend-infra.service";
+import { FrontendInfraService } from "@/modules/frontend-infra/frontend-infra.service";
+import { SupabaseService } from "../supabase/supabase.service";
+import { DevelopmentService } from "../development/development.service";
+import { IterationType } from "../constants/development";
 
 @Injectable()
 export class ProjectService {
@@ -66,6 +75,17 @@ export class ProjectService {
         private githubService: GithubService,
         @InjectRepository(Iteration)
         private iterationRepository: Repository<Iteration>,
+        @InjectRepository(Supabase)
+        private supabaseRepository: Repository<Supabase>,
+        @InjectRepository(VercelProject)
+        private vercelProjectRepository: Repository<VercelProject>,
+        @InjectRepository(KoyebProject)
+        private koyebProjectRepository: Repository<KoyebProject>,
+        private supabaseService: SupabaseService,
+        private frontendInfraService: FrontendInfraService,
+        private backendInfraService: BackendInfraService,
+        @Inject(forwardRef(() => DevelopmentService))
+        private developmentService: DevelopmentService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -158,6 +178,35 @@ export class ProjectService {
         });
 
         return projectWithRelations;
+    }
+
+    async getProjectInfrastructure(id: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${id} not found`);
+        }
+
+        const supabase = await this.supabaseRepository.findOne({
+            where: { project_id: id },
+        });
+
+        const vercel = await this.vercelProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        const koyeb = await this.koyebProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        return {
+            project,
+            supabase,
+            vercel,
+            koyeb,
+        };
     }
 
     async getProjectInfo(id: string): Promise<Project> {
@@ -313,6 +362,35 @@ export class ProjectService {
                 projectId: project.id,
                 timestamp: new Date(),
             },
+        });
+
+        const supabaseProject =
+            await this.supabaseService.createNewSupabaseProject(project.id);
+        this.logger.log({
+            message: `${this.serviceName}.createProject: Supabase project created`,
+            metadata: { projectId: project.id, supabaseProject },
+        });
+
+        const koyebProject =
+            await this.backendInfraService.createNewProjectInKoyeb(project.id);
+        this.logger.log({
+            message: `${this.serviceName}.createProject: Koyeb project created`,
+            metadata: { projectId: project.id, koyebProject },
+        });
+
+        const vercelProject =
+            await this.frontendInfraService.createNewVercelProject({
+                project_id: project.id,
+            });
+        this.logger.log({
+            message: `${this.serviceName}.createProject: Vercel project created`,
+            metadata: { projectId: project.id, vercelProject },
+        });
+
+        // Start develop web follow initial requirements
+        await this.developmentService.createIteration({
+            project_id: project.id,
+            type: IterationType.Requirements,
         });
 
         return this.getProjectById(project.id);
@@ -546,6 +624,30 @@ export class ProjectService {
             message: `${this.serviceName}.deleteProject: Deleting project`,
             metadata: { id, timestamp: new Date() },
         });
+
+        const supabase = await this.supabaseRepository.findOne({
+            where: { project_id: id },
+        });
+
+        if (supabase) {
+            await this.supabaseService.deleteSupabaseProject(id);
+        }
+
+        const koyeb = await this.koyebProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        if (koyeb) {
+            await this.backendInfraService.deleteKoyebProject(id);
+        }
+
+        const vercel = await this.vercelProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        if (vercel) {
+            await this.frontendInfraService.deleteVercelProjectByProjectId(id);
+        }
 
         await this.projectRepository.delete(id);
 

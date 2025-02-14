@@ -3,6 +3,7 @@ import {
     IsArray,
     IsNotEmpty,
     IsObject,
+    IsOptional,
     IsString,
     ValidateNested,
 } from "class-validator";
@@ -25,8 +26,8 @@ export class EnvironmentVariableDto {
     target?: string[] = ["production"];
 
     @IsString()
-    @IsNotEmpty()
-    gitBranch: string = "main";
+    @IsOptional()
+    gitBranch?: string;
 }
 
 export class AddEnvironmentVariablesToVercelProjectDto {

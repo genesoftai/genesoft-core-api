@@ -1,0 +1,139 @@
+{
+    "message": "FrontendInfraService.createNewVercelProject: Environment variables added",
+    "metadata": {
+        "result": {
+            "created": [
+                {
+                    "type": "plain",
+                    "value": "https://mrrbvdhoavwmbkcachto.supabase.co",
+                    "target": ["preview"],
+                    "configurationId": null,
+                    "gitBranch": "staging",
+                    "id": "5BiqnGCX8nvxeddV",
+                    "key": "NEXT_PUBLIC_SUPABASE_URL",
+                    "createdAt": 1739371742733,
+                    "updatedAt": 1739371742733,
+                    "createdBy": "rlNek8V8V1csZrZcciNdClKb",
+                    "updatedBy": null
+                },
+                {
+                    "type": "plain",
+                    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycmJ2ZGhvYXZ3bWJrY2FjaHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzNTEzMTksImV4cCI6MjA1NDkyNzMxOX0.PP-vp1eMKaU6Gv7OZA8DWiixJ0GsZbDHJvsrTXHc8eA",
+                    "target": ["preview"],
+                    "configurationId": null,
+                    "gitBranch": "staging",
+                    "id": "Wpf6czGuUag0BYbS",
+                    "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                    "createdAt": 1739371742733,
+                    "updatedAt": 1739371742733,
+                    "createdBy": "rlNek8V8V1csZrZcciNdClKb",
+                    "updatedBy": null
+                },
+                {
+                    "type": "plain",
+                    "value": "https://dev-feb76d90-genesoft-7d15b852.koyeb.app/api",
+                    "target": ["preview"],
+                    "configurationId": null,
+                    "gitBranch": "staging",
+                    "id": "zLS9ToHx2A7ybbZS",
+                    "key": "CORE_API_SERVICE_BASE_URL",
+                    "createdAt": 1739371742733,
+                    "updatedAt": 1739371742733,
+                    "createdBy": "rlNek8V8V1csZrZcciNdClKb",
+                    "updatedBy": null
+                },
+                {
+                    "type": "plain",
+                    "value": "https://test.app.com",
+                    "target": ["preview"],
+                    "configurationId": null,
+                    "gitBranch": "staging",
+                    "id": "LtgO2ZcJz6HmZBYv",
+                    "key": "NEXT_PUBLIC_APP_URL",
+                    "createdAt": 1739371742733,
+                    "updatedAt": 1739371742733,
+                    "createdBy": "rlNek8V8V1csZrZcciNdClKb",
+                    "updatedBy": null
+                },
+                {
+                    "type": "plain",
+                    "value": "staging",
+                    "target": ["preview"],
+                    "configurationId": null,
+                    "gitBranch": "staging",
+                    "id": "gNjrMXKSTAj2Mudz",
+                    "key": "NODE_ENV",
+                    "createdAt": 1739371742733,
+                    "updatedAt": 1739371742733,
+                    "createdBy": "rlNek8V8V1csZrZcciNdClKb",
+                    "updatedBy": null
+                }
+            ],
+            "failed": [
+                {
+                    "error": {
+                        "code": "BAD_REQUEST",
+                        "message": "Environment Variables with `gitBranch` can only be used with `target=preview`.",
+                        "key": "target",
+                        "envVarKey": "NEXT_PUBLIC_SUPABASE_URL",
+                        "target": ["production"]
+                    }
+                },
+                {
+                    "error": {
+                        "code": "BAD_REQUEST",
+                        "message": "Environment Variables with `gitBranch` can only be used with `target=preview`.",
+                        "key": "target",
+                        "envVarKey": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                        "target": ["production"]
+                    }
+                },
+                {
+                    "error": {
+                        "code": "BAD_REQUEST",
+                        "message": "Environment Variables with `gitBranch` can only be used with `target=preview`.",
+                        "key": "target",
+                        "envVarKey": "CORE_API_SERVICE_BASE_URL",
+                        "target": ["production"]
+                    }
+                },
+                {
+                    "error": {
+                        "code": "ENV_SHOULD_BE_A_SECRET",
+                        "message": "Value `40562dc7-a7f3-48c9-b5fe-859a834acf57f2o6ufwqpab!@#$%^&*` for variable CORE_API_SERVICE_API_KEY is forbidden. Only secret IDs are allowed.",
+                        "key": "value",
+                        "envVarKey": "CORE_API_SERVICE_API_KEY",
+                        "value": "40562dc7-a7f3-48c9-b5fe-859a834acf57f2o6ufwqpab!@#$%^&*"
+                    }
+                },
+                {
+                    "error": {
+                        "code": "BAD_REQUEST",
+                        "message": "Environment Variables with `gitBranch` can only be used with `target=preview`.",
+                        "key": "target",
+                        "envVarKey": "NEXT_PUBLIC_APP_URL",
+                        "target": ["production"]
+                    }
+                },
+                {
+                    "error": {
+                        "code": "BAD_REQUEST",
+                        "message": "Environment Variables with `gitBranch` can only be used with `target=preview`.",
+                        "key": "target",
+                        "envVarKey": "NODE_ENV",
+                        "target": ["production"]
+                    }
+                },
+                {
+                    "error": {
+                        "code": "ENV_SHOULD_BE_A_SECRET",
+                        "message": "Value `40562dc7-a7f3-48c9-b5fe-859a834acf57f2o6ufwqpab!@#$%^&*` for variable CORE_API_SERVICE_API_KEY is forbidden. Only secret IDs are allowed.",
+                        "key": "value",
+                        "envVarKey": "CORE_API_SERVICE_API_KEY",
+                        "value": "40562dc7-a7f3-48c9-b5fe-859a834acf57f2o6ufwqpab!@#$%^&*"
+                    }
+                }
+            ]
+        }
+    }
+}

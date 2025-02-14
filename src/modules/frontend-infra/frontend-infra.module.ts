@@ -6,12 +6,23 @@ import { GithubRepository } from "@/modules/github/entity/github-repository.enti
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { HttpModule } from "@nestjs/axios";
 import { VercelProject } from "./entity/vercel-project.entity";
+import { Supabase } from "@/modules/supabase/entity/supabase.entity";
+import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
+import { SupabaseModule } from "@/modules/supabase/supabase.module";
+import { BackendInfraModule } from "@/modules/backend-infra/backend-infra.module";
 
 @Module({
     imports: [
         VercelConfigurationModule,
-        TypeOrmModule.forFeature([GithubRepository, VercelProject]),
+        TypeOrmModule.forFeature([
+            GithubRepository,
+            VercelProject,
+            Supabase,
+            KoyebProject,
+        ]),
         HttpModule,
+        SupabaseModule,
+        BackendInfraModule,
     ],
     providers: [FrontendInfraService],
     controllers: [FrontendInfraController],

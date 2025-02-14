@@ -1,10 +1,5 @@
-import { Feedback } from "module/feedback/entity/feedback.entity";
-import {
-    BadRequestException,
-    Injectable,
-    Logger,
-    NotFoundException,
-} from "@nestjs/common";
+import { Feedback } from "@/modules/feedback/entity/feedback.entity";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CreateFeedbackDto } from "./dto/create-feedback.dto";
@@ -19,7 +14,7 @@ import { GithubRepository } from "@/modules/github/entity/github-repository.enti
 import { ProjectType } from "@/modules/constants/project";
 import { ProjectService } from "@/modules/project/project.service";
 import { formatGithubRepositoryTree } from "@/utils/project/documentation";
-import { LlmService } from "module/llm/llm.service";
+import { LlmService } from "@/modules/llm/llm.service";
 import { BaseMessageLike } from "@langchain/core/messages";
 import { FeedbackMessage } from "@/modules/types/feedback";
 import { DevelopmentService } from "@/modules/development/development.service";

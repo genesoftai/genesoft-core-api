@@ -1,4 +1,4 @@
-import { Logger, Module } from "@nestjs/common";
+import { Logger, Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { HttpModule } from "@nestjs/axios";
 import { DevelopmentController } from "./development.controller";
@@ -27,8 +27,8 @@ import { RepositoryBuildModule } from "../repository-build/repository-build.modu
         HttpModule,
         AiAgentConfigurationModule,
         EmailModule,
-        ProjectModule,
         RepositoryBuildModule,
+        forwardRef(() => ProjectModule),
     ],
     controllers: [DevelopmentController],
     providers: [DevelopmentService, Logger],

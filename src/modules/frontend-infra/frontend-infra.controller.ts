@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Put, Get, Param } from "@nestjs/common";
+import {
+    Controller,
+    Post,
+    Body,
+    Put,
+    Get,
+    Param,
+    Delete,
+} from "@nestjs/common";
 import { FrontendInfraService } from "./frontend-infra.service";
 import {
     CreateNewVercelProjectDto,
@@ -13,7 +21,14 @@ import {
 export class FrontendInfraController {
     constructor(private readonly frontendInfraService: FrontendInfraService) {}
 
-    @Post("vercel-project")
+    @Delete("project/:project_id/vercel")
+    deleteVercelProject(@Param("project_id") project_id: string) {
+        return this.frontendInfraService.deleteVercelProjectByProjectId(
+            project_id,
+        );
+    }
+
+    @Post("/vercel-project")
     createNewVercelProject(@Body() payload: CreateNewVercelProjectDto) {
         return this.frontendInfraService.createNewVercelProject(payload);
     }

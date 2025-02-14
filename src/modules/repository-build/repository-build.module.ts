@@ -4,7 +4,7 @@ import { RepositoryBuildController } from "./repository-build.controller";
 import { GithubModule } from "@/modules/github/github.module";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { GithubRepository } from "@/modules/github/entity/github-repository.entity";
-import { FrontendInfraModule } from "@/frontend-infra/frontend-infra.module";
+import { FrontendInfraModule } from "@/modules/frontend-infra/frontend-infra.module";
 import { RepositoryBuild } from "./entity/repository-build.entity";
 import { HttpModule } from "@nestjs/axios";
 import { AiAgentConfigurationModule } from "@/modules/configuration/ai-agent/ai-agent.module";

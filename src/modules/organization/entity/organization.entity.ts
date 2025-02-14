@@ -28,4 +28,7 @@ export class Organization {
 
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
     updated_at: Date;
+
+    @Column({ type: "text", nullable: true })
+    customer_id: string;
 }

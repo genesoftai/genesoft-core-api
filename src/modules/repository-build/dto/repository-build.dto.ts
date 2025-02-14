@@ -15,6 +15,12 @@ export class CheckRepositoryBuildDto {
     iteration_id: string;
 }
 
+export class CheckRepositoryBuildOverviewDto {
+    @IsString()
+    @IsNotEmpty()
+    project_id: string;
+}
+
 export class CheckFrontendRepositoryBuildDto {
     @IsString()
     @IsNotEmpty()

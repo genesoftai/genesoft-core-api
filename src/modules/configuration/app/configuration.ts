@@ -10,4 +10,5 @@ export default registerAs("app", () => ({
     databasePassword: process.env.DATABASE_PASSWORD,
     databaseName: process.env.DATABASE_NAME,
     genesoftWebBaseUrl: process.env.GENESOFT_WEB_BASE_URL,
+    nodeEnv: process.env.NODE_ENV,
 }));
