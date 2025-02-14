@@ -1,3 +1,4 @@
+import { FeedbackMessage } from "@/modules/types/feedback";
 import {
     Entity,
     PrimaryGeneratedColumn,
@@ -5,12 +6,6 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
 } from "typeorm";
-
-interface Message {
-    content: string;
-    sender: string;
-    timestamp: Date;
-}
 
 @Entity("feedback")
 export class Feedback {
@@ -23,10 +18,14 @@ export class Feedback {
     @Column({ name: "is_submit", default: false })
     is_submit: boolean;
 
-    @Column({ type: "jsonb", nullable: true })
-    messages: Message[];
+    @Column({
+        type: "jsonb",
+        nullable: true,
+        default: () => "ARRAY[]::jsonb",
+    })
+    messages: FeedbackMessage[];
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, default: "ongoing" })
     status: string;
 
     @CreateDateColumn({ name: "created_at" })

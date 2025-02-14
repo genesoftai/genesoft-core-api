@@ -1,5 +1,5 @@
-import { ApiProperty } from "@nestjs/swagger"
-import { IsString, IsOptional, IsNotEmpty } from "class-validator"
+import { ApiProperty } from "@nestjs/swagger";
+import { IsString, IsOptional, IsNotEmpty } from "class-validator";
 
 export class GetGithubRepositoryFromGithubDto {
     @ApiProperty({
@@ -7,7 +7,7 @@ export class GetGithubRepositoryFromGithubDto {
     })
     @IsString()
     @IsOptional()
-    repositoryName: string
+    repositoryName: string;
 }
 
 export class GetRepositoryTreesQuery {
@@ -16,14 +16,14 @@ export class GetRepositoryTreesQuery {
     })
     @IsString()
     @IsNotEmpty()
-    repository: string
+    repository: string;
 
     @ApiProperty({
         description: "branch name",
     })
     @IsString()
     @IsNotEmpty()
-    branch: string
+    branch: string;
 }
 
 export class GetAllRepositoryEnvQuery {
@@ -32,12 +32,12 @@ export class GetAllRepositoryEnvQuery {
     })
     @IsString()
     @IsNotEmpty()
-    repository: string
+    repository: string;
 
     @ApiProperty({
         description: "branch name",
     })
     @IsString()
     @IsNotEmpty()
-    branch: string
+    branch: string;
 }

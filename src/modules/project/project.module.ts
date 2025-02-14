@@ -1,4 +1,4 @@
-import { Logger, Module } from "@nestjs/common";
+import { forwardRef, Logger, Module } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import { ProjectController } from "./project.controller";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -8,11 +8,20 @@ import { Page } from "./entity/page.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
 import { GithubRepository } from "@modules/github/entity/github-repository.entity";
-import { Feedback } from "./entity/feedback.entity";
+import { Feedback } from "../feedback/entity/feedback.entity";
 import { ReferenceLink } from "../metadata/entity/reference-link.entity";
 import { File } from "../metadata/entity/file.entity";
 import { AWSConfigurationModule } from "../configuration/aws";
 import { AuthModule } from "../auth/auth.module";
+import { GithubModule } from "../github/github.module";
+import { Iteration } from "../development/entity/iteration.entity";
+import { SupabaseModule } from "../supabase/supabase.module";
+import { FrontendInfraModule } from "@/modules/frontend-infra/frontend-infra.module";
+import { BackendInfraModule } from "@/modules/backend-infra/backend-infra.module";
+import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
+import { Supabase } from "../supabase/entity/supabase.entity";
+import { VercelProject } from "@/modules/frontend-infra/entity/vercel-project.entity";
+import { DevelopmentModule } from "../development/development.module";
 
 @Module({
     imports: [
@@ -26,11 +35,21 @@ import { AuthModule } from "../auth/auth.module";
             Feedback,
             File,
             ReferenceLink,
+            Iteration,
+            Supabase,
+            VercelProject,
+            KoyebProject,
         ]),
         AWSConfigurationModule,
         AuthModule,
+        GithubModule,
+        SupabaseModule,
+        FrontendInfraModule,
+        BackendInfraModule,
+        forwardRef(() => DevelopmentModule),
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],
+    exports: [ProjectService],
 })
 export class ProjectModule {}

@@ -8,4 +8,9 @@ enum ProjectTemplateName {
     NextJsWeb = "nextjs-web",
 }
 
-export { ProjectTemplate, ProjectTemplateName };
+enum ProjectType {
+    Api = "api",
+    Web = "web",
+}
+
+export { ProjectTemplate, ProjectTemplateName, ProjectType };

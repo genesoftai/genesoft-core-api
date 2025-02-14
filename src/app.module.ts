@@ -11,12 +11,20 @@ import {
     WinstonModule,
     utilities as nestWinstonModuleUtilities,
 } from "nest-winston";
-import { AWSConfigurationModule } from "./modules/configuration/aws";
 import { MetadataModule } from "./modules/metadata/metadata.module";
-import { GithubConfigurationModule } from "./modules/configuration/github";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AppConfigurationModule } from "./modules/configuration/app/app.module";
 import { AppConfigurationService } from "./modules/configuration/app/app.service";
+import { GithubModule } from "./modules/github/github.module";
+import { DevelopmentModule } from "./modules/development/development.module";
+import { EmailModule } from "./modules/email/email.module";
+import { RepositoryBuildModule } from "./modules/repository-build/repository-build.module";
+import { FrontendInfraModule } from "./modules/frontend-infra/frontend-infra.module";
+import { BackendInfraModule } from "./modules/backend-infra/backend-infra.module";
+import { FeedbackModule } from "@/modules/feedback/feedback.module";
+import { SupabaseModule } from "./modules/supabase/supabase.module";
+import { WebApplicationModule } from "./modules/web-application/web-application.module";
+import { StripeModule } from "./modules/stripe/stripe.module";
 
 @Module({
     imports: [
@@ -45,20 +53,23 @@ import { AppConfigurationService } from "./modules/configuration/app/app.service
                 url: appConfigurationService.databaseUrl,
                 entities: ["dist/**/*.entity{.ts,.js}"],
                 synchronize: false,
-                host: appConfigurationService.databaseHost,
-                port: appConfigurationService.databasePort,
-                username: appConfigurationService.databaseUser,
-                password: appConfigurationService.databasePassword,
-                database: appConfigurationService.databaseName,
             }),
         }),
         OrganizationModule,
         UserModule,
         ProjectModule,
-        AWSConfigurationModule,
         MetadataModule,
-        GithubConfigurationModule,
         AuthModule,
+        GithubModule,
+        DevelopmentModule,
+        EmailModule,
+        RepositoryBuildModule,
+        FrontendInfraModule,
+        BackendInfraModule,
+        FeedbackModule,
+        SupabaseModule,
+        WebApplicationModule,
+        StripeModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

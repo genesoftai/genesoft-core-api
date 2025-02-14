@@ -41,4 +41,7 @@ export class User {
         default: () => "CURRENT_TIMESTAMP",
     })
     updated_at: Date;
+
+    @Column({ type: "text", nullable: true })
+    customer_id: string;
 }

@@ -1,0 +1,94 @@
+{
+    "name": "nextjs-web_feb76d90-2fbb-40e4-8073-657b737a643b",
+    "environmentVariables": [
+        {
+            "key": "NEXT_PUBLIC_SUPABASE_URL",
+            "target": "production",
+            "gitBranch": "main",
+            "value": "https://mrrbvdhoavwmbkcachto.supabase.co",
+            "type": "plain"
+        },
+        {
+            "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "target": "production",
+            "gitBranch": "main",
+            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycmJ2ZGhvYXZ3bWJrY2FjaHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzNTEzMTksImV4cCI6MjA1NDkyNzMxOX0.PP-vp1eMKaU6Gv7OZA8DWiixJ0GsZbDHJvsrTXHc8eA",
+            "type": "plain"
+        },
+        {
+            "key": "CORE_API_SERVICE_BASE_URL",
+            "target": "production",
+            "gitBranch": "main",
+            "value": "https://dev-feb76d90-genesoft-7d15b852.koyeb.app/api",
+            "type": "plain"
+        },
+        {
+            "key": "CORE_API_SERVICE_API_KEY",
+            "target": "production",
+            "gitBranch": "main",
+            "value": "40562dc7-a7f3-48c9-b5fe-859a834acf57f2o6ufwqpab!@#$%^&*",
+            "type": "secret"
+        },
+        {
+            "key": "NEXT_PUBLIC_APP_URL",
+            "target": "production",
+            "gitBranch": "main",
+            "value": "https://test.app.com",
+            "type": "plain"
+        },
+        {
+            "key": "NODE_ENV",
+            "target": "production",
+            "gitBranch": "main",
+            "value": "production",
+            "type": "plain"
+        },
+        {
+            "key": "NEXT_PUBLIC_SUPABASE_URL",
+            "target": "preview",
+            "gitBranch": "staging",
+            "value": "https://mrrbvdhoavwmbkcachto.supabase.co",
+            "type": "plain"
+        },
+        {
+            "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "target": "preview",
+            "gitBranch": "staging",
+            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ycmJ2ZGhvYXZ3bWJrY2FjaHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzNTEzMTksImV4cCI6MjA1NDkyNzMxOX0.PP-vp1eMKaU6Gv7OZA8DWiixJ0GsZbDHJvsrTXHc8eA",
+            "type": "plain"
+        },
+        {
+            "key": "CORE_API_SERVICE_BASE_URL",
+            "target": "preview",
+            "gitBranch": "staging",
+            "value": "https://dev-feb76d90-genesoft-7d15b852.koyeb.app/api",
+            "type": "plain"
+        },
+        {
+            "key": "CORE_API_SERVICE_API_KEY",
+            "target": "preview",
+            "gitBranch": "staging",
+            "value": "40562dc7-a7f3-48c9-b5fe-859a834acf57f2o6ufwqpab!@#$%^&*",
+            "type": "secret"
+        },
+        {
+            "key": "NEXT_PUBLIC_APP_URL",
+            "target": "preview",
+            "gitBranch": "staging",
+            "value": "https://test.app.com",
+            "type": "plain"
+        },
+        {
+            "key": "NODE_ENV",
+            "target": "preview",
+            "gitBranch": "staging",
+            "value": "staging",
+            "type": "plain"
+        }
+    ],
+    "framework": "nextjs",
+    "gitRepository": {
+        "repo": "genesoftai/nextjs-web_feb76d90-2fbb-40e4-8073-657b737a643b",
+        "type": "github"
+    }
+}

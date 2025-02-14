@@ -1,4 +1,5 @@
 import {
+    forwardRef,
     Inject,
     Injectable,
     Logger,
@@ -6,14 +7,14 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { In, MoreThan, Repository } from "typeorm";
 import { Project } from "./entity/project.entity";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { Page } from "./entity/page.entity";
 import { Branding } from "./entity/branding.entity";
 import { Feature } from "./entity/feature.entity";
 import { WebApplication } from "./entity/web-application.entity";
-import { Feedback } from "./entity/feedback.entity";
+import { Feedback } from "../feedback/entity/feedback.entity";
 import { File } from "@modules/metadata/entity/file.entity";
 import {
     UpdateProjectDto,
@@ -27,6 +28,23 @@ import { getS3FileUrl } from "@/utils/aws/s3";
 import { FileWithUrl } from "./type/file";
 import { AWSConfigurationService } from "../configuration/aws";
 import { GithubRepository } from "../github/entity/github-repository.entity";
+import { ProjectTemplateName } from "../constants/project";
+import { GithubService } from "../github/github.service";
+import {
+    formatBasicInfo,
+    formatBranding,
+    formatFeatures,
+    formatPages,
+} from "@/utils/project/documentation";
+import { Iteration } from "../development/entity/iteration.entity";
+import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
+import { Supabase } from "../supabase/entity/supabase.entity";
+import { VercelProject } from "@/modules/frontend-infra/entity/vercel-project.entity";
+import { BackendInfraService } from "@/modules/backend-infra/backend-infra.service";
+import { FrontendInfraService } from "@/modules/frontend-infra/frontend-infra.service";
+import { SupabaseService } from "../supabase/supabase.service";
+import { DevelopmentService } from "../development/development.service";
+import { IterationType } from "../constants/development";
 
 @Injectable()
 export class ProjectService {
@@ -54,6 +72,20 @@ export class ProjectService {
         @InjectRepository(ReferenceLink)
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
+        private githubService: GithubService,
+        @InjectRepository(Iteration)
+        private iterationRepository: Repository<Iteration>,
+        @InjectRepository(Supabase)
+        private supabaseRepository: Repository<Supabase>,
+        @InjectRepository(VercelProject)
+        private vercelProjectRepository: Repository<VercelProject>,
+        @InjectRepository(KoyebProject)
+        private koyebProjectRepository: Repository<KoyebProject>,
+        private supabaseService: SupabaseService,
+        private frontendInfraService: FrontendInfraService,
+        private backendInfraService: BackendInfraService,
+        @Inject(forwardRef(() => DevelopmentService))
+        private developmentService: DevelopmentService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -103,11 +135,26 @@ export class ProjectService {
             feedbacks,
         ] = await Promise.all([
             this.brandingRepository.findOne({ where: { projectId: id } }),
-            this.pageRepository.find({ where: { project_id: id } }),
-            this.featureRepository.find({ where: { project_id: id } }),
-            this.webApplicationRepository.find({ where: { project_id: id } }),
-            this.githubRepoRepository.find({ where: { project_id: id } }),
-            this.feedbackRepository.find({ where: { project_id: id } }),
+            this.pageRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.featureRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.webApplicationRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.githubRepoRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
+            this.feedbackRepository.find({
+                where: { project_id: id },
+                order: { created_at: "ASC" },
+            }),
         ]);
 
         // Combine all data
@@ -117,7 +164,7 @@ export class ProjectService {
             pages,
             features,
             web_applications: webApplications,
-            github_repos: githubRepos,
+            github_repositories: githubRepos,
             feedbacks,
         };
 
@@ -131,6 +178,94 @@ export class ProjectService {
         });
 
         return projectWithRelations;
+    }
+
+    async getProjectInfrastructure(id: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id },
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with id ${id} not found`);
+        }
+
+        const supabase = await this.supabaseRepository.findOne({
+            where: { project_id: id },
+        });
+
+        const vercel = await this.vercelProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        const koyeb = await this.koyebProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        return {
+            project,
+            supabase,
+            vercel,
+            koyeb,
+        };
+    }
+
+    async getProjectInfo(id: string): Promise<Project> {
+        const project = await this.projectRepository.findOne({
+            where: { id },
+            select: [
+                "id",
+                "name",
+                "description",
+                "purpose",
+                "target_audience",
+                "created_at",
+                "updated_at",
+            ],
+        });
+
+        if (!project) {
+            this.logger.warn({
+                message: `${this.serviceName}.getProjectInfo: Project not found`,
+                metadata: { id, timestamp: new Date() },
+            });
+            throw new NotFoundException(`Project with id ${id} not found`);
+        }
+
+        return project;
+    }
+
+    async getProjectPages(id: string): Promise<Page[]> {
+        const pages = await this.pageRepository.find({
+            where: { project_id: id },
+            order: { created_at: "DESC" },
+        });
+
+        return pages;
+    }
+
+    async getProjectFeatures(id: string): Promise<Feature[]> {
+        const features = await this.featureRepository.find({
+            where: { project_id: id },
+            order: { created_at: "DESC" },
+        });
+
+        return features;
+    }
+
+    async getProjectBranding(id: string): Promise<Branding> {
+        const branding = await this.brandingRepository.findOne({
+            where: { projectId: id },
+        });
+
+        if (!branding) {
+            this.logger.warn({
+                message: `${this.serviceName}.getProjectBranding: Branding not found`,
+                metadata: { id, timestamp: new Date() },
+            });
+            throw new NotFoundException(`Branding for project ${id} not found`);
+        }
+
+        return branding;
     }
 
     async createProject(payload: CreateProjectDto): Promise<Project> {
@@ -209,12 +344,53 @@ export class ProjectService {
             }
         }
 
+        await this.githubService.createRepositoryFromTemplate({
+            projectTemplateName: ProjectTemplateName.NextJsWeb,
+            description: `NextJS (web) project for ${project.description}`,
+            projectId: project.id,
+        });
+
+        await this.githubService.createRepositoryFromTemplate({
+            projectTemplateName: ProjectTemplateName.NestJsApi,
+            description: `NestJS (API) project for ${project.description}`,
+            projectId: project.id,
+        });
+
         this.logger.log({
             message: `${this.serviceName}.createProject: Project created`,
             metadata: {
                 projectId: project.id,
                 timestamp: new Date(),
             },
+        });
+
+        const supabaseProject =
+            await this.supabaseService.createNewSupabaseProject(project.id);
+        this.logger.log({
+            message: `${this.serviceName}.createProject: Supabase project created`,
+            metadata: { projectId: project.id, supabaseProject },
+        });
+
+        const koyebProject =
+            await this.backendInfraService.createNewProjectInKoyeb(project.id);
+        this.logger.log({
+            message: `${this.serviceName}.createProject: Koyeb project created`,
+            metadata: { projectId: project.id, koyebProject },
+        });
+
+        const vercelProject =
+            await this.frontendInfraService.createNewVercelProject({
+                project_id: project.id,
+            });
+        this.logger.log({
+            message: `${this.serviceName}.createProject: Vercel project created`,
+            metadata: { projectId: project.id, vercelProject },
+        });
+
+        // Start develop web follow initial requirements
+        await this.developmentService.createIteration({
+            project_id: project.id,
+            type: IterationType.Requirements,
         });
 
         return this.getProjectById(project.id);
@@ -449,6 +625,30 @@ export class ProjectService {
             metadata: { id, timestamp: new Date() },
         });
 
+        const supabase = await this.supabaseRepository.findOne({
+            where: { project_id: id },
+        });
+
+        if (supabase) {
+            await this.supabaseService.deleteSupabaseProject(id);
+        }
+
+        const koyeb = await this.koyebProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        if (koyeb) {
+            await this.backendInfraService.deleteKoyebProject(id);
+        }
+
+        const vercel = await this.vercelProjectRepository.findOne({
+            where: { project_id: id },
+        });
+
+        if (vercel) {
+            await this.frontendInfraService.deleteVercelProjectByProjectId(id);
+        }
+
         await this.projectRepository.delete(id);
 
         this.logger.log({
@@ -505,5 +705,135 @@ export class ProjectService {
             where: { id: In(feature.reference_link_ids) },
         });
         return referenceLinks;
+    }
+
+    async getOverallProjectDocumentation(id: string): Promise<string> {
+        const info = await this.getProjectInfo(id);
+        const features = await this.getProjectFeatures(id);
+        const pages = await this.getProjectPages(id);
+        const branding = await this.getProjectBranding(id);
+
+        const formattedInfo = formatBasicInfo(info);
+        const formattedFeatures = formatFeatures(features);
+        const formattedPages = formatPages(pages);
+        const formattedBranding = formatBranding(branding);
+
+        const documentation = `
+Project Documentation
+Overview of the project follow customer requirements that need to be implemented web application
+====================
+
+${formattedInfo}
+
+${formattedFeatures}
+
+${formattedPages}
+
+${formattedBranding}
+`;
+
+        return documentation;
+    }
+
+    async getUpdatedRequirements(id: string) {
+        const latestIteration = await this.iterationRepository.findOne({
+            where: { project_id: id },
+            order: { created_at: "DESC" },
+        });
+        const latestIterationCreationTime = latestIteration.created_at;
+
+        this.logger.log({
+            message: `${this.serviceName}.getUpdatedRequirements: Latest iteration completed time`,
+            metadata: {
+                latestIterationCompletedTime: latestIterationCreationTime,
+                timestamp: new Date(),
+            },
+        });
+
+        // Get updated branding requirements after latest iteration
+        const branding = await this.brandingRepository.find({
+            where: {
+                projectId: id,
+                updated_at: latestIterationCreationTime
+                    ? MoreThan(latestIterationCreationTime)
+                    : undefined,
+            },
+        });
+
+        // Get updated page requirements after latest iteration
+        const pages = await this.pageRepository.find({
+            where: {
+                project_id: id,
+                updated_at: latestIterationCreationTime
+                    ? MoreThan(latestIterationCreationTime)
+                    : undefined,
+            },
+        });
+
+        // Get updated feature requirements after latest iteration
+        const features = await this.featureRepository.find({
+            where: {
+                project_id: id,
+                updated_at: latestIterationCreationTime
+                    ? MoreThan(latestIterationCreationTime)
+                    : undefined,
+            },
+        });
+        this.logger.log({
+            message: `${this.serviceName}.getUpdatedRequirements: Updated requirements`,
+            metadata: {
+                branding,
+                pages,
+                features,
+            },
+        });
+
+        return {
+            branding,
+            pages,
+            features,
+        };
+    }
+
+    formatUpdatedRequirements(requirements: {
+        branding: any[];
+        pages: any[];
+        features: any[];
+    }): string {
+        let formattedUpdatedRequirements =
+            "Updated Project Requirements:\n=========================\n\n";
+
+        // Format branding requirements
+        if (requirements.branding && requirements.branding.length > 0) {
+            const branding = requirements.branding[0];
+            formattedUpdatedRequirements +=
+                "Branding Updated Requirements:\n-------------------\n";
+            formattedUpdatedRequirements += `Logo URL: ${branding.logo_url || "Not specified"}\n`;
+            formattedUpdatedRequirements += `Theme Color: ${branding.color || "Not specified"}\n`;
+            formattedUpdatedRequirements += `Theme Mode: ${branding.theme || "Not specified"}\n`;
+            formattedUpdatedRequirements += `Brand Perception: ${branding.perception || "Not specified"}\n\n`;
+        }
+
+        // Format pages requirements
+        if (requirements.pages && requirements.pages.length > 0) {
+            formattedUpdatedRequirements +=
+                "Page Updated Requirements:\n----------------\n";
+            for (const page of requirements.pages) {
+                formattedUpdatedRequirements += `Page: ${page.name || "Unnamed"}\n`;
+                formattedUpdatedRequirements += `Description: ${page.description || "No description"}\n\n`;
+            }
+        }
+
+        // Format feature requirements
+        if (requirements.features && requirements.features.length > 0) {
+            formattedUpdatedRequirements +=
+                "Feature Updated Requirements:\n-------------------\n";
+            for (const feature of requirements.features) {
+                formattedUpdatedRequirements += `Feature: ${feature.name || "Unnamed"}\n`;
+                formattedUpdatedRequirements += `Description: ${feature.description || "No description"}\n\n`;
+            }
+        }
+
+        return formattedUpdatedRequirements;
     }
 }

@@ -33,6 +33,36 @@ export class ProjectController {
         return this.projectService.getProjectById(id);
     }
 
+    @Delete(":id")
+    async deleteProject(@Param("id") id: string) {
+        return this.projectService.deleteProject(id);
+    }
+
+    @Get(":id/info")
+    async getProjectInfo(@Param("id") id: string) {
+        return this.projectService.getProjectInfo(id);
+    }
+
+    @Get(":id/pages")
+    async getProjectPages(@Param("id") id: string) {
+        return this.projectService.getProjectPages(id);
+    }
+
+    @Get(":id/features")
+    async getProjectFeatures(@Param("id") id: string) {
+        return this.projectService.getProjectFeatures(id);
+    }
+
+    @Get(":id/branding")
+    async getProjectBranding(@Param("id") id: string) {
+        return this.projectService.getProjectBranding(id);
+    }
+
+    @Get(":id/infrastructure")
+    async getProjectInfrastructure(@Param("id") id: string) {
+        return this.projectService.getProjectInfrastructure(id);
+    }
+
     @Patch(":id/info")
     async updateProjectInfo(
         @Param("id") id: string,
@@ -103,5 +133,10 @@ export class ProjectController {
     @Get(":id/feature/:featureId/reference-links")
     async getFeatureReferenceLinks(@Param("featureId") featureId: string) {
         return this.projectService.getFeatureReferenceLinks(featureId);
+    }
+
+    @Get(":id/updated-requirements")
+    async getUpdatedRequirements(@Param("id") id: string) {
+        return this.projectService.getUpdatedRequirements(id);
     }
 }
