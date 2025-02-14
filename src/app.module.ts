@@ -19,9 +19,12 @@ import { GithubModule } from "./modules/github/github.module";
 import { DevelopmentModule } from "./modules/development/development.module";
 import { EmailModule } from "./modules/email/email.module";
 import { RepositoryBuildModule } from "./modules/repository-build/repository-build.module";
-import { FrontendInfraModule } from "./frontend-infra/frontend-infra.module";
-import { BackendInfraModule } from "./backend-infra/backend-infra.module";
-import { FeedbackModule } from "module/feedback/feedback.module";
+import { FrontendInfraModule } from "./modules/frontend-infra/frontend-infra.module";
+import { BackendInfraModule } from "./modules/backend-infra/backend-infra.module";
+import { FeedbackModule } from "@/modules/feedback/feedback.module";
+import { SupabaseModule } from "./modules/supabase/supabase.module";
+import { WebApplicationModule } from "./modules/web-application/web-application.module";
+import { StripeModule } from "./modules/stripe/stripe.module";
 
 @Module({
     imports: [
@@ -64,6 +67,9 @@ import { FeedbackModule } from "module/feedback/feedback.module";
         FrontendInfraModule,
         BackendInfraModule,
         FeedbackModule,
+        SupabaseModule,
+        WebApplicationModule,
+        StripeModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

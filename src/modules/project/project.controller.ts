@@ -33,6 +33,11 @@ export class ProjectController {
         return this.projectService.getProjectById(id);
     }
 
+    @Delete(":id")
+    async deleteProject(@Param("id") id: string) {
+        return this.projectService.deleteProject(id);
+    }
+
     @Get(":id/info")
     async getProjectInfo(@Param("id") id: string) {
         return this.projectService.getProjectInfo(id);
@@ -51,6 +56,11 @@ export class ProjectController {
     @Get(":id/branding")
     async getProjectBranding(@Param("id") id: string) {
         return this.projectService.getProjectBranding(id);
+    }
+
+    @Get(":id/infrastructure")
+    async getProjectInfrastructure(@Param("id") id: string) {
+        return this.projectService.getProjectInfrastructure(id);
     }
 
     @Patch(":id/info")

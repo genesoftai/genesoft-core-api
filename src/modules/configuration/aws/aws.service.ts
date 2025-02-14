@@ -20,4 +20,8 @@ export class AWSConfigurationService {
     get awsRegion() {
         return this.configService.get("aws.awsRegion");
     }
+
+    get awsS3CustomerBucketName() {
+        return this.configService.get("aws.awsS3CustomerBucketName");
+    }
 }

@@ -40,4 +40,8 @@ export class AppConfigurationService {
     get genesoftWebBaseUrl() {
         return this.configService.get("app.genesoftWebBaseUrl");
     }
+
+    get nodeEnv() {
+        return this.configService.get("app.nodeEnv");
+    }
 }

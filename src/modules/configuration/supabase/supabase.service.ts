@@ -16,4 +16,12 @@ export class SupabaseConfigurationService {
     get supabaseServiceRoleKey() {
         return this.configService.get("supabase.supabaseServiceRoleKey");
     }
+
+    get supabaseOrganizationId() {
+        return this.configService.get("supabase.supabaseOrganizationId");
+    }
+
+    get supabaseApiAccessToken() {
+        return this.configService.get("supabase.supabaseApiAccessToken");
+    }
 }

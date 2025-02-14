@@ -1,0 +1,171 @@
+{
+    "app_id": "string",
+    "definition": {
+        "name": "string",
+        "type": "INVALID",
+        "strategy": {
+            "type": "DEPLOYMENT_STRATEGY_TYPE_INVALID"
+        },
+        "routes": [
+            {
+                "port": 0,
+                "path": "string"
+            }
+        ],
+        "ports": [
+            {
+                "port": 0,
+                "protocol": "string"
+            }
+        ],
+        "env": [
+            {
+                "scopes": ["string"],
+                "key": "string",
+                "value": "string",
+                "secret": "string"
+            }
+        ],
+        "regions": ["string"],
+        "scalings": [
+            {
+                "scopes": ["string"],
+                "min": 0,
+                "max": 0,
+                "targets": [
+                    {
+                        "average_cpu": {
+                            "value": 0
+                        },
+                        "average_mem": {
+                            "value": 0
+                        },
+                        "requests_per_second": {
+                            "value": 0
+                        },
+                        "concurrent_requests": {
+                            "value": 0
+                        },
+                        "requests_response_time": {
+                            "value": 0,
+                            "quantile": 0
+                        },
+                        "sleep_idle_delay": {
+                            "value": 0
+                        }
+                    }
+                ]
+            }
+        ],
+        "instance_types": [
+            {
+                "scopes": ["string"],
+                "type": "string"
+            }
+        ],
+        "health_checks": [
+            {
+                "grace_period": 0,
+                "interval": 0,
+                "restart_limit": 0,
+                "timeout": 0,
+                "tcp": {
+                    "port": 0
+                },
+                "http": {
+                    "port": 0,
+                    "path": "string",
+                    "method": "string",
+                    "headers": [
+                        {
+                            "key": "string",
+                            "value": "string"
+                        }
+                    ]
+                }
+            }
+        ],
+        "volumes": [
+            {
+                "id": "string",
+                "path": "string",
+                "replica_index": 0,
+                "scopes": ["string"]
+            }
+        ],
+        "config_files": [
+            {
+                "path": "string",
+                "permissions": "string",
+                "content": "string"
+            }
+        ],
+        "skip_cache": true,
+        "docker": {
+            "image": "string",
+            "command": "string",
+            "args": ["string"],
+            "image_registry_secret": "string",
+            "entrypoint": ["string"],
+            "privileged": true
+        },
+        "git": {
+            "repository": "string",
+            "branch": "string",
+            "tag": "string",
+            "sha": "string",
+            "build_command": "string",
+            "run_command": "string",
+            "no_deploy_on_push": true,
+            "workdir": "string",
+            "buildpack": {
+                "build_command": "string",
+                "run_command": "string",
+                "privileged": true
+            },
+            "docker": {
+                "dockerfile": "string",
+                "entrypoint": ["string"],
+                "command": "string",
+                "args": ["string"],
+                "target": "string",
+                "privileged": true
+            }
+        },
+        "database": {
+            "neon_postgres": {
+                "pg_version": 0,
+                "region": "string",
+                "instance_type": "string",
+                "roles": [
+                    {
+                        "name": "string",
+                        "secret": "string"
+                    }
+                ],
+                "databases": [
+                    {
+                        "name": "string",
+                        "owner": "string"
+                    }
+                ]
+            }
+        },
+        "archive": {
+            "id": "string",
+            "buildpack": {
+                "build_command": "string",
+                "run_command": "string",
+                "privileged": true
+            },
+            "docker": {
+                "dockerfile": "string",
+                "entrypoint": ["string"],
+                "command": "string",
+                "args": ["string"],
+                "target": "string",
+                "privileged": true
+            }
+        }
+    }
+}

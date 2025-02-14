@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import {
+    BadRequestException,
+    Inject,
+    forwardRef,
+    Injectable,
+    Logger,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { HttpService } from "@nestjs/axios";
@@ -20,7 +26,10 @@ import { AiAgentTeam } from "@/modules/constants/agent";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent/ai-agent.service";
 import { ProjectTemplateName } from "../constants/project";
 import { EmailService } from "../email/email.service";
-import { GENESOFT_SUPPORT_EMAIL } from "@/modules/constants/genesoft";
+import {
+    GENESOFT_AI_EMAIL,
+    GENESOFT_SUPPORT_EMAIL,
+} from "@/modules/constants/genesoft";
 import { Project } from "@/modules/project/entity/project.entity";
 import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
@@ -48,6 +57,7 @@ export class DevelopmentService {
         private organizationRepository: Repository<Organization>,
         @InjectRepository(User)
         private userRepository: Repository<User>,
+        @Inject(forwardRef(() => ProjectService))
         private readonly projectService: ProjectService,
         private readonly repositoryBuildService: RepositoryBuildService,
     ) {}
@@ -558,7 +568,7 @@ export class DevelopmentService {
 
                 const emailSent = await this.emailService.sendEmail({
                     from: GENESOFT_SUPPORT_EMAIL,
-                    to: usersEmails,
+                    to: [...usersEmails, GENESOFT_AI_EMAIL],
                     subject: `${project.name}: Task ${statusText} for ${iteration.type} development round`,
                     html: `
                     <div style="font-family: Arial, sans-serif; padding: 20px;">

@@ -45,6 +45,7 @@
     "reflect-metadata": "^0.2.0",
     "resend": "^4.1.1",
     "rxjs": "^7.8.1",
+    "stripe": "^17.6.0",
     "typeorm": "^0.3.20",
     "uuid": "^11.0.3",
     "winston": "^3.17.0",
