@@ -688,31 +688,56 @@ export class DevelopmentService {
                 });
 
                 const iteration = await this.getIterationById(iterationId);
-                this.repositoryBuildService.checkRepositoryBuild({
-                    project_id: iteration.project_id,
-                    iteration_id: iteration.id,
-                    template: ProjectTemplateName.NextJsWeb,
-                });
-                this.repositoryBuildService.checkRepositoryBuild({
-                    project_id: iteration.project_id,
-                    iteration_id: iteration.id,
-                    template: ProjectTemplateName.NestJsApi,
-                });
-                // Merge staging branch to main branch
-                const pullRequest = await this.githubService.createPullRequest({
-                    repository: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                    head: "staging",
-                    base: "main",
-                    title: `Release: ${iteration.id}`,
-                });
+                const frontendBuild =
+                    await this.repositoryBuildService.checkRepositoryBuild({
+                        project_id: iteration.project_id,
+                        iteration_id: iteration.id,
+                        template: ProjectTemplateName.NextJsWeb,
+                    });
+                const backendBuild =
+                    await this.repositoryBuildService.checkRepositoryBuild({
+                        project_id: iteration.project_id,
+                        iteration_id: iteration.id,
+                        template: ProjectTemplateName.NestJsApi,
+                    });
+                if (
+                    frontendBuild.status === "success" &&
+                    backendBuild.status === "success"
+                ) {
+                    // Merge staging branch to main branch for backend
+                    const backendPullRequest =
+                        await this.githubService.createPullRequest({
+                            repository: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
+                            head: "staging",
+                            base: "main",
+                            title: `Release: ${iteration.id}`,
+                        });
 
-                await this.githubService.mergePullRequest({
-                    repository: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                    pull_number: pullRequest.number,
-                    commit_title: `Release: ${iteration.id}`,
-                    commit_message: `Release ${iteration.id}`,
-                    merge_method: "merge",
-                });
+                    await this.githubService.mergePullRequest({
+                        repository: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
+                        pull_number: backendPullRequest.number,
+                        commit_title: `Release: ${iteration.id}`,
+                        commit_message: `Release ${iteration.id}`,
+                        merge_method: "merge",
+                    });
+
+                    // Merge staging branch to main branch for frontend
+                    const frontendPullRequest =
+                        await this.githubService.createPullRequest({
+                            repository: `${ProjectTemplateName.NextJsWeb}_${iteration.project_id}`,
+                            head: "staging",
+                            base: "main",
+                            title: `Release: ${iteration.id}`,
+                        });
+
+                    await this.githubService.mergePullRequest({
+                        repository: `${ProjectTemplateName.NextJsWeb}_${iteration.project_id}`,
+                        pull_number: frontendPullRequest.number,
+                        commit_title: `Release: ${iteration.id}`,
+                        commit_message: `Release ${iteration.id}`,
+                        merge_method: "merge",
+                    });
+                }
                 return null;
             }
 

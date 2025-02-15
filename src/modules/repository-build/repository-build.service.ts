@@ -213,6 +213,24 @@ export class RepositoryBuildService {
 
         if (deployment.status === "success") {
             await this.sendBuildSuccessEmail(iteration_id, "frontend");
+
+            // Merge staging branch to main branch for frontend
+            const frontendPullRequest =
+                await this.githubService.createPullRequest({
+                    repository: `${ProjectTemplateName.NextJsWeb}_${project_id}`,
+                    head: "staging",
+                    base: "main",
+                    title: `Release: ${iteration_id}`,
+                });
+
+            await this.githubService.mergePullRequest({
+                repository: `${ProjectTemplateName.NextJsWeb}_${project_id}`,
+                pull_number: frontendPullRequest.number,
+                commit_title: `Release: ${iteration_id}`,
+                commit_message: `Release ${iteration_id}`,
+                merge_method: "merge",
+            });
+
             return {
                 status: "success",
                 deployment: repositoryBuild,
@@ -292,6 +310,23 @@ export class RepositoryBuildService {
 
         if (deployment.status === "success") {
             await this.sendBuildSuccessEmail(iteration_id, "backend");
+
+            // Merge staging branch to main branch
+            const pullRequest = await this.githubService.createPullRequest({
+                repository: `${ProjectTemplateName.NestJsApi}_${project_id}`,
+                head: "staging",
+                base: "main",
+                title: `Release: ${iteration_id}`,
+            });
+
+            await this.githubService.mergePullRequest({
+                repository: `${ProjectTemplateName.NestJsApi}_${project_id}`,
+                pull_number: pullRequest.number,
+                commit_title: `Release: ${iteration_id}`,
+                commit_message: `Release ${iteration_id}`,
+                merge_method: "merge",
+            });
+
             return {
                 status: "success",
                 deployment: repositoryBuild,
