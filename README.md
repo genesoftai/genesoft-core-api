@@ -71,3 +71,7 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](LICENSE).
+
+<!-- Supabase dump DB -->
+
+supabase db dump --db-url postgresql://postgres:7dnI2HzaHfc1Rf88@db.ygzsaiorzjifzfzgucod.supabase.co:5432/postgres > supabase/migration.sql
