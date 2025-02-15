@@ -375,6 +375,7 @@ export class ProjectService {
             },
         });
 
+        // TODO: these things should work in the background due to it takes time
         const supabaseProject =
             await this.supabaseService.createNewSupabaseProject(project.id);
         this.logger.log({
