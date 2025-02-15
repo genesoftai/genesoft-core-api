@@ -13,6 +13,7 @@ import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
 import { ProjectModule } from "../project/project.module";
 import { RepositoryBuildModule } from "../repository-build/repository-build.module";
+import { GithubModule } from "../github/github.module";
 
 @Module({
     imports: [
@@ -29,6 +30,7 @@ import { RepositoryBuildModule } from "../repository-build/repository-build.modu
         EmailModule,
         RepositoryBuildModule,
         forwardRef(() => ProjectModule),
+        GithubModule,
     ],
     controllers: [DevelopmentController],
     providers: [DevelopmentService, Logger],
