@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     forwardRef,
     Inject,
     Injectable,
@@ -273,6 +274,16 @@ export class ProjectService {
             message: `${this.serviceName}.createProject: Creating new project`,
             metadata: { payload, timestamp: new Date() },
         });
+
+        const projects = await this.projectRepository.find({
+            where: { organization_id: payload.organization_id },
+        });
+
+        if (projects.length >= 1) {
+            throw new BadRequestException(
+                "Can only have one project per organization",
+            );
+        }
 
         // Create project with base fields
         const newProject = this.projectRepository.create({

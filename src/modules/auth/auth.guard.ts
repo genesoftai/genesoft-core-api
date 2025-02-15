@@ -25,14 +25,6 @@ export class AuthGuard implements CanActivate {
         if (request.headers["authorization"]) {
             try {
                 const apiKey = request.headers["authorization"].split(" ")[1];
-
-                this.logger.log({
-                    message: `${this.serviceName}.canActivate: Authorize API Key`,
-                    metadata: {
-                        authorization: request.headers["authorization"],
-                        apiKey,
-                    },
-                });
                 return apiKey === this.appConfigurationService.genesoftApiKey;
             } catch (error) {
                 this.logger.error({
