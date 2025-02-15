@@ -569,15 +569,15 @@ export class DevelopmentService {
                 const emailSent = await this.emailService.sendEmail({
                     from: GENESOFT_SUPPORT_EMAIL,
                     to: [...usersEmails, GENESOFT_AI_EMAIL],
-                    subject: `${project.name}: Task ${statusText} for ${iteration.type} development round`,
+                    subject: `${project.name}: Task ${statusText} for ${iteration.type} Sprint`,
                     html: `
                     <div style="font-family: Arial, sans-serif; padding: 20px;">
                         <h2>Project: ${project.name}</h2>
                         <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-                        <h3>Development Round Details</h3>
-                        <p><strong>Iteration ID:</strong> ${iteration.id}</p>
-                        <p><strong>Iteration Type:</strong> ${iteration.type}</p>
-                        <p><strong>Iteration Status:</strong> ${iteration.status}</p>
+                        <h3>Sprint Details</h3>
+                        <p><strong>Sprint ID:</strong> ${iteration.id}</p>
+                        <p><strong>Sprint Type:</strong> ${iteration.type}</p>
+                        <p><strong>Sprint Status:</strong> ${iteration.status}</p>
                         <h3>Task Details</h3>
                         <p><strong>Task Name:</strong> ${iterationTask.name}</p>
                         <p><strong>Description:</strong> ${iterationTask.description}</p>

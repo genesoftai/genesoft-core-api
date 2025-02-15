@@ -128,17 +128,25 @@ export class FeedbackService {
         ${formattedMessages.join("\n")}
         `;
 
-        const apiDocumentationResponse =
-            await this.githubService.getRepositoryContent({
-                repository: backendRepository.name,
-                path: "api_doc.md",
-                ref: "staging",
-            });
+        let apiDocumentation = "";
+        try {
+            const apiDocumentationResponse =
+                await this.githubService.getRepositoryContent({
+                    repository: backendRepository.name,
+                    path: "api_doc.md",
+                    ref: "staging",
+                });
 
-        const apiDocumentation = `
-        Backend API Documentation of this project:
-        ${apiDocumentationResponse.content}
-        `;
+            apiDocumentation = `
+            Backend API Documentation of this project:
+            ${apiDocumentationResponse?.content || "No documentation available"}
+            `;
+        } catch (error) {
+            apiDocumentation = `
+            Backend API Documentation of this project:
+            No documentation available
+            `;
+        }
 
         const frontendRepoTreeResponse =
             await this.githubService.getRepositoryTrees({
