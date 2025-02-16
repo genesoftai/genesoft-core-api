@@ -688,53 +688,86 @@ export class DevelopmentService {
                 });
 
                 const iteration = await this.getIterationById(iterationId);
-                const frontendBuild =
+                try {
                     await this.repositoryBuildService.checkRepositoryBuild({
                         project_id: iteration.project_id,
                         iteration_id: iteration.id,
                         template: ProjectTemplateName.NextJsWeb,
                     });
-                const backendBuild =
+                    this.emailService.sendEmail({
+                        from: GENESOFT_SUPPORT_EMAIL,
+                        to: [GENESOFT_AI_EMAIL],
+                        subject: `Frontend repository build for ${iteration.project_id} checked successfully`,
+                        html: `
+                        <p>Hello,</p>
+                        <p>The frontend repository build for ${iteration.project_id} checked successfully.</p>
+                        <p>Thank you.</p>
+
+                        Project ID: ${iteration.project_id}
+                        Iteration ID: ${iteration.id}
+                        `,
+                    });
+                } catch (error) {
+                    this.logger.error({
+                        message: `${this.serviceName}.triggerNextIterationTask: Failed to check frontend repository build`,
+                        metadata: { iteration, error: error.message },
+                    });
+                    this.emailService.sendEmail({
+                        from: GENESOFT_SUPPORT_EMAIL,
+                        to: [GENESOFT_AI_EMAIL],
+                        subject: `Failed to check frontend repository build for ${iteration.project_id}`,
+                        html: `
+                        <p>Hello,</p>
+                        <p>We are unable to check the frontend repository build for ${iteration.project_id}.</p>
+                        <p>Please check the repository build status manually.</p>
+                        <p>Thank you.</p>
+
+                        Project ID: ${iteration.project_id}
+                        Iteration ID: ${iteration.id}
+                        `,
+                    });
+                }
+
+                try {
                     await this.repositoryBuildService.checkRepositoryBuild({
                         project_id: iteration.project_id,
                         iteration_id: iteration.id,
                         template: ProjectTemplateName.NestJsApi,
                     });
-                // if (
-                //     frontendBuild.status === "success" &&
-                //     backendBuild.status === "success"
-                // ) {
-                // Merge staging branch to main branch for backend
-                // const backendPullRequest =
-                //     await this.githubService.createPullRequest({
-                //         repository: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                //         head: "dev",
-                //         base: "main",
-                //         title: `Release: ${iteration.id}`,
-                //     });
-                // await this.githubService.mergePullRequest({
-                //     repository: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                //     pull_number: backendPullRequest.number,
-                //     commit_title: `Release: ${iteration.id}`,
-                //     commit_message: `Release ${iteration.id}`,
-                //     merge_method: "merge",
-                // });
-                // // Merge staging branch to main branch for frontend
-                // const frontendPullRequest =
-                //     await this.githubService.createPullRequest({
-                //         repository: `${ProjectTemplateName.NextJsWeb}_${iteration.project_id}`,
-                //         head: "dev",
-                //         base: "main",
-                //         title: `Release: ${iteration.id}`,
-                //     });
-                // await this.githubService.mergePullRequest({
-                //     repository: `${ProjectTemplateName.NextJsWeb}_${iteration.project_id}`,
-                //     pull_number: frontendPullRequest.number,
-                //     commit_title: `Release: ${iteration.id}`,
-                //     commit_message: `Release ${iteration.id}`,
-                //     merge_method: "merge",
-                // });
-                // }
+                    this.emailService.sendEmail({
+                        from: GENESOFT_SUPPORT_EMAIL,
+                        to: [GENESOFT_AI_EMAIL],
+                        subject: `Backend repository build for ${iteration.project_id} checked successfully`,
+                        html: `
+                        <p>Hello,</p>
+                        <p>The backend repository build for ${iteration.project_id} checked successfully.</p>
+                        <p>Thank you.</p>
+
+                        Project ID: ${iteration.project_id}
+                        Iteration ID: ${iteration.id}
+                        `,
+                    });
+                } catch (error) {
+                    this.logger.error({
+                        message: `${this.serviceName}.triggerNextIterationTask: Failed to check backend repository build`,
+                        metadata: { iteration, error: error.message },
+                    });
+                    this.emailService.sendEmail({
+                        from: GENESOFT_SUPPORT_EMAIL,
+                        to: [GENESOFT_AI_EMAIL],
+                        subject: `Failed to check backend repository build for ${iteration.project_id}`,
+                        html: `
+                        <p>Hello,</p>
+                        <p>We are unable to check the backend repository build for ${iteration.project_id}.</p>
+                        <p>Please check the repository build status manually.</p>
+                        <p>Thank you.</p>
+
+                        Project ID: ${iteration.project_id}
+                        Iteration ID: ${iteration.id}
+                        `,
+                    });
+                }
+
                 return null;
             }
 

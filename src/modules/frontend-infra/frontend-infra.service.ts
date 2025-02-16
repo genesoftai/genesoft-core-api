@@ -441,7 +441,7 @@ export class FrontendInfraService {
     }
 
     async getLatestDeploymentOfVercelProject(vercel_project_id: string) {
-        const url = `${this.vercelApiBaseUrl}/v6/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}&target=preview&projectId=${vercel_project_id}`;
+        const url = `${this.vercelApiBaseUrl}/v6/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}&target=dev&projectId=${vercel_project_id}`;
         const headers = {
             Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
         };
