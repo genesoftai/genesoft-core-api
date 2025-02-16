@@ -134,7 +134,7 @@ export class FeedbackService {
                 await this.githubService.getRepositoryContent({
                     repository: backendRepository.name,
                     path: "api_doc.md",
-                    ref: "staging",
+                    ref: "dev",
                 });
 
             apiDocumentation = `
@@ -151,7 +151,7 @@ export class FeedbackService {
         const frontendRepoTreeResponse =
             await this.githubService.getRepositoryTrees({
                 repository: frontendRepository.name,
-                branch: "staging",
+                branch: "dev",
             });
 
         const frontendRepoTree = formatGithubRepositoryTree(
@@ -161,7 +161,7 @@ export class FeedbackService {
         const backendRepoTreeResponse =
             await this.githubService.getRepositoryTrees({
                 repository: backendRepository.name,
-                branch: "staging",
+                branch: "dev",
             });
 
         const backendRepoTree = formatGithubRepositoryTree(

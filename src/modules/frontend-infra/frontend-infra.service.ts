@@ -222,47 +222,47 @@ export class FrontendInfraService {
                 value: "production",
                 type: "plain",
             },
-            // Staging
+            // Development
             {
                 key: "NEXT_PUBLIC_SUPABASE_URL",
                 target: ["preview"],
-                gitBranch: "staging",
+                gitBranch: "dev",
                 value: supabase.url,
                 type: "plain",
             },
             {
                 key: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
                 target: ["preview"],
-                gitBranch: "staging",
+                gitBranch: "dev",
                 value: anonKey.api_key,
                 type: "plain",
             },
             {
                 key: "CORE_API_SERVICE_BASE_URL",
                 target: ["preview"],
-                gitBranch: "staging",
+                gitBranch: "dev",
                 value: `https://${coreApiServiceDomain.name}/api`,
                 type: "plain",
             },
             {
                 key: "CORE_API_SERVICE_API_KEY",
                 target: ["preview"],
-                gitBranch: "staging",
+                gitBranch: "dev",
                 value: koyebProject.api_key,
                 type: "plain",
             },
             {
                 key: "NEXT_PUBLIC_APP_URL",
                 target: ["preview"],
-                gitBranch: "staging",
+                gitBranch: "dev",
                 value: "https://test.app.com",
                 type: "plain",
             },
             {
                 key: "NODE_ENV",
                 target: ["preview"],
-                gitBranch: "staging",
-                value: "staging",
+                gitBranch: "dev",
+                value: "development",
                 type: "plain",
             },
         ];
@@ -471,7 +471,7 @@ export class FrontendInfraService {
         });
 
         const targetDeployment = response.deployments.find(
-            (deployment) => deployment.meta.githubCommitRef === "staging",
+            (deployment) => deployment.meta.githubCommitRef === "dev",
         );
 
         if (!targetDeployment) {

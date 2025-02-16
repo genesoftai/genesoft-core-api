@@ -297,7 +297,7 @@ export class RepositoryBuildService {
         }
         const deployment = await this.githubService.getLatestWorkflowRun({
             project_id,
-            branch: "staging",
+            branch: "dev",
         });
 
         if (repositoryBuild.fix_attempts >= 10) {
