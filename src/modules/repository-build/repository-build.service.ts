@@ -74,7 +74,7 @@ export class RepositoryBuildService {
         await this.emailService.sendEmail({
             from: "Genesoft AI Support <support@genesoftai.com>",
             topic: `Technical Difficulties for ${project.name} to build your web application`,
-            to: [...emails, GENESOFT_AI_EMAIL],
+            to: [GENESOFT_AI_EMAIL],
             subject: `Technical Issues Detected in ${type === "frontend" ? "Web" : "Backend"} Development`,
             html: `
                 <p>Hello, ${emails.join(", ")},</p>
