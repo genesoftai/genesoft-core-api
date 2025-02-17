@@ -29,7 +29,7 @@ export class SupabaseService {
         });
 
         // Generate a more secure password with at least 16 characters including uppercase, lowercase, numbers and special chars
-        const db_password = `${uuidv4()}${Math.random().toString(36).slice(2)}!#$%^&*`;
+        const db_password = `${uuidv4()}${Math.random().toString(36).slice(2)}`;
 
         this.logger.log({
             message: `${this.serviceName}.createNewSupabaseProject: Generated database password`,

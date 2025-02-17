@@ -25,30 +25,22 @@ import { FeedbackModule } from "@/modules/feedback/feedback.module";
 import { SupabaseModule } from "./modules/supabase/supabase.module";
 import { WebApplicationModule } from "./modules/web-application/web-application.module";
 import { StripeModule } from "./modules/stripe/stripe.module";
-import { Logtail } from "@logtail/node";
-import { LogtailTransport } from "@logtail/winston";
-
-// Create a Logtail client
-const logtail = new Logtail(process.env.LOGTAIL_SOURCE_TOKEN, {
-    endpoint: process.env.LOGTAIL_SOURCE_HOST,
-});
 
 @Module({
     imports: [
         WinstonModule.forRoot({
-            // transports: [
-            //     new winston.transports.Console({
-            //         format: winston.format.combine(
-            //             winston.format.timestamp(),
-            //             winston.format.ms(),
-            //             nestWinstonModuleUtilities.format.nestLike("MyApp", {
-            //                 colors: true,
-            //                 prettyPrint: true,
-            //             }),
-            //         ),
-            //     }),
-            // ],
-            transports: [new LogtailTransport(logtail)],
+            transports: [
+                new winston.transports.Console({
+                    format: winston.format.combine(
+                        winston.format.timestamp(),
+                        winston.format.ms(),
+                        nestWinstonModuleUtilities.format.nestLike("MyApp", {
+                            colors: true,
+                            prettyPrint: true,
+                        }),
+                    ),
+                }),
+            ],
         }),
         ConfigModule.forRoot({
             isGlobal: true,
