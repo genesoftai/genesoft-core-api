@@ -44,8 +44,8 @@ export class WebApplicationService {
                     : "requirements_iteration_in_progress";
         }
 
-        // const url = `https://${vercelDomain.domains[0].name}`;
-        const url = `https://nextjs-web${projectId}.vercel.app`;
+        const url = `https://${vercelDomain.domains[0].name}`;
+        // const url = `https://nextjs-web${projectId}.vercel.app`;
 
         // Status has to be one of the following:
         // - deployed
