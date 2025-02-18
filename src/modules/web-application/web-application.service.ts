@@ -45,7 +45,7 @@ export class WebApplicationService {
         }
 
         // const url = `https://${vercelDomain.domains[0].name}`;
-        const url = `https://nextjs-web${projectId}-genesoft.vercel.app`;
+        const url = `https://nextjs-web${projectId}.vercel.app`;
 
         // Status has to be one of the following:
         // - deployed
