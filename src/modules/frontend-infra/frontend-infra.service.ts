@@ -22,6 +22,10 @@ import { Supabase } from "@/modules/supabase/entity/supabase.entity";
 import { SupabaseService } from "@/modules/supabase/supabase.service";
 import { BackendInfraService } from "@/modules/backend-infra/backend-infra.service";
 import { CreateNewVercelDeploymentDto } from "./dto/create-new-deployment.dto";
+import {
+    GENESOFT_CORE_API_SERVICE_BASE_URL,
+    GENESOFT_CORE_API_SERVICE_API_KEY,
+} from "../constants/genesoft";
 @Injectable()
 export class FrontendInfraService {
     private readonly serviceName = "FrontendInfraService";
@@ -170,9 +174,6 @@ export class FrontendInfraService {
         const supabase = await this.supabaseRepository.findOne({
             where: { project_id },
         });
-        const koyebProject = await this.koyebProjectRepository.findOne({
-            where: { project_id },
-        });
 
         const koyebApp =
             await this.backendInfraService.getKoyebAppByProjectId(project_id);
@@ -206,12 +207,6 @@ export class FrontendInfraService {
                 type: "plain",
             },
             {
-                key: "CORE_API_SERVICE_API_KEY",
-                target: ["production"],
-                value: koyebProject.api_key,
-                type: "plain",
-            },
-            {
                 key: "NEXT_PUBLIC_APP_URL",
                 target: ["production"],
                 value: "https://test.app.com",
@@ -221,6 +216,24 @@ export class FrontendInfraService {
                 key: "NODE_ENV",
                 target: ["production"],
                 value: "production",
+                type: "plain",
+            },
+            {
+                key: "GENESOFT_PROJECT_ID",
+                target: ["production"],
+                value: project_id,
+                type: "plain",
+            },
+            {
+                key: "GENESOFT_CORE_API_SERVICE_BASE_URL",
+                target: ["production"],
+                value: GENESOFT_CORE_API_SERVICE_BASE_URL,
+                type: "plain",
+            },
+            {
+                key: "GENESOFT_CORE_API_SERVICE_API_KEY",
+                target: ["production"],
+                value: GENESOFT_CORE_API_SERVICE_API_KEY,
                 type: "plain",
             },
             // Development
@@ -246,13 +259,6 @@ export class FrontendInfraService {
                 type: "plain",
             },
             {
-                key: "CORE_API_SERVICE_API_KEY",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: koyebProject.api_key,
-                type: "plain",
-            },
-            {
                 key: "NEXT_PUBLIC_APP_URL",
                 target: ["preview"],
                 gitBranch: "dev",
@@ -264,6 +270,27 @@ export class FrontendInfraService {
                 target: ["preview"],
                 gitBranch: "dev",
                 value: "development",
+                type: "plain",
+            },
+            {
+                key: "GENESOFT_PROJECT_ID",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: project_id,
+                type: "plain",
+            },
+            {
+                key: "GENESOFT_CORE_API_SERVICE_BASE_URL",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: GENESOFT_CORE_API_SERVICE_BASE_URL,
+                type: "plain",
+            },
+            {
+                key: "GENESOFT_CORE_API_SERVICE_API_KEY",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: GENESOFT_CORE_API_SERVICE_API_KEY,
                 type: "plain",
             },
         ];
