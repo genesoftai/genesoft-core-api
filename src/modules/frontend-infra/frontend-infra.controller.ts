@@ -16,6 +16,7 @@ import {
     AddEnvironmentVariablesToVercelProjectDto,
     AddOneEnvironmentVariableToVercelProjectDto,
 } from "./dto/update-vercel-project.dto";
+import { CreateNewVercelDeploymentDto } from "./dto/create-new-deployment.dto";
 
 @Controller("frontend-infra")
 export class FrontendInfraController {
@@ -61,5 +62,10 @@ export class FrontendInfraController {
     @Get("vercel-deployment/:project_id")
     getLatestVercelDeployment(@Param("project_id") project_id: string) {
         return this.frontendInfraService.getLatestVercelDeployment(project_id);
+    }
+
+    @Post("vercel-deployment")
+    createNewVercelDeployment(@Body() payload: CreateNewVercelDeploymentDto) {
+        return this.frontendInfraService.createNewVercelDeployment(payload);
     }
 }

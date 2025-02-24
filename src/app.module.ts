@@ -25,6 +25,7 @@ import { FeedbackModule } from "@/modules/feedback/feedback.module";
 import { SupabaseModule } from "./modules/supabase/supabase.module";
 import { WebApplicationModule } from "./modules/web-application/web-application.module";
 import { StripeModule } from "./modules/stripe/stripe.module";
+import { BusinessLogicModule } from "./business-logic/business-logic.module";
 
 @Module({
     imports: [
@@ -70,6 +71,7 @@ import { StripeModule } from "./modules/stripe/stripe.module";
         SupabaseModule,
         WebApplicationModule,
         StripeModule,
+        BusinessLogicModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],
