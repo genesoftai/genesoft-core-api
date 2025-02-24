@@ -361,11 +361,11 @@ export class ProjectService {
             projectId: project.id,
         });
 
-        await this.githubService.createRepositoryFromTemplate({
-            projectTemplateName: ProjectTemplateName.NestJsApi,
-            description: `NestJS (API) project for ${project.description}`,
-            projectId: project.id,
-        });
+        // await this.githubService.createRepositoryFromTemplate({
+        //     projectTemplateName: ProjectTemplateName.NestJsApi,
+        //     description: `NestJS (API) project for ${project.description}`,
+        //     projectId: project.id,
+        // });
 
         this.logger.log({
             message: `${this.serviceName}.createProject: Project created`,
@@ -375,7 +375,6 @@ export class ProjectService {
             },
         });
 
-        // TODO: these things should work in the background due to it takes time
         const supabaseProject =
             await this.supabaseService.createNewSupabaseProject(project.id);
         this.logger.log({
@@ -383,12 +382,12 @@ export class ProjectService {
             metadata: { projectId: project.id, supabaseProject },
         });
 
-        const koyebProject =
-            await this.backendInfraService.createNewProjectInKoyeb(project.id);
-        this.logger.log({
-            message: `${this.serviceName}.createProject: Koyeb project created`,
-            metadata: { projectId: project.id, koyebProject },
-        });
+        // const koyebProject =
+        //     await this.backendInfraService.createNewProjectInKoyeb(project.id);
+        // this.logger.log({
+        //     message: `${this.serviceName}.createProject: Koyeb project created`,
+        //     metadata: { projectId: project.id, koyebProject },
+        // });
 
         const vercelProject =
             await this.frontendInfraService.createNewVercelProject({

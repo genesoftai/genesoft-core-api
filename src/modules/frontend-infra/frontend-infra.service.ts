@@ -21,6 +21,7 @@ import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entit
 import { Supabase } from "@/modules/supabase/entity/supabase.entity";
 import { SupabaseService } from "@/modules/supabase/supabase.service";
 import { BackendInfraService } from "@/modules/backend-infra/backend-infra.service";
+import { CreateNewVercelDeploymentDto } from "./dto/create-new-deployment.dto";
 @Injectable()
 export class FrontendInfraService {
     private readonly serviceName = "FrontendInfraService";
@@ -618,6 +619,54 @@ export class FrontendInfraService {
                     }),
                 ),
         );
+        return response;
+    }
+
+    async createNewVercelDeployment(payload: CreateNewVercelDeploymentDto) {
+        const { project_id, deployment_id } = payload;
+        const vercelProject = await this.vercelProjectRepository.findOne({
+            where: { project_id },
+        });
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: { project_id, type: ProjectType.Web },
+        });
+
+        if (!vercelProject) {
+            throw new NotFoundException("Vercel project not found");
+        }
+
+        const headers = {
+            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
+        };
+
+        const response = await lastValueFrom(
+            this.httpService
+                .post(
+                    `${this.vercelApiBaseUrl}/v13/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}&forceNew=1`,
+                    {
+                        name: `${repository.name}-deployment-${deployment_id}`,
+                        target: "preview",
+                        gitSource: {
+                            type: "github",
+                            ref: "dev",
+                            repoId: `genesoftai/${repository.name}`,
+                        },
+                    },
+                    { headers },
+                )
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.createNewVercelDeployment: Error creating deployment`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
         return response;
     }
 }

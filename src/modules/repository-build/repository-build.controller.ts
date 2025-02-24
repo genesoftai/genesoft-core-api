@@ -1,7 +1,6 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { RepositoryBuildService } from "./repository-build.service";
 import {
-    CheckBackendRepositoryBuildDto,
     CheckFrontendRepositoryBuildDto,
     CheckRepositoryBuildOverviewDto,
 } from "./dto/repository-build.dto";
@@ -19,11 +18,6 @@ export class RepositoryBuildController {
         return this.repositoryBuildService.checkRepositoryBuildOverview(
             payload,
         );
-    }
-
-    @Post("check/backend")
-    async checkBackendBuild(@Body() payload: CheckBackendRepositoryBuildDto) {
-        return this.repositoryBuildService.checkBackendBuild(payload);
     }
 
     @Post("check/frontend")

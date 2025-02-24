@@ -45,4 +45,20 @@ export class SupabaseController {
     getSupabaseDBUrl(@Param("projectId") projectId: string) {
         return this.supabaseService.getSupabaseDBUrl(projectId);
     }
+
+    @Post("/database/:projectId/query")
+    executeSqlQueryWithPostgres(
+        @Param("projectId") projectId: string,
+        @Body() body: { query: string },
+    ) {
+        return this.supabaseService.executeSqlQueryWithPostgres(
+            projectId,
+            body.query,
+        );
+    }
+
+    @Get("/database/:projectId/structure")
+    getDatabaseStructure(@Param("projectId") projectId: string) {
+        return this.supabaseService.getDatabaseStructure(projectId);
+    }
 }

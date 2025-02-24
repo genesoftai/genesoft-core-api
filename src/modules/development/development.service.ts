@@ -26,10 +26,7 @@ import { AiAgentTeam } from "@/modules/constants/agent";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent/ai-agent.service";
 import { ProjectTemplateName } from "../constants/project";
 import { EmailService } from "../email/email.service";
-import {
-    GENESOFT_AI_EMAIL,
-    GENESOFT_SUPPORT_EMAIL,
-} from "@/modules/constants/genesoft";
+import { GENESOFT_AI_EMAIL } from "@/modules/constants/genesoft";
 import { Project } from "@/modules/project/entity/project.entity";
 import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
@@ -104,7 +101,7 @@ export class DevelopmentService {
                         `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/feedback`,
                         {
                             project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend (NextJs) team and Backend (NestJs) team tasks for improve web application follow customer feedback that discussed with Project Manager AI Agent on Feedback Messages, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend. Make sure tasks are aligned with customer feedback and project requirements.`,
+                            input: `Plan and Prioritize Frontend (NextJs) team tasks for improve web application follow customer feedback that discussed with Project Manager AI Agent on Feedback Messages, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend. Make sure tasks are aligned with customer feedback and project requirements.`,
                             iteration_id: savedIteration.id,
                             frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
                             backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
@@ -129,7 +126,7 @@ export class DevelopmentService {
                         `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
                         {
                             project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend team and Backend team tasks for develop web application follow updated project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend. The updated requirements contains pages, branding, features. Develop further only updated requirements don't develop whole existing requirements again but can also edit to follow updated requirements.`,
+                            input: `Plan and Prioritize Frontend team tasks for develop web application follow updated project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend. The updated requirements contains pages, branding, features. Develop further only updated requirements don't develop whole existing requirements again but can also edit to follow updated requirements.`,
                             iteration_id: savedIteration.id,
                             frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
                             backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
@@ -150,7 +147,7 @@ export class DevelopmentService {
                         `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
                         {
                             project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend team and Backend team tasks for develop web application follow project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend and backend`,
+                            input: `Plan and Prioritize Frontend team tasks for develop web application follow project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend`,
                             iteration_id: savedIteration.id,
                             frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
                             backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
@@ -569,7 +566,7 @@ export class DevelopmentService {
                 }
 
                 const emailSent = await this.emailService.sendEmail({
-                    from: GENESOFT_SUPPORT_EMAIL,
+                    from: "Genesoft <support@genesoftai.com>",
                     to: [...usersEmails, GENESOFT_AI_EMAIL],
                     subject: `${project.name}: Task ${statusText} for ${iteration.type} Sprint`,
                     html: `
@@ -695,7 +692,7 @@ export class DevelopmentService {
                         template: ProjectTemplateName.NextJsWeb,
                     });
                     this.emailService.sendEmail({
-                        from: GENESOFT_SUPPORT_EMAIL,
+                        from: "Genesoft <support@genesoftai.com>",
                         to: [GENESOFT_AI_EMAIL],
                         subject: `Frontend repository build for ${iteration.project_id} checked successfully`,
                         html: `
@@ -713,52 +710,12 @@ export class DevelopmentService {
                         metadata: { iteration, error: error.message },
                     });
                     this.emailService.sendEmail({
-                        from: GENESOFT_SUPPORT_EMAIL,
+                        from: "Genesoft <support@genesoftai.com>",
                         to: [GENESOFT_AI_EMAIL],
                         subject: `Failed to check frontend repository build for ${iteration.project_id}`,
                         html: `
                         <p>Hello,</p>
                         <p>We are unable to check the frontend repository build for ${iteration.project_id}.</p>
-                        <p>Please check the repository build status manually.</p>
-                        <p>Thank you.</p>
-
-                        Project ID: ${iteration.project_id}
-                        Iteration ID: ${iteration.id}
-                        `,
-                    });
-                }
-
-                try {
-                    await this.repositoryBuildService.checkRepositoryBuild({
-                        project_id: iteration.project_id,
-                        iteration_id: iteration.id,
-                        template: ProjectTemplateName.NestJsApi,
-                    });
-                    this.emailService.sendEmail({
-                        from: GENESOFT_SUPPORT_EMAIL,
-                        to: [GENESOFT_AI_EMAIL],
-                        subject: `Backend repository build for ${iteration.project_id} checked successfully`,
-                        html: `
-                        <p>Hello,</p>
-                        <p>The backend repository build for ${iteration.project_id} checked successfully.</p>
-                        <p>Thank you.</p>
-
-                        Project ID: ${iteration.project_id}
-                        Iteration ID: ${iteration.id}
-                        `,
-                    });
-                } catch (error) {
-                    this.logger.error({
-                        message: `${this.serviceName}.triggerNextIterationTask: Failed to check backend repository build`,
-                        metadata: { iteration, error: error.message },
-                    });
-                    this.emailService.sendEmail({
-                        from: GENESOFT_SUPPORT_EMAIL,
-                        to: [GENESOFT_AI_EMAIL],
-                        subject: `Failed to check backend repository build for ${iteration.project_id}`,
-                        html: `
-                        <p>Hello,</p>
-                        <p>We are unable to check the backend repository build for ${iteration.project_id}.</p>
                         <p>Please check the repository build status manually.</p>
                         <p>Thank you.</p>
 
@@ -805,20 +762,20 @@ export class DevelopmentService {
                         });
                     } else if (nextTask.team === AiAgentTeam.Backend) {
                         // Trigger backend AI agent
-                        const response = await lastValueFrom(
-                            this.httpService.post(
-                                `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/backend-development/development/requirements`,
-                                {
-                                    project_id: iteration.project_id,
-                                    iteration_id: iteration.id,
-                                    iteration_task_id: nextTask.id,
-                                    backend_repo_name: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                                },
-                            ),
-                        );
+                        // const response = await lastValueFrom(
+                        //     this.httpService.post(
+                        //         `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/backend-development/development/requirements`,
+                        //         {
+                        //             project_id: iteration.project_id,
+                        //             iteration_id: iteration.id,
+                        //             iteration_task_id: nextTask.id,
+                        //             backend_repo_name: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
+                        //         },
+                        //     ),
+                        // );
                         this.logger.log({
-                            message: `${this.serviceName}.triggerNextIterationTask: Backend AI agent triggered successfully`,
-                            metadata: { response: response.data },
+                            message: `${this.serviceName}.triggerNextIterationTask: Backend AI agent Not supported`,
+                            metadata: { nextTask },
                         });
                     } else {
                         this.logger.error({
