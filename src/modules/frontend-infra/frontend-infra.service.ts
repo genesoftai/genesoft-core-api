@@ -175,12 +175,6 @@ export class FrontendInfraService {
             where: { project_id },
         });
 
-        const koyebApp =
-            await this.backendInfraService.getKoyebAppByProjectId(project_id);
-        const coreApiServiceDomain = koyebApp.domains.find(
-            (domain) => domain.status === "ACTIVE",
-        );
-
         const anonKey = await this.supabaseService.getKeyInfoFromProjectApiKeys(
             project_id,
             "anon",
@@ -198,12 +192,6 @@ export class FrontendInfraService {
                 key: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
                 target: ["production"],
                 value: anonKey.api_key,
-                type: "plain",
-            },
-            {
-                key: "CORE_API_SERVICE_BASE_URL",
-                target: ["production"],
-                value: `https://${coreApiServiceDomain.name}/api`,
                 type: "plain",
             },
             {
@@ -249,13 +237,6 @@ export class FrontendInfraService {
                 target: ["preview"],
                 gitBranch: "dev",
                 value: anonKey.api_key,
-                type: "plain",
-            },
-            {
-                key: "CORE_API_SERVICE_BASE_URL",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: `https://${coreApiServiceDomain.name}/api`,
                 type: "plain",
             },
             {
