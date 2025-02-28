@@ -114,39 +114,39 @@ export class FeedbackService {
                 },
             });
 
-        const backendRepository = await this.githubRepositoryRepository.findOne(
-            {
-                where: {
-                    project_id: payload.project_id,
-                    type: ProjectType.Api,
-                },
-            },
-        );
+        // const backendRepository = await this.githubRepositoryRepository.findOne(
+        //     {
+        //         where: {
+        //             project_id: payload.project_id,
+        //             type: ProjectType.Api,
+        //         },
+        //     },
+        // );
 
         const messagesContext = `
         These are historical messages between user and AI agent to feedback project:
         ${formattedMessages.join("\n")}
         `;
 
-        let apiDocumentation = "";
-        try {
-            const apiDocumentationResponse =
-                await this.githubService.getRepositoryContent({
-                    repository: backendRepository.name,
-                    path: "api_doc.md",
-                    ref: "dev",
-                });
+        // let apiDocumentation = "";
+        // try {
+        //     const apiDocumentationResponse =
+        //         await this.githubService.getRepositoryContent({
+        //             repository: backendRepository.name,
+        //             path: "api_doc.md",
+        //             ref: "dev",
+        //         });
 
-            apiDocumentation = `
-            Backend API Documentation of this project:
-            ${apiDocumentationResponse?.content || "No documentation available"}
-            `;
-        } catch (error) {
-            apiDocumentation = `
-            Backend API Documentation of this project:
-            No documentation available
-            `;
-        }
+        //     apiDocumentation = `
+        //     Backend API Documentation of this project:
+        //     ${apiDocumentationResponse?.content || "No documentation available"}
+        //     `;
+        // } catch (error) {
+        //     apiDocumentation = `
+        //     Backend API Documentation of this project:
+        //     No documentation available
+        //     `;
+        // }
 
         const frontendRepoTreeResponse =
             await this.githubService.getRepositoryTrees({
@@ -158,15 +158,15 @@ export class FeedbackService {
             frontendRepoTreeResponse,
         );
 
-        const backendRepoTreeResponse =
-            await this.githubService.getRepositoryTrees({
-                repository: backendRepository.name,
-                branch: "dev",
-            });
+        // const backendRepoTreeResponse =
+        //     await this.githubService.getRepositoryTrees({
+        //         repository: backendRepository.name,
+        //         branch: "dev",
+        //     });
 
-        const backendRepoTree = formatGithubRepositoryTree(
-            backendRepoTreeResponse,
-        );
+        // const backendRepoTree = formatGithubRepositoryTree(
+        //     backendRepoTreeResponse,
+        // );
 
         const userInput = `
         Please answer user messages:
@@ -196,18 +196,18 @@ export class FeedbackService {
                 role: "user",
                 content: projectDocumentation,
             },
-            {
-                role: "user",
-                content: apiDocumentation,
-            },
+            // {
+            //     role: "user",
+            //     content: apiDocumentation,
+            // },
             {
                 role: "user",
                 content: frontendRepoTree,
             },
-            {
-                role: "user",
-                content: backendRepoTree,
-            },
+            // {
+            //     role: "user",
+            //     content: backendRepoTree,
+            // },
             {
                 role: "user",
                 content: messagesContext,
