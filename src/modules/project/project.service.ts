@@ -279,7 +279,7 @@ export class ProjectService {
             where: { organization_id: payload.organization_id },
         });
 
-        if (projects.length >= 1) {
+        if (projects.length >= 3) {
             throw new BadRequestException(
                 "Can only have one project per organization",
             );
