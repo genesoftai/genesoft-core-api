@@ -357,15 +357,9 @@ export class ProjectService {
 
         await this.githubService.createRepositoryFromTemplate({
             projectTemplateName: ProjectTemplateName.NextJsWeb,
-            description: `NextJS (web) project for ${project.description}`,
+            description: `NextJS (web) project for ${project.name}`,
             projectId: project.id,
         });
-
-        // await this.githubService.createRepositoryFromTemplate({
-        //     projectTemplateName: ProjectTemplateName.NestJsApi,
-        //     description: `NestJS (API) project for ${project.description}`,
-        //     projectId: project.id,
-        // });
 
         this.logger.log({
             message: `${this.serviceName}.createProject: Project created`,
@@ -381,13 +375,6 @@ export class ProjectService {
             message: `${this.serviceName}.createProject: Supabase project created`,
             metadata: { projectId: project.id, supabaseProject },
         });
-
-        // const koyebProject =
-        //     await this.backendInfraService.createNewProjectInKoyeb(project.id);
-        // this.logger.log({
-        //     message: `${this.serviceName}.createProject: Koyeb project created`,
-        //     metadata: { projectId: project.id, koyebProject },
-        // });
 
         const vercelProject =
             await this.frontendInfraService.createNewVercelProject({
@@ -405,6 +392,48 @@ export class ProjectService {
         });
 
         return this.getProjectById(project.id);
+    }
+
+    async createProjectInfrastructure(projectId: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        if (!project) {
+            throw new NotFoundException(
+                `Project with id ${projectId} not found`,
+            );
+        }
+
+        await this.githubService.createRepositoryFromTemplate({
+            projectTemplateName: ProjectTemplateName.NextJsWeb,
+            description: `NextJS (web) project for ${project.name}`,
+            projectId: project.id,
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}.createInfrastructure: Project created`,
+            metadata: {
+                projectId: project.id,
+                timestamp: new Date(),
+            },
+        });
+
+        const supabaseProject =
+            await this.supabaseService.createNewSupabaseProject(project.id);
+        this.logger.log({
+            message: `${this.serviceName}.createInfrastructure: Supabase project created`,
+            metadata: { projectId: project.id, supabaseProject },
+        });
+
+        const vercelProject =
+            await this.frontendInfraService.createNewVercelProject({
+                project_id: project.id,
+            });
+        this.logger.log({
+            message: `${this.serviceName}.createInfrastructure: Vercel project created`,
+            metadata: { projectId: project.id, vercelProject },
+        });
     }
 
     async updateProjectInfo(
