@@ -210,7 +210,7 @@ export class ProjectService {
         };
     }
 
-    async getProjectInfo(id: string): Promise<Project> {
+    async getProjectInfo(id: string): Promise<object> {
         const project = await this.projectRepository.findOne({
             where: { id },
             select: [
@@ -223,6 +223,9 @@ export class ProjectService {
                 "updated_at",
             ],
         });
+        const pages = await this.getProjectPages(id);
+        const features = await this.getProjectFeatures(id);
+        const branding = await this.getProjectBranding(id);
 
         if (!project) {
             this.logger.warn({
@@ -232,7 +235,7 @@ export class ProjectService {
             throw new NotFoundException(`Project with id ${id} not found`);
         }
 
-        return project;
+        return { ...project, pages, features, branding };
     }
 
     async getProjectPages(id: string): Promise<Page[]> {
@@ -724,7 +727,7 @@ export class ProjectService {
         const pages = await this.getProjectPages(id);
         const branding = await this.getProjectBranding(id);
 
-        const formattedInfo = formatBasicInfo(info);
+        const formattedInfo = formatBasicInfo(info as Project);
         const formattedFeatures = formatFeatures(features);
         const formattedPages = formatPages(pages);
         const formattedBranding = formatBranding(branding);

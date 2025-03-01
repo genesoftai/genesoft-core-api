@@ -26,6 +26,7 @@ import { SupabaseModule } from "./modules/supabase/supabase.module";
 import { WebApplicationModule } from "./modules/web-application/web-application.module";
 import { StripeModule } from "./modules/stripe/stripe.module";
 import { BusinessLogicModule } from "./business-logic/business-logic.module";
+import { PageModule } from "./page/page.module";
 
 @Module({
     imports: [
@@ -72,6 +73,7 @@ import { BusinessLogicModule } from "./business-logic/business-logic.module";
         WebApplicationModule,
         StripeModule,
         BusinessLogicModule,
+        PageModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],
