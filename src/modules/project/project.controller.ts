@@ -63,6 +63,11 @@ export class ProjectController {
         return this.projectService.getProjectInfrastructure(id);
     }
 
+    @Post(":id/infrastructure")
+    async createProjectInfrastructure(@Param("id") id: string) {
+        return this.projectService.createProjectInfrastructure(id);
+    }
+
     @Patch(":id/info")
     async updateProjectInfo(
         @Param("id") id: string,
