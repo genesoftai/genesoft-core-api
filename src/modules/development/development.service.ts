@@ -85,93 +85,27 @@ export class DevelopmentService {
             );
         }
         try {
-            let updatedRequirements = "";
-            if (
-                payload.type === IterationType.Requirements &&
-                payload.is_updated_requirements
-            ) {
-                const updatedRequirementsSet =
-                    await this.projectService.getUpdatedRequirements(
-                        payload.project_id,
-                    );
-                if (
-                    updatedRequirementsSet.pages.length === 0 &&
-                    updatedRequirementsSet.features.length === 0 &&
-                    updatedRequirementsSet.branding.length === 0
-                ) {
-                    throw new BadRequestException(
-                        "No updated requirements found",
-                    );
-                }
-                updatedRequirements =
-                    this.projectService.formatUpdatedRequirements(
-                        updatedRequirementsSet,
-                    );
-            }
             const iteration = this.iterationRepository.create(payload);
             const savedIteration =
                 await this.iterationRepository.save(iteration);
-            if (payload.type === IterationType.Feedback) {
+            if (payload.type === IterationType.Project) {
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Create Project iteration`,
+                });
                 const response = await lastValueFrom(
                     this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/feedback`,
+                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
                         {
                             project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend (NextJs) team tasks for improve web application follow customer feedback that discussed with Project Manager AI Agent on Feedback Messages, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend. Make sure tasks are aligned with customer feedback and project requirements.`,
+                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
                             iteration_id: savedIteration.id,
                             frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                            feedback_id: payload.feedback_id,
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for start feedback iteration`,
-                    metadata: { response: response.data },
-                });
-            } else if (
-                payload.type === IterationType.Requirements &&
-                payload.is_updated_requirements
-            ) {
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Updated requirements`,
-                    metadata: { updatedRequirements },
-                });
-                const response = await lastValueFrom(
-                    this.httpService.put(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend team tasks for develop web application follow updated project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend. The updated requirements contains pages, branding, features. Develop further only updated requirements don't develop whole existing requirements again but can also edit to follow updated requirements.`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                            updated_requirements: updatedRequirements,
+                            branch: "dev",
                         },
                     ),
                 );
                 this.logger.log({
                     message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
-                    metadata: { response: response.data },
-                });
-            } else if (
-                payload.type === IterationType.Requirements &&
-                !payload.is_updated_requirements
-            ) {
-                const response = await lastValueFrom(
-                    this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend team tasks for develop web application follow project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for start requirements iteration`,
                     metadata: { response: response.data },
                 });
             }
