@@ -1,8 +1,15 @@
 import { Page } from "@/modules/project/entity/page.entity";
-import { Inject, Injectable, Logger, LoggerService } from "@nestjs/common";
+import {
+    forwardRef,
+    Inject,
+    Injectable,
+    Logger,
+    LoggerService,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CreatePageDto } from "./dto/create-page.dto";
+import { ConversationService } from "@/conversation/conversation.service";
 
 @Injectable()
 export class PageService {
@@ -13,30 +20,35 @@ export class PageService {
         private pageRepository: Repository<Page>,
         @Inject(Logger)
         private readonly logger: LoggerService,
+        @Inject(forwardRef(() => ConversationService))
+        private readonly conversationService: ConversationService,
     ) {}
 
     async createPage(payload: CreatePageDto): Promise<Page> {
         this.logger.log({
-            message: `${this.serviceName}.addPage: Adding page`,
+            message: `${this.serviceName}.createPage: Creating page`,
             metadata: { pageData: payload, timestamp: new Date() },
         });
 
         const pageEntity = new Page();
         pageEntity.name = payload.name;
         pageEntity.description = payload.description;
-        pageEntity.file_ids = payload.file_ids;
-        pageEntity.reference_link_ids = payload.reference_link_ids;
         pageEntity.project_id = payload.project_id;
 
         const page = await this.pageRepository.save(pageEntity);
 
         this.logger.log({
-            message: `${this.serviceName}.addPage: Page added`,
+            message: `${this.serviceName}.createPage: Page created`,
             metadata: {
                 pageId: page.id,
                 projectId: payload.project_id,
                 timestamp: new Date(),
             },
+        });
+
+        await this.conversationService.createConversation({
+            page_id: page.id,
+            project_id: payload.project_id,
         });
 
         return page;

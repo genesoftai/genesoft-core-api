@@ -1,8 +1,7 @@
+import { IsNotEmpty } from "class-validator";
 import { IsString } from "class-validator";
 
-import { IsNotEmpty } from "class-validator";
-
-export class CreatePageDto {
+export class CreateFeatureDto {
     @IsString()
     @IsNotEmpty()
     project_id: string;

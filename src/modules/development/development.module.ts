@@ -14,6 +14,9 @@ import { User } from "../user/entity/user.entity";
 import { ProjectModule } from "../project/project.module";
 import { RepositoryBuildModule } from "../repository-build/repository-build.module";
 import { GithubModule } from "../github/github.module";
+import { PageModule } from "@/page/page.module";
+import { FeatureModule } from "@/feature/feature.module";
+import { Conversation } from "@/conversation/entity/conversation.entity";
 
 @Module({
     imports: [
@@ -24,6 +27,7 @@ import { GithubModule } from "../github/github.module";
             Project,
             Organization,
             User,
+            Conversation,
         ]),
         HttpModule,
         AiAgentConfigurationModule,
@@ -31,6 +35,8 @@ import { GithubModule } from "../github/github.module";
         RepositoryBuildModule,
         forwardRef(() => ProjectModule),
         GithubModule,
+        PageModule,
+        FeatureModule,
     ],
     controllers: [DevelopmentController],
     providers: [DevelopmentService, Logger],
