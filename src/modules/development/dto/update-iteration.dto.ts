@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsNumber } from "class-validator";
+import { IterationStatus } from "@/modules/constants/development";
+import { IsString, IsOptional, IsNumber, IsNotEmpty } from "class-validator";
 
 export class UpdateIterationDto {
     @IsString()
@@ -20,4 +21,10 @@ export class UpdateIterationDto {
     @IsNumber()
     @IsOptional()
     working_time?: number;
+}
+
+export class UpdateIterationStatusDto {
+    @IsString()
+    @IsNotEmpty()
+    status: IterationStatus;
 }

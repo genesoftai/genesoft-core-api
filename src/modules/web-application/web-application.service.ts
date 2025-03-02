@@ -28,10 +28,6 @@ export class WebApplicationService {
         const vercelDomain =
             await this.frontendInfraService.getProjectDomain(projectId);
 
-        this.logger.log({
-            message: `${this.serviceName}.getWebApplication: Vercel domain`,
-            metadata: { vercelDomain },
-        });
         const status =
             previewTarget?.readyState === "READY" ? "deployed" : "not_deployed";
         let developmentStatus = "development_done";
@@ -41,22 +37,15 @@ export class WebApplicationService {
         });
         if (iteration && iteration.status === "in_progress") {
             developmentStatus =
-                iteration.type === "feedback"
-                    ? "feedback_iteration_in_progress"
-                    : "requirements_iteration_in_progress";
+                iteration.type === "page"
+                    ? "page_iteration_in_progress"
+                    : "feature_iteration_in_progress";
         }
         const developmentDoneAt = iteration?.updated_at
             ? new Date(iteration.updated_at).getTime()
             : null;
 
         const url = `https://${vercelDomain.domains[0].name}`;
-        // const url = `https://nextjs-web${projectId}.vercel.app`;
-
-        // Status has to be one of the following:
-        // - deployed
-        // - not_deployed
-        // - feedback_iteration_in_progress
-        // - requirements_iteration_in_progress
 
         return {
             url,
@@ -65,6 +54,7 @@ export class WebApplicationService {
             developmentDoneAt,
             deploymentId: previewTarget?.deploymentId,
             readyAt: previewTarget?.readyAt,
+            readyStatus: previewTarget?.readyState,
         };
     }
 }

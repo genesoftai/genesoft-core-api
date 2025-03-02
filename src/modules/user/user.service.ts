@@ -3,6 +3,11 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entity/user.entity";
 import { Organization } from "../organization/entity/organization.entity";
+import { UpdateUserOrganizationDto } from "./dto/user-organization.dto";
+import {
+    UpdateUserImageByEmailDto,
+    UpdateUserImageDto,
+} from "./dto/user-metadata.dto";
 
 @Injectable()
 export class UserService {
@@ -65,5 +70,92 @@ export class UserService {
             { id: user.organization_id },
             { customer_id: customerId },
         );
+    }
+
+    async updateUserOrganization(
+        payload: UpdateUserOrganizationDto,
+    ): Promise<object> {
+        const user = await this.userRepository.findOne({
+            where: { id: payload.userId },
+        });
+        if (!user) {
+            throw new NotFoundException(
+                `User with ID ${payload.userId} not found`,
+            );
+        }
+        const organization = await this.organizationRepository.findOne({
+            where: { id: payload.organizationId },
+        });
+        if (!organization) {
+            throw new NotFoundException(
+                `Organization with ID ${payload.organizationId} not found`,
+            );
+        }
+        await this.userRepository.update(
+            { id: payload.userId },
+            { organization_id: payload.organizationId },
+        );
+        const updatedUser = await this.userRepository.findOne({
+            where: { id: payload.userId },
+            relations: ["organization"],
+        });
+        return {
+            message: "User organization updated successfully",
+            user: updatedUser,
+            organization,
+        };
+    }
+
+    async updateUserImage(payload: UpdateUserImageDto) {
+        const user = await this.userRepository.findOne({
+            where: { id: payload.userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException(
+                `User with ID ${payload.userId} not found`,
+            );
+        }
+
+        await this.userRepository.update(
+            { id: payload.userId },
+            { image: payload.image },
+        );
+
+        const updatedUser = await this.userRepository.findOne({
+            where: { id: payload.userId },
+        });
+
+        return {
+            message: "User image updated successfully",
+            user: updatedUser,
+        };
+    }
+
+    async updateUserImageByEmail(
+        email: string,
+        payload: UpdateUserImageByEmailDto,
+    ): Promise<object> {
+        const user = await this.userRepository.findOne({
+            where: { email },
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User with email ${email} not found`);
+        }
+
+        await this.userRepository.update(
+            { id: user.id },
+            { image: payload.image },
+        );
+
+        const updatedUser = await this.userRepository.findOne({
+            where: { id: user.id },
+        });
+
+        return {
+            message: "User image updated successfully",
+            user: updatedUser,
+        };
     }
 }

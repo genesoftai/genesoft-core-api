@@ -1,7 +1,8 @@
 export enum IterationStatus {
     Todo = "todo",
-    Working = "working",
+    InProgress = "in_progress",
     Done = "done",
+    Failed = "failed",
 }
 
 export enum IterationTaskStatus {
@@ -14,4 +15,6 @@ export enum IterationTaskStatus {
 export enum IterationType {
     Feedback = "feedback",
     Requirements = "requirements",
+    PageDevelopment = "page_development",
+    FeatureDevelopment = "feature_development",
 }

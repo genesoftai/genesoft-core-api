@@ -9,7 +9,10 @@ import {
     Query,
 } from "@nestjs/common";
 import { DevelopmentService } from "./development.service";
-import { CreateIterationDto } from "./dto/create-iteration.dto";
+import {
+    CreateIterationDto,
+    CreatePageIterationDto,
+} from "./dto/create-iteration.dto";
 import { CreateTeamTaskDto } from "./dto/create-team-task.dto";
 import {
     CreateIterationTaskDto,
@@ -22,6 +25,7 @@ import {
 import { Iteration } from "./entity/iteration.entity";
 import { TeamTask } from "./entity/team-task.entity";
 import { IterationTask } from "./entity/iteration-task.entity";
+import { UpdateIterationStatusDto } from "./dto/update-iteration.dto";
 
 @Controller("development")
 export class DevelopmentController {
@@ -53,6 +57,11 @@ export class DevelopmentController {
         return this.developmentService.getIterationsByProjectId(id, order);
     }
 
+    @Get("iteration/project/:id/latest")
+    getLatestIterationByProjectId(@Param("id") id: string): Promise<object> {
+        return this.developmentService.getLatestIterationByProjectId(id);
+    }
+
     @Put("iteration/:id")
     updateIteration(
         @Param("id") id: string,
@@ -64,6 +73,17 @@ export class DevelopmentController {
     @Delete("iteration/:id")
     deleteIteration(@Param("id") id: string): Promise<void> {
         return this.developmentService.deleteIteration(id);
+    }
+
+    @Put("iteration/:id/status")
+    updateIterationStatus(
+        @Param("id") id: string,
+        @Body() payload: UpdateIterationStatusDto,
+    ): Promise<Iteration> {
+        return this.developmentService.updateIterationStatus(
+            id,
+            payload.status,
+        );
     }
 
     // Iteration Task endpoints
@@ -221,4 +241,18 @@ export class DevelopmentController {
             projectId,
         );
     }
+
+    @Post("page/iteration")
+    createPageIteration(
+        @Body() payload: CreatePageIterationDto,
+    ): Promise<Iteration> {
+        return this.developmentService.createPageIteration(payload);
+    }
+
+    // @Post("feature/iteration")
+    // createFeatureIteration(
+    //     @Body() payload: CreateFeatureIterationDto,
+    // ): Promise<Iteration> {
+    //     return this.developmentService.createFeatureIteration(payload);
+    // }
 }
