@@ -17,3 +17,31 @@ export class CreateIterationDto {
     @IsOptional()
     is_updated_requirements?: boolean;
 }
+
+export class CreatePageIterationDto {
+    @IsString()
+    @IsNotEmpty()
+    conversation_id: string;
+
+    @IsString()
+    @IsNotEmpty()
+    project_id: string;
+
+    @IsString()
+    @IsNotEmpty()
+    page_id: string;
+}
+
+export class CreateFeatureIterationDto {
+    @IsString()
+    @IsNotEmpty()
+    conversation_id: string;
+
+    @IsString()
+    @IsNotEmpty()
+    project_id: string;
+
+    @IsString()
+    @IsNotEmpty()
+    feature_id: string;
+}

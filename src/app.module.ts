@@ -26,6 +26,9 @@ import { SupabaseModule } from "./modules/supabase/supabase.module";
 import { WebApplicationModule } from "./modules/web-application/web-application.module";
 import { StripeModule } from "./modules/stripe/stripe.module";
 import { BusinessLogicModule } from "./business-logic/business-logic.module";
+import { PageModule } from "./page/page.module";
+import { FeatureModule } from "./feature/feature.module";
+import { ConversationModule } from "./conversation/conversation.module";
 
 @Module({
     imports: [
@@ -72,6 +75,9 @@ import { BusinessLogicModule } from "./business-logic/business-logic.module";
         WebApplicationModule,
         StripeModule,
         BusinessLogicModule,
+        PageModule,
+        FeatureModule,
+        ConversationModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],
