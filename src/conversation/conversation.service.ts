@@ -246,10 +246,19 @@ export class ConversationService {
     }
 
     async talkToProjectManager(payload: TalkToProjectManagerDto) {
+        let conversation_id = payload.conversation_id;
+        if (!conversation_id) {
+            const newConversation = await this.createConversation({
+                project_id: payload.project_id,
+                feature_id: payload.feature_id,
+                page_id: payload.page_id,
+            });
+            conversation_id = newConversation.id;
+        }
+
         try {
-            const existingConversation = await this.findConversationById(
-                payload.conversation_id,
-            );
+            const existingConversation =
+                await this.findConversationById(conversation_id);
 
             if (!existingConversation) {
                 throw new NotFoundException("Conversation not found");
@@ -367,7 +376,7 @@ export class ConversationService {
             const aiMessage: Partial<ConversationMessage> = {
                 content: result?.content as string,
                 sender_type: "ai_agent",
-                conversation_id: existingConversation.id,
+                conversation_id,
                 message_type: "text",
                 sender_id: AiAgentId.GenesoftProjectManager,
             };
