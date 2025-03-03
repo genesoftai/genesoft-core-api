@@ -391,7 +391,7 @@ export class ProjectService {
         // Start develop web follow initial requirements
         await this.developmentService.createIteration({
             project_id: project.id,
-            type: IterationType.Requirements,
+            type: IterationType.Project,
         });
 
         return this.getProjectById(project.id);

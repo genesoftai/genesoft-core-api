@@ -568,11 +568,6 @@ export class FrontendInfraService {
             Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
         };
 
-        this.logger.log({
-            message: `${this.serviceName}.getVercelProject: API Request`,
-            metadata: { vercelProject, headers },
-        });
-
         const response = await lastValueFrom(
             this.httpService
                 .get(

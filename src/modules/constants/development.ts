@@ -17,4 +17,5 @@ export enum IterationType {
     Requirements = "requirements",
     PageDevelopment = "page_development",
     FeatureDevelopment = "feature_development",
+    Project = "project",
 }

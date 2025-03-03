@@ -85,93 +85,27 @@ export class DevelopmentService {
             );
         }
         try {
-            let updatedRequirements = "";
-            if (
-                payload.type === IterationType.Requirements &&
-                payload.is_updated_requirements
-            ) {
-                const updatedRequirementsSet =
-                    await this.projectService.getUpdatedRequirements(
-                        payload.project_id,
-                    );
-                if (
-                    updatedRequirementsSet.pages.length === 0 &&
-                    updatedRequirementsSet.features.length === 0 &&
-                    updatedRequirementsSet.branding.length === 0
-                ) {
-                    throw new BadRequestException(
-                        "No updated requirements found",
-                    );
-                }
-                updatedRequirements =
-                    this.projectService.formatUpdatedRequirements(
-                        updatedRequirementsSet,
-                    );
-            }
             const iteration = this.iterationRepository.create(payload);
             const savedIteration =
                 await this.iterationRepository.save(iteration);
-            if (payload.type === IterationType.Feedback) {
+            if (payload.type === IterationType.Project) {
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Create Project iteration`,
+                });
                 const response = await lastValueFrom(
                     this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/feedback`,
+                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
                         {
                             project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend (NextJs) team tasks for improve web application follow customer feedback that discussed with Project Manager AI Agent on Feedback Messages, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend. Make sure tasks are aligned with customer feedback and project requirements.`,
+                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
                             iteration_id: savedIteration.id,
                             frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                            feedback_id: payload.feedback_id,
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for start feedback iteration`,
-                    metadata: { response: response.data },
-                });
-            } else if (
-                payload.type === IterationType.Requirements &&
-                payload.is_updated_requirements
-            ) {
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Updated requirements`,
-                    metadata: { updatedRequirements },
-                });
-                const response = await lastValueFrom(
-                    this.httpService.put(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend team tasks for develop web application follow updated project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend. The updated requirements contains pages, branding, features. Develop further only updated requirements don't develop whole existing requirements again but can also edit to follow updated requirements.`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                            updated_requirements: updatedRequirements,
+                            branch: "dev",
                         },
                     ),
                 );
                 this.logger.log({
                     message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
-                    metadata: { response: response.data },
-                });
-            } else if (
-                payload.type === IterationType.Requirements &&
-                !payload.is_updated_requirements
-            ) {
-                const response = await lastValueFrom(
-                    this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/requirements`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Plan and Prioritize Frontend team tasks for develop web application follow project requirements by customer, Don't start from scratch but plan tasks further based on code existing in github repositories of frontend`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for start requirements iteration`,
                     metadata: { response: response.data },
                 });
             }
@@ -506,6 +440,47 @@ export class DevelopmentService {
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
                                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
                             </div>
+                        </div>
+                    `,
+                    from: GENESOFT_SUPPORT_EMAIL_FROM,
+                });
+            } else if (
+                status === IterationStatus.Done &&
+                updatedIteration.type === IterationType.Project
+            ) {
+                const project = await this.projectService.getProjectById(
+                    updatedIteration.project_id,
+                );
+                await this.emailService.sendEmail({
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
+                    subject: `Project initialization completed successfully for ${project?.name}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                            </div>
+                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Project Has Been Successfully Initialized</h2>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                We're pleased to inform you that your project has been successfully initialized and is ready for use.
+                            </p>
+                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 15px;">
+                                    <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
+                                    <strong>Description:</strong> ${project?.description || "No description provided"}
+                                </p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                You can now access your project dashboard to start working with your newly initialized project.
+                            </p>
+                            <div style="text-align: center; margin: 25px 0;">
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Project</a>
+                            </div>
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
+                                <strong>Important:</strong> Your project is now being enhanced with powerful infrastructure! The Genesoft team is currently setting up critical components (backend services, authentication systems, deployment pipelines, etc.) to make your project fully functional. We're working diligently to complete this process and will notify you immediately when your project infrastructure is ready for use. This final step will unlock the full potential of your application!
+                            </p>
                         </div>
                     `,
                     from: GENESOFT_SUPPORT_EMAIL_FROM,
