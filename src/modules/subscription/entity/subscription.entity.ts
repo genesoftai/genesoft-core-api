@@ -55,4 +55,7 @@ export class Subscription {
 
     @UpdateDateColumn({ name: "updated_at" })
     updated_at: Date;
+
+    @Column({ name: "tier", type: "text", nullable: true })
+    tier: string;
 }
