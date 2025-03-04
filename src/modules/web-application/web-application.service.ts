@@ -6,6 +6,7 @@ import { BackendInfraService } from "@/modules/backend-infra/backend-infra.servi
 import { InjectRepository } from "@nestjs/typeorm";
 import { Iteration } from "../development/entity/iteration.entity";
 import { Repository } from "typeorm";
+import { RepositoryBuild } from "../repository-build/entity/repository-build.entity";
 
 @Injectable()
 export class WebApplicationService {
@@ -19,6 +20,8 @@ export class WebApplicationService {
         private readonly supabaseService: SupabaseService,
         @InjectRepository(Iteration)
         private iterationRepository: Repository<Iteration>,
+        @InjectRepository(RepositoryBuild)
+        private repositoryBuildRepository: Repository<RepositoryBuild>,
     ) {}
 
     async getWebApplication(projectId: string) {
@@ -35,6 +38,17 @@ export class WebApplicationService {
             where: { project_id: projectId },
             order: { created_at: "DESC" },
         });
+
+        const repositoryBuild = await this.repositoryBuildRepository.findOne({
+            where: { project_id: projectId, iteration_id: iteration.id },
+            order: { created_at: "DESC" },
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}.getWebApplication: Repository build`,
+            metadata: { repositoryBuild },
+        });
+
         if (iteration && iteration.status === "in_progress") {
             developmentStatus =
                 iteration.type === "page"
@@ -55,6 +69,7 @@ export class WebApplicationService {
             deploymentId: previewTarget?.deploymentId,
             readyAt: previewTarget?.readyAt,
             readyStatus: previewTarget?.readyState,
+            repositoryBuild,
         };
     }
 }

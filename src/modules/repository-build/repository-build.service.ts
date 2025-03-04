@@ -159,12 +159,6 @@ export class RepositoryBuildService {
             template: ProjectTemplateName.NextJsWeb,
         });
 
-        await this.checkRepositoryBuild({
-            project_id: payload.project_id,
-            iteration_id: iteration.id,
-            template: ProjectTemplateName.NestJsApi,
-        });
-
         return {
             status: "success",
             message:
@@ -208,24 +202,12 @@ export class RepositoryBuildService {
             );
 
         if (deployment.status === "success") {
+            await this.repositoryBuildRepository.update(
+                { id: repositoryBuild.id },
+                { status: "success" },
+            );
+
             await this.sendBuildSuccessEmail(iteration_id, "frontend");
-
-            // // Merge staging branch to main branch for frontend
-            // const frontendPullRequest =
-            //     await this.githubService.createPullRequest({
-            //         repository: `${ProjectTemplateName.NextJsWeb}_${project_id}`,
-            //         head: "staging",
-            //         base: "main",
-            //         title: `Release: ${iteration_id}`,
-            //     });
-
-            // await this.githubService.mergePullRequest({
-            //     repository: `${ProjectTemplateName.NextJsWeb}_${project_id}`,
-            //     pull_number: frontendPullRequest.number,
-            //     commit_title: `Release: ${iteration_id}`,
-            //     commit_message: `Release ${iteration_id}`,
-            //     merge_method: "merge",
-            // });
 
             return {
                 status: "success",
@@ -233,7 +215,11 @@ export class RepositoryBuildService {
             };
         }
 
-        if (repositoryBuild.fix_attempts >= 10) {
+        if (repositoryBuild.fix_attempts >= 3) {
+            await this.repositoryBuildRepository.update(
+                { id: repositoryBuild.id },
+                { status: "failed" },
+            );
             await this.sendBuildFailureEmail(iteration_id, "frontend");
             return {
                 status: "failed",
@@ -267,125 +253,6 @@ export class RepositoryBuildService {
             };
         }
     }
-
-    // async checkBackendBuild(payload: CheckBackendRepositoryBuildDto) {
-    //     const { project_id, iteration_id } = payload;
-    //     if (!project_id || !iteration_id) {
-    //         throw new BadRequestException("Invalid payload");
-    //     }
-    //     const repositoryBuildExisting =
-    //         await this.repositoryBuildRepository.findOne({
-    //             where: { project_id, iteration_id, type: ProjectType.Api },
-    //         });
-    //     let repositoryBuild;
-    //     if (!repositoryBuildExisting) {
-    //         repositoryBuild = await this.repositoryBuildRepository.save({
-    //             project_id,
-    //             iteration_id,
-    //             type: ProjectType.Api,
-    //             status: "pending",
-    //             error_logs: "",
-    //             fix_attempts: 0,
-    //             fix_triggered: false,
-    //         });
-    //     } else {
-    //         repositoryBuild = repositoryBuildExisting;
-    //     }
-    //     const deployment = await this.githubService.getLatestWorkflowRun({
-    //         project_id,
-    //         branch: "dev",
-    //     });
-
-    //     if (repositoryBuild.fix_attempts >= 10) {
-    //         await this.sendBuildFailureEmail(iteration_id, "backend");
-    //         return {
-    //             status: "failed",
-    //             deployment: repositoryBuild,
-    //         };
-    //     }
-
-    //     if (deployment.status === "success") {
-    //         await this.sendBuildSuccessEmail(iteration_id, "backend");
-
-    //         // Merge staging branch to main branch
-    //         // const pullRequest = await this.githubService.createPullRequest({
-    //         //     repository: `${ProjectTemplateName.NestJsApi}_${project_id}`,
-    //         //     head: "staging",
-    //         //     base: "main",
-    //         //     title: `Release: ${iteration_id}`,
-    //         // });
-
-    //         // await this.githubService.mergePullRequest({
-    //         //     repository: `${ProjectTemplateName.NestJsApi}_${project_id}`,
-    //         //     pull_number: pullRequest.number,
-    //         //     commit_title: `Release: ${iteration_id}`,
-    //         //     commit_message: `Release ${iteration_id}`,
-    //         //     merge_method: "merge",
-    //         // });
-
-    //         return {
-    //             status: "success",
-    //             deployment: repositoryBuild,
-    //         };
-    //     }
-
-    //     if (deployment.status === "failed") {
-    //         const repository = await this.githubRepositoryRepository.findOne({
-    //             where: { project_id, type: ProjectType.Api },
-    //         });
-    //         const currentAttempts = repositoryBuild.fix_attempts + 1;
-    //         await this.triggerBackendBuilderAgent({
-    //             project_id,
-    //             iteration_id,
-    //             backend_repo_name: repository.name,
-    //             attempts: currentAttempts,
-    //         });
-    //         await this.repositoryBuildRepository.update(
-    //             { id: repositoryBuild.id },
-    //             {
-    //                 status: "in_progress",
-    //                 fix_attempts: currentAttempts,
-    //                 fix_triggered: true,
-    //                 last_fix_attempt: new Date(),
-    //                 error_logs: deployment.logs,
-    //             },
-    //         );
-
-    //         return {
-    //             status: "in_progress",
-    //             deployment,
-    //         };
-    //     }
-    // }
-
-    // async triggerBackendBuilderAgent(payload: TriggerBackendBuilderAgentDto) {
-    //     const { project_id, iteration_id, backend_repo_name, attempts } =
-    //         payload;
-    //     const response = await lastValueFrom(
-    //         this.httpService
-    //             .post(
-    //                 `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/backend-builder/fix`,
-    //                 {
-    //                     project_id,
-    //                     iteration_id,
-    //                     backend_repo_name,
-    //                     attempts,
-    //                 },
-    //             )
-    //             .pipe(
-    //                 concatMap((res) => of(res.data)),
-    //                 retry(2),
-    //                 catchError((error: AxiosError) => {
-    //                     this.logger.error({
-    //                         message: `${this.serviceName}.triggerBackendBuilderAgent: Error triggering backend builder agent`,
-    //                         metadata: { error },
-    //                     });
-    //                     throw error;
-    //                 }),
-    //             ),
-    //     );
-    //     return response;
-    // }
 
     async triggerFrontendBuilderAgent(payload: TriggerFrontendBuilderAgentDto) {
         const { project_id, iteration_id, frontend_repo_name, attempts } =

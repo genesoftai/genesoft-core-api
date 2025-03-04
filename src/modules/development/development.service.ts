@@ -295,10 +295,6 @@ export class DevelopmentService {
                 where: { project_id: projectId },
                 order: { created_at: "DESC" },
             });
-            this.logger.log({
-                message: `${this.serviceName}.getLatestIterationByProjectId: Latest iteration`,
-                metadata: { iteration },
-            });
             const conversation = await this.conversationRepository.findOne({
                 where: { iteration_id: iteration.id },
             });
