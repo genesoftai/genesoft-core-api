@@ -8,7 +8,7 @@ import {
     JoinColumn,
 } from "typeorm";
 import { Organization } from "@modules/organization/entity/organization.entity";
-
+// 1 user can have many organizations
 @Entity("user")
 export class User {
     @PrimaryColumn("uuid")
@@ -44,4 +44,7 @@ export class User {
 
     @Column({ type: "text", nullable: true })
     customer_id: string;
+
+    @Column({ name: "organization_ids", type: "jsonb", default: "[]" })
+    organization_ids: string[];
 }

@@ -6,6 +6,7 @@ import {
     UpdateDateColumn,
 } from "typeorm";
 
+// 1 organization can have many owner, admin, member
 @Entity("organization")
 export class Organization {
     @PrimaryGeneratedColumn("uuid")
@@ -31,4 +32,10 @@ export class Organization {
 
     @Column({ type: "text", nullable: true })
     customer_id: string;
+
+    @Column({ name: "role", type: "jsonb", default: "{}" })
+    role: object;
+
+    @Column({ name: "subscription_id", type: "uuid", nullable: true })
+    subscription_id: string;
 }
