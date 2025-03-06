@@ -428,6 +428,16 @@ export class ConversationService {
                 },
                 {
                     role: "user",
+                    content:
+                        "If user want to add image to their web application tell them to send image url and specify the page and feature name that they want to implement image to.",
+                },
+                {
+                    role: "user",
+                    content:
+                        "For feature that Genesoft don't have for now, tell user to send email to support@genesoftai.com to request the feature, Genesoft will add the feature for user soon.",
+                },
+                {
+                    role: "user",
                     content: messagesContext,
                 },
                 {
