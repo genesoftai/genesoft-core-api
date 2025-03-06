@@ -397,6 +397,12 @@ export class ConversationService {
             Please engage in a helpful conversation while keeping both business value and technical feasibility in mind.
             `;
 
+            const userGuide = `
+            These are important information about how to use Genesoft, but you don't need to tell user about it every conversation, just when user curious about how Genesoft work or ask about it.
+            - Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser. 
+            - If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.
+            `;
+
             const answerInstructions = `Please not use technical terms to talk with user unless user asks about it. Remember that our main target users are non-technical users. Please answer with concise and simple sentences that easy to understand and get into the point. Please answer like you are their colleague who are friendly and helpful with a sense of humor but serious on the point to make user want to talk with you like they want to work with their colleague. I want user to feel like work in the workspace like Slack when talking with you.`;
             const formatInstructions = `Please use good markdown format in the answer that you need to remark it as important information, feel free to use bold, italic, underline, code, list, etc.`;
 
@@ -423,8 +429,7 @@ export class ConversationService {
                 },
                 {
                     role: "user",
-                    content:
-                        "Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser. If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.",
+                    content: userGuide,
                 },
                 {
                     role: "user",
