@@ -279,7 +279,8 @@ export class ConversationService {
             Type: ${latestIteration.type}
             
             If user talking to you, tell them that you are working on the project and you will get back to them soon.
-            Tell them to check on development status of web application information tab.
+            Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser.
+            If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.
             `;
         } else if (latestIteration.type === IterationType.PageDevelopment) {
             iterationContext = `
@@ -419,6 +420,21 @@ export class ConversationService {
                 {
                     role: "user",
                     content: formatInstructions,
+                },
+                {
+                    role: "user",
+                    content:
+                        "Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser. If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.",
+                },
+                {
+                    role: "user",
+                    content:
+                        "If user want to add image to their web application tell them to send image url and specify the page and feature name that they want to implement image to.",
+                },
+                {
+                    role: "user",
+                    content:
+                        "For feature that Genesoft don't have for now, tell user to send email to support@genesoftai.com to request the feature, Genesoft will add the feature for user soon.",
                 },
                 {
                     role: "user",
