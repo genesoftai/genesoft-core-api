@@ -45,6 +45,7 @@ import { GithubService } from "../github/github.service";
 import { PageService } from "@/page/page.service";
 import { FeatureService } from "@/feature/feature.service";
 import { Conversation } from "@/conversation/entity/conversation.entity";
+import { OrganizationService } from "../organization/organization.service";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -75,6 +76,7 @@ export class DevelopmentService {
         @Inject(forwardRef(() => PageService))
         private readonly pageService: PageService,
         private readonly featureService: FeatureService,
+        private readonly organizationService: OrganizationService,
     ) {}
 
     // Iteration CRUD
@@ -360,13 +362,17 @@ export class DevelopmentService {
                 updatedIteration.project_id,
             );
 
-            const users = await this.userRepository.find({
+            const organization = await this.organizationRepository.findOne({
                 where: {
-                    organization_id: project.organization_id,
+                    id: project.organization_id,
                 },
             });
+            const users =
+                await this.organizationService.getUsersForOrganization(
+                    organization.id,
+                );
 
-            const userEmails = users.map((user) => user.email);
+            const userEmails = users.map((user) => user?.email);
 
             if (
                 status === IterationStatus.Done &&
@@ -376,7 +382,7 @@ export class DevelopmentService {
                     conversation.page_id,
                 );
                 await this.emailService.sendEmail({
-                    to: userEmails,
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
                     subject: `Page development sprint completed for ${conversation.name} sprint`,
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
@@ -416,7 +422,7 @@ export class DevelopmentService {
                     conversation.feature_id,
                 );
                 await this.emailService.sendEmail({
-                    to: userEmails,
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
                     subject: `Feature development sprint completed for ${conversation.name} sprint`,
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">

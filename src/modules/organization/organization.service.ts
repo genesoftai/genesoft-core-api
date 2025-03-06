@@ -17,6 +17,7 @@ import {
     UpdateUserRole,
 } from "./dto/update-organization.dto";
 import { OrganizationRole } from "../constants/organization";
+import { UserWithRole } from "../types/organization";
 
 @Injectable()
 export class OrganizationService {
@@ -365,7 +366,9 @@ export class OrganizationService {
         return organizations;
     }
 
-    async getUsersForOrganization(organizationId: string): Promise<object[]> {
+    async getUsersForOrganization(
+        organizationId: string,
+    ): Promise<UserWithRole[]> {
         this.logger.log({
             message: `${this.serviceName}.getUsersForOrganization: Getting all users for organization`,
             metadata: { organizationId, timestamp: new Date() },
