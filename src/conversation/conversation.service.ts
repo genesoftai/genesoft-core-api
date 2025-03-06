@@ -279,7 +279,8 @@ export class ConversationService {
             Type: ${latestIteration.type}
             
             If user talking to you, tell them that you are working on the project and you will get back to them soon.
-            Tell them to check on development status of web application information tab.
+            Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser.
+            If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.
             `;
         } else if (latestIteration.type === IterationType.PageDevelopment) {
             iterationContext = `
@@ -419,6 +420,11 @@ export class ConversationService {
                 {
                     role: "user",
                     content: formatInstructions,
+                },
+                {
+                    role: "user",
+                    content:
+                        "Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser. If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.",
                 },
                 {
                     role: "user",
