@@ -17,7 +17,7 @@ import { GithubModule } from "../github/github.module";
 import { PageModule } from "@/page/page.module";
 import { FeatureModule } from "@/feature/feature.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
-
+import { OrganizationModule } from "../organization/organization.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -37,6 +37,7 @@ import { Conversation } from "@/conversation/entity/conversation.entity";
         GithubModule,
         PageModule,
         FeatureModule,
+        OrganizationModule,
     ],
     controllers: [DevelopmentController],
     providers: [DevelopmentService, Logger],
