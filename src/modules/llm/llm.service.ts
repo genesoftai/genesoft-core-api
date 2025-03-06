@@ -5,11 +5,21 @@ import { BaseMessage } from "@langchain/core/messages";
 import { wrapSDK } from "langsmith/wrappers";
 import { CallGeminiPayload } from "../types/llm/gemini";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import Exa from "exa-js";
+import { ThirdPartyConfigurationService } from "../configuration/third-party/third-party.service";
+import { ExaSearchResults } from "@langchain/exa";
 
 @Injectable()
 export class LlmService {
     private readonly serviceName = LlmService.name;
     private readonly logger = new Logger(this.serviceName);
+    private readonly exa: Exa;
+
+    constructor(
+        private readonly thirdPartyConfigurationService: ThirdPartyConfigurationService,
+    ) {
+        this.exa = new Exa(this.thirdPartyConfigurationService.exaApiKey);
+    }
 
     async callChatOpenAI(payload: CallChatOpenAIPayload): Promise<BaseMessage> {
         try {
@@ -40,8 +50,16 @@ export class LlmService {
                 model: payload.model,
                 ...payload.payload,
             });
+            const exa = new ExaSearchResults({
+                client: this.exa,
+                searchArgs: {
+                    numResults: 3,
+                    type: "auto",
+                },
+            });
+            const geminiWithTools = gemini.bindTools([exa]);
 
-            const geminiWrapper = wrapSDK(gemini, {
+            const geminiWrapper = wrapSDK(geminiWithTools, {
                 name: payload.nodeName,
                 run_type: "llm",
             });

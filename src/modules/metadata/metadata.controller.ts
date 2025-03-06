@@ -64,4 +64,39 @@ export class MetadataController {
             ),
         };
     }
+
+    @Post("/file/:folder_name")
+    @UseInterceptors(FileInterceptor("file"))
+    async uploadFileToS3AsCommonFile(
+        @UploadedFile()
+        file: Express.Multer.File,
+        @Body() payload: UploadFileDto,
+        @Param("folder_name") folderName: string,
+    ) {
+        const fileRefId = uuidv4();
+        const fileKey = `${folderName}/${payload.file_type}/${fileRefId}`;
+        await this.awsS3Service.uploadFileToS3Bucket({
+            bucketName: this.awsConfigurationService.awsS3BucketName,
+            key: fileKey,
+            body: file.buffer,
+            contentType: file.mimetype,
+        });
+
+        const fileRecord = await this.metadataService.saveFile({
+            name: payload.name,
+            description: payload.description,
+            type: file.mimetype,
+            bucket: this.awsConfigurationService.awsS3BucketName,
+            path: fileKey,
+        });
+
+        return {
+            ...fileRecord,
+            url: getS3FileUrl(
+                this.awsConfigurationService.awsS3BucketName,
+                this.awsConfigurationService.awsRegion,
+                fileRecord.path,
+            ),
+        };
+    }
 }

@@ -40,6 +40,7 @@ import {
     GetWorkflowRunsDto,
 } from "./dto/workflow.dto";
 import * as AdmZip from "adm-zip";
+import { DeleteFileContentFromRepositoryDto } from "./dto/delete-repository-content.dto";
 
 @Injectable()
 export class GithubService {
@@ -773,5 +774,60 @@ export class GithubService {
         });
 
         return extractedFiles;
+    }
+
+    async deleteFileContentFromRepository(
+        payload: DeleteFileContentFromRepositoryDto,
+    ) {
+        const { repository, path, message, branch, committer } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/contents/${path}`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+        };
+        try {
+            const githubContent = await this.getRepositoryContent({
+                repository,
+                path,
+                ref: branch,
+            });
+            this.logger.log({
+                message: `${this.serviceName}.deleteFileContentFromRepository: Github content`,
+                metadata: { githubContent },
+            });
+            const data = {
+                message,
+                branch,
+                committer,
+                sha: githubContent.response.sha,
+            };
+            this.logger.log({
+                message: `${this.serviceName}.deleteFileContentFromRepository: Data`,
+                metadata: { data },
+            });
+            const response = await lastValueFrom(
+                this.httpService.delete(url, { headers, data }).pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.deleteFileContentFromRepository: Error deleting file content from repository`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+            );
+            this.logger.log({
+                message: `${this.serviceName}.deleteFileContentFromRepository: Response`,
+                metadata: { response },
+            });
+            return response;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.deleteFileContentFromRepository: Error deleting file content from repository`,
+                metadata: { error },
+            });
+            throw error;
+        }
     }
 }

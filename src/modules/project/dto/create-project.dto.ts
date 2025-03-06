@@ -75,26 +75,45 @@ export class CreateProjectDto {
     @IsString()
     description: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    purpose: string;
+    purpose?: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    target_audience: string;
+    target_audience?: string;
 
     @IsOptional()
     @ValidateNested()
     @Type(() => BrandingDto)
-    branding: BrandingDto;
+    branding?: BrandingDto;
 
     @IsOptional()
     @ValidateNested({ each: true })
     @Type(() => PageDto)
-    pages: PageDto[];
+    pages?: PageDto[];
 
     @IsOptional()
     @ValidateNested({ each: true })
     @Type(() => FeatureDto)
-    features: FeatureDto[];
+    features?: FeatureDto[];
+}
+
+export class CreateProjectFromOnboardingDto {
+    @IsNotEmpty()
+    @IsUUID()
+    user_id: string;
+
+    @IsNotEmpty()
+    @IsString()
+    project_name: string;
+
+    @IsNotEmpty()
+    @IsString()
+    project_description: string;
+
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => BrandingDto)
+    branding?: BrandingDto;
 }

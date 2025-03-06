@@ -50,3 +50,13 @@ export class AddOneEnvironmentVariableToVercelProjectDto {
     @IsNotEmpty()
     environment_variable: EnvironmentVariableDto;
 }
+
+export class AssignDomainToGitBranchDto {
+    @IsString()
+    @IsNotEmpty()
+    project_id: string;
+
+    @IsString()
+    @IsNotEmpty()
+    branch: string;
+}

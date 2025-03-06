@@ -306,11 +306,15 @@ export class DevelopmentService {
             } else if (iteration.type === IterationType.PageDevelopment) {
                 page = await this.pageService.getPage(conversation.page_id);
             }
+            const iterationTasks = await this.iterationTaskRepository.find({
+                where: { iteration_id: iteration.id },
+            });
             return {
                 ...iteration,
                 conversation,
                 feature,
                 page,
+                iteration_tasks: iterationTasks,
             };
         } catch (error) {
             this.logger.error({
@@ -554,6 +558,10 @@ export class DevelopmentService {
         data: Partial<IterationTask>,
     ): Promise<IterationTask> {
         try {
+            this.logger.log({
+                message: `${this.serviceName}.createIterationTask: Iteration task`,
+                metadata: { data },
+            });
             const iterationTask = this.iterationTaskRepository.create(data);
             return await this.iterationTaskRepository.save(iterationTask);
         } catch (error) {

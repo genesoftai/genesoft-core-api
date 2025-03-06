@@ -10,7 +10,10 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
 import { Project } from "./entity/project.entity";
-import { CreateProjectDto } from "./dto/create-project.dto";
+import {
+    CreateProjectDto,
+    CreateProjectFromOnboardingDto,
+} from "./dto/create-project.dto";
 import { Page } from "./entity/page.entity";
 import { Branding } from "./entity/branding.entity";
 import { Feature } from "./entity/feature.entity";
@@ -46,6 +49,12 @@ import { FrontendInfraService } from "@/modules/frontend-infra/frontend-infra.se
 import { SupabaseService } from "../supabase/supabase.service";
 import { DevelopmentService } from "../development/development.service";
 import { IterationType } from "../constants/development";
+import { UserService } from "../user/user.service";
+import { OrganizationService } from "../organization/organization.service";
+import { OrganizationRole } from "../constants/organization";
+import { AiAgentId, SystemId } from "../constants/agent";
+import { ConversationService } from "@/conversation/conversation.service";
+import { Conversation } from "@/conversation/entity/conversation.entity";
 
 @Injectable()
 export class ProjectService {
@@ -70,6 +79,7 @@ export class ProjectService {
         private feedbackRepository: Repository<Feedback>,
         @InjectRepository(File)
         private fileRepository: Repository<File>,
+
         @InjectRepository(ReferenceLink)
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
@@ -87,6 +97,13 @@ export class ProjectService {
         private backendInfraService: BackendInfraService,
         @Inject(forwardRef(() => DevelopmentService))
         private developmentService: DevelopmentService,
+        private userService: UserService,
+        @Inject(forwardRef(() => OrganizationService))
+        private organizationService: OrganizationService,
+        @Inject(forwardRef(() => ConversationService))
+        private conversationService: ConversationService,
+        @InjectRepository(Conversation)
+        private conversationRepository: Repository<Conversation>,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -395,6 +412,69 @@ export class ProjectService {
         });
 
         return this.getProjectById(project.id);
+    }
+
+    async createProjectFromOnboarding(payload: CreateProjectFromOnboardingDto) {
+        try {
+            const user = await this.userService.getUserById(payload.user_id);
+            const organization =
+                await this.organizationService.createOrganization({
+                    name: `${user.email}'s Organization`,
+                    description: `Organization for onboarding ${user.email}`,
+                    userEmail: user.email,
+                });
+            await this.organizationService.addUserToOrganization({
+                userId: user.id,
+                organizationId: organization.id,
+                role: OrganizationRole.Owner,
+            });
+            const project = await this.createProject({
+                name: payload.project_name,
+                description: payload.project_description,
+                organization_id: organization.id,
+                pages: [
+                    {
+                        name: "Landing Page",
+                        description: `Landing page of ${payload.project_name} for ${payload.project_description}`,
+                    },
+                ],
+                branding: {
+                    logo_url: payload.branding.logo_url,
+                    color: payload.branding.color,
+                },
+            });
+            const firstPage = await this.pageRepository.findOne({
+                where: { project_id: project.id },
+                order: { created_at: "ASC" },
+            });
+
+            const conversation = await this.conversationRepository.save({
+                project_id: project.id,
+                name: "Project Creation",
+                description: "Conversation about the project creation",
+                user_id: SystemId.PageChannelSystemId,
+                page_id: firstPage.id,
+                status: "active",
+            });
+
+            await this.conversationService.talkToProjectManager({
+                project_id: project.id,
+                conversation_id: conversation.id,
+                message: {
+                    content: `Please update user with latest information about the project creation of ${project.name}`,
+                    sender_type: "system",
+                    message_type: "text",
+                    sender_id: SystemId.PageChannelSystemId,
+                },
+            });
+            return { project, page: firstPage };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createProjectFromOnboarding: Error creating project from onboarding`,
+                metadata: { error, timestamp: new Date() },
+            });
+            throw error;
+        }
     }
 
     async createProjectInfrastructure(projectId: string) {

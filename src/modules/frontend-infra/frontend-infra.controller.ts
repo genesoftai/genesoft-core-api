@@ -15,6 +15,7 @@ import {
 import {
     AddEnvironmentVariablesToVercelProjectDto,
     AddOneEnvironmentVariableToVercelProjectDto,
+    AssignDomainToGitBranchDto,
 } from "./dto/update-vercel-project.dto";
 import { CreateNewVercelDeploymentDto } from "./dto/create-new-deployment.dto";
 
@@ -67,5 +68,10 @@ export class FrontendInfraController {
     @Post("vercel-deployment")
     createNewVercelDeployment(@Body() payload: CreateNewVercelDeploymentDto) {
         return this.frontendInfraService.createNewVercelDeployment(payload);
+    }
+
+    @Post("vercel-project/domain")
+    assignDomainToGitBranch(@Body() payload: AssignDomainToGitBranchDto) {
+        return this.frontendInfraService.assignDomainToGitBranch(payload);
     }
 }

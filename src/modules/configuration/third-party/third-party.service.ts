@@ -14,4 +14,8 @@ export class ThirdPartyConfigurationService {
             "thirdParty.resendGenesoftEmailAudienceId",
         );
     }
+
+    get exaApiKey() {
+        return this.configService.get("thirdParty.exaApiKey");
+    }
 }

@@ -7,6 +7,7 @@ import {
     Put,
     Query,
     UseGuards,
+    Delete,
 } from "@nestjs/common";
 import { GithubService } from "./github.service";
 import { ApiTags } from "@nestjs/swagger";
@@ -26,6 +27,7 @@ import {
     CreatePullRequestDto,
     MergePullRequestDto,
 } from "./dto/pull-requests.dto";
+import { DeleteFileContentFromRepositoryDto } from "./dto/delete-repository-content.dto";
 
 @ApiTags("Github")
 @Controller("github")
@@ -66,6 +68,14 @@ export class GithubController {
     @UseGuards(AuthGuard)
     updateRepositoryContent(@Body() body: UpdateRepositoryContentDto) {
         return this.githubService.updateRepositoryContent(body);
+    }
+
+    @Delete("repository/content")
+    @UseGuards(AuthGuard)
+    deleteFileContentFromRepository(
+        @Body() payload: DeleteFileContentFromRepositoryDto,
+    ) {
+        return this.githubService.deleteFileContentFromRepository(payload);
     }
 
     @Post("repository/branch/merge")

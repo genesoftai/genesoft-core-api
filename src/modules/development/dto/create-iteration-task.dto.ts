@@ -9,9 +9,7 @@ import {
 
 export class CreateIterationTaskDto {
     @IsString()
-    iteration_id: string;
-
-    @IsString()
+    @IsNotEmpty()
     name: string;
 
     @IsString()
@@ -19,6 +17,7 @@ export class CreateIterationTaskDto {
     description?: string;
 
     @IsString()
+    @IsNotEmpty()
     team: string;
 
     @IsString()

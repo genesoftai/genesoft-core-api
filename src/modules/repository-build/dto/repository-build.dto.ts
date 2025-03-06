@@ -76,3 +76,9 @@ export class TriggerFrontendBuilderAgentDto {
     @IsNotEmpty()
     attempts: number;
 }
+
+export class RecheckFrontendBuildDto {
+    @IsString()
+    @IsNotEmpty()
+    project_id: string;
+}

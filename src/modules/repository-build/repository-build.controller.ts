@@ -3,6 +3,7 @@ import { RepositoryBuildService } from "./repository-build.service";
 import {
     CheckFrontendRepositoryBuildDto,
     CheckRepositoryBuildOverviewDto,
+    RecheckFrontendBuildDto,
 } from "./dto/repository-build.dto";
 
 @Controller("repository-build")
@@ -23,5 +24,12 @@ export class RepositoryBuildController {
     @Post("check/frontend")
     async checkFrontendBuild(@Body() payload: CheckFrontendRepositoryBuildDto) {
         return this.repositoryBuildService.checkFrontendBuild(payload);
+    }
+
+    @Post("recheck")
+    async recheckFrontendBuild(@Body() payload: RecheckFrontendBuildDto) {
+        return this.repositoryBuildService.recheckFrontendBuildWithoutRebuild(
+            payload,
+        );
     }
 }

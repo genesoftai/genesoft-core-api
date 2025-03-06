@@ -13,6 +13,7 @@ import {
     CheckFrontendRepositoryBuildDto,
     CheckRepositoryBuildDto,
     CheckRepositoryBuildOverviewDto,
+    RecheckFrontendBuildDto,
     TriggerFrontendBuilderAgentDto,
 } from "./dto/repository-build.dto";
 import { ProjectTemplateName, ProjectType } from "@/modules/constants/project";
@@ -249,6 +250,75 @@ export class RepositoryBuildService {
 
             return {
                 status: "in_progress",
+                deployment,
+            };
+        }
+    }
+
+    async recheckFrontendBuildWithoutRebuild(payload: RecheckFrontendBuildDto) {
+        const { project_id } = payload;
+
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: { project_id, type: ProjectType.Web },
+        });
+
+        if (!repository) {
+            throw new NotFoundException("Repository not found");
+        }
+
+        const deployment =
+            await this.frontendInfraService.getLatestVercelDeployment(
+                project_id,
+            );
+        const repositoryBuild = await this.repositoryBuildRepository.findOne({
+            where: { project_id, type: ProjectType.Web },
+            order: { created_at: "DESC" },
+        });
+
+        if (deployment.status === "success") {
+            if (repositoryBuild) {
+                await this.repositoryBuildRepository.update(
+                    { id: repositoryBuild.id },
+                    { status: "success" },
+                );
+            }
+            if (!repositoryBuild) {
+                const latestIteration = await this.iterationRepository.findOne({
+                    where: { project_id },
+                    order: { created_at: "DESC" },
+                });
+                await this.repositoryBuildRepository.save({
+                    project_id,
+                    iteration_id: latestIteration.id,
+                    type: ProjectType.Web,
+                    status: "success",
+                });
+            }
+            return {
+                status: "success",
+                deployment,
+            };
+        } else {
+            if (repositoryBuild) {
+                await this.repositoryBuildRepository.update(
+                    { id: repositoryBuild.id },
+                    { status: "failed" },
+                );
+            }
+            if (!repositoryBuild) {
+                const latestIteration = await this.iterationRepository.findOne({
+                    where: { project_id },
+                    order: { created_at: "DESC" },
+                });
+                await this.repositoryBuildRepository.save({
+                    project_id,
+                    iteration_id: latestIteration.id,
+                    type: ProjectType.Web,
+                    status: "failed",
+                });
+            }
+            return {
+                status: "failed",
                 deployment,
             };
         }

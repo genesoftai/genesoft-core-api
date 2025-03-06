@@ -34,6 +34,9 @@ import { EmailService } from "@/modules/email/email.service";
 import { DevelopmentService } from "@/modules/development/development.service";
 import { PageService } from "@/page/page.service";
 import { FeatureService } from "@/feature/feature.service";
+import { Iteration } from "@/modules/development/entity/iteration.entity";
+import { IterationType } from "@/modules/constants/development";
+import { IterationTask } from "@/modules/development/entity/iteration-task.entity";
 
 export interface ConversationMessageForWeb extends ConversationMessage {
     sender: {
@@ -66,6 +69,10 @@ export class ConversationService {
         private pageService: PageService,
         @Inject(forwardRef(() => FeatureService))
         private featureService: FeatureService,
+        @InjectRepository(Iteration)
+        private iterationRepository: Repository<Iteration>,
+        @InjectRepository(IterationTask)
+        private iterationTaskRepository: Repository<IterationTask>,
     ) {}
 
     async createConversation(
@@ -256,6 +263,69 @@ export class ConversationService {
             conversation_id = newConversation.id;
         }
 
+        // Get the latest iteration for the project
+        const latestIteration = await this.iterationRepository.findOne({
+            where: { project_id: payload.project_id },
+            order: { created_at: "DESC" },
+        });
+
+        let iterationContext =
+            "Remember to use sprint instead of iteration so user can understand because we use sprint wording in web UI. Don't need to talk about sprint every response message if user didn't ask something related to it.";
+        if (latestIteration.type === IterationType.Project) {
+            iterationContext = `
+            These are the latest iteration for create the project:
+            Iteration ID: ${latestIteration.id}
+            Status: ${latestIteration.status}
+            Type: ${latestIteration.type}
+            
+            If user talking to you, tell them that you are working on the project and you will get back to them soon.
+            Tell them to check on development status of web application information tab.
+            `;
+        } else if (latestIteration.type === IterationType.PageDevelopment) {
+            iterationContext = `
+            These are the latest iteration for update the page:
+            Iteration ID: ${latestIteration.id}
+            Status: ${latestIteration.status}
+            Type: ${latestIteration.type}
+            `;
+        } else if (latestIteration.type === IterationType.FeatureDevelopment) {
+            iterationContext = `
+            These are the latest iteration for update the feature:
+            Iteration ID: ${latestIteration.id}
+            Status: ${latestIteration.status}
+            Type: ${latestIteration.type}
+            `;
+        } else {
+            iterationContext = `
+            No latest iteration found for this project.
+            `;
+        }
+
+        const latestIterationTasks = await this.iterationTaskRepository.find({
+            where: { iteration_id: latestIteration.id },
+        });
+
+        if (latestIterationTasks.length > 0) {
+            for (const latestIterationTask of latestIterationTasks) {
+                iterationContext += `
+                Task: ${latestIterationTask.name}
+                Status: ${latestIterationTask.status}
+                Team: ${latestIterationTask.team}
+                `;
+
+                if (
+                    latestIterationTask.result &&
+                    latestIterationTask.result.past_steps
+                ) {
+                    for (const step of latestIterationTask.result.past_steps) {
+                        iterationContext += `
+                        - ${step}
+                        `;
+                    }
+                }
+            }
+        }
+
         try {
             const existingConversation =
                 await this.findConversationById(conversation_id);
@@ -353,6 +423,10 @@ export class ConversationService {
                 {
                     role: "user",
                     content: messagesContext,
+                },
+                {
+                    role: "user",
+                    content: iterationContext,
                 },
                 {
                     role: "user",
