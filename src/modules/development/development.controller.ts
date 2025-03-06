@@ -89,11 +89,13 @@ export class DevelopmentController {
     // Iteration Task endpoints
     @Post("iteration/:id/iteration-task")
     createIterationTask(
+        @Param("id") iterationId: string,
         @Body() createIterationTaskDto: CreateIterationTaskDto,
     ): Promise<IterationTask> {
-        return this.developmentService.createIterationTask(
-            createIterationTaskDto,
-        );
+        return this.developmentService.createIterationTask({
+            iteration_id: iterationId,
+            ...createIterationTaskDto,
+        });
     }
 
     @Post("iteration/:id/iteration-task/bulk")

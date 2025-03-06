@@ -9,6 +9,7 @@ import {
 import {
     AddEnvironmentVariablesToVercelProjectDto,
     AddOneEnvironmentVariableToVercelProjectDto,
+    AssignDomainToGitBranchDto,
     EnvironmentVariableDto,
 } from "./dto/update-vercel-project.dto";
 import { Repository } from "typeorm";
@@ -148,6 +149,54 @@ export class FrontendInfraService {
             metadata: { updatedVercelProject },
         });
 
+        await this.assignDomainToGitBranch({
+            project_id: payload.project_id,
+            branch: "dev",
+        });
+
+        return response;
+    }
+
+    async assignDomainToGitBranch(payload: AssignDomainToGitBranchDto) {
+        const { project_id, branch } = payload;
+        const vercelProject = await this.vercelProjectRepository.findOne({
+            where: { project_id },
+        });
+        const domainInfo = await this.getProjectDomain(project_id);
+        this.logger.log({
+            message: `${this.serviceName}.assignDomainToGitBranch: Domain`,
+            metadata: { domainInfo, vercelProject },
+        });
+        const domain = domainInfo.domains[0].name;
+        const url = `https://api.vercel.com/v9/projects/${vercelProject.vercel_project_id}/domains/${domain}?teamId=${this.vercelConfigurationService.vercelTeamId}`;
+        // TODO: assign domain to git `dev` branch
+        const response = await lastValueFrom(
+            this.httpService
+                .patch(
+                    url,
+                    { gitBranch: branch },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
+                        },
+                    },
+                )
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.assignDomainToGitBranch: Error assigning domain to git branch`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+        this.logger.log({
+            message: `${this.serviceName}.assignDomainToGitBranch: Domain assigned to git branch`,
+            metadata: { response },
+        });
         return response;
     }
 

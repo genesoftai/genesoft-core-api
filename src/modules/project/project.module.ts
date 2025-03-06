@@ -22,6 +22,10 @@ import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entit
 import { Supabase } from "../supabase/entity/supabase.entity";
 import { VercelProject } from "@/modules/frontend-infra/entity/vercel-project.entity";
 import { DevelopmentModule } from "../development/development.module";
+import { UserModule } from "../user/user.module";
+import { OrganizationModule } from "../organization/organization.module";
+import { ConversationModule } from "@/conversation/conversation.module";
+import { Conversation } from "@/conversation/entity/conversation.entity";
 
 @Module({
     imports: [
@@ -39,6 +43,7 @@ import { DevelopmentModule } from "../development/development.module";
             Supabase,
             VercelProject,
             KoyebProject,
+            Conversation,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -46,7 +51,10 @@ import { DevelopmentModule } from "../development/development.module";
         SupabaseModule,
         FrontendInfraModule,
         BackendInfraModule,
+        UserModule,
         forwardRef(() => DevelopmentModule),
+        forwardRef(() => OrganizationModule),
+        forwardRef(() => ConversationModule),
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],

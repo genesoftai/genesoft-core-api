@@ -14,10 +14,7 @@ export class WebApplicationService {
     private readonly logger = new Logger(WebApplicationService.name);
 
     constructor(
-        private readonly projectService: ProjectService,
         private readonly frontendInfraService: FrontendInfraService,
-        private readonly backendInfraService: BackendInfraService,
-        private readonly supabaseService: SupabaseService,
         @InjectRepository(Iteration)
         private iterationRepository: Repository<Iteration>,
         @InjectRepository(RepositoryBuild)
@@ -42,11 +39,6 @@ export class WebApplicationService {
         const repositoryBuild = await this.repositoryBuildRepository.findOne({
             where: { project_id: projectId, iteration_id: iteration.id },
             order: { created_at: "DESC" },
-        });
-
-        this.logger.log({
-            message: `${this.serviceName}.getWebApplication: Repository build`,
-            metadata: { repositoryBuild },
         });
 
         if (iteration && iteration.status === "in_progress") {

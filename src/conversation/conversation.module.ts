@@ -14,6 +14,9 @@ import { DevelopmentModule } from "@/modules/development/development.module";
 import { FeatureModule } from "@/feature/feature.module";
 import { PageModule } from "@/page/page.module";
 import { EmailModule } from "@/modules/email/email.module";
+import { Page } from "@/modules/project/entity/page.entity";
+import { Iteration } from "@/modules/development/entity/iteration.entity";
+import { IterationTask } from "@/modules/development/entity/iteration-task.entity";
 
 @Module({
     imports: [
@@ -21,6 +24,9 @@ import { EmailModule } from "@/modules/email/email.module";
             Conversation,
             ConversationMessage,
             GithubRepository,
+            Page,
+            Iteration,
+            IterationTask,
         ]),
         UserModule,
         GithubModule,

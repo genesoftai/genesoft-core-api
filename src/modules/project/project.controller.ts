@@ -9,7 +9,10 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
-import { CreateProjectDto } from "./dto/create-project.dto";
+import {
+    CreateProjectFromOnboardingDto,
+    CreateProjectDto,
+} from "./dto/create-project.dto";
 import {
     UpdateProjectDto,
     BrandingDto,
@@ -26,6 +29,13 @@ export class ProjectController {
     @Post()
     async createProject(@Body() payload: CreateProjectDto) {
         return this.projectService.createProject(payload);
+    }
+
+    @Post("onboarding")
+    async createProjectFromOnboarding(
+        @Body() payload: CreateProjectFromOnboardingDto,
+    ) {
+        return this.projectService.createProjectFromOnboarding(payload);
     }
 
     @Get(":id")
