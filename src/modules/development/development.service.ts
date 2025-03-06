@@ -414,6 +414,9 @@ export class DevelopmentService {
                     `,
                     from: GENESOFT_SUPPORT_EMAIL_FROM,
                 });
+                await this.repositoryBuildService.checkRepositoryBuildOverview({
+                    project_id: updatedIteration.project_id,
+                });
             } else if (
                 status === IterationStatus.Done &&
                 updatedIteration.type === IterationType.FeatureDevelopment
@@ -453,6 +456,9 @@ export class DevelopmentService {
                         </div>
                     `,
                     from: GENESOFT_SUPPORT_EMAIL_FROM,
+                });
+                await this.repositoryBuildService.checkRepositoryBuildOverview({
+                    project_id: updatedIteration.project_id,
                 });
             } else if (
                 status === IterationStatus.Done &&
@@ -494,6 +500,9 @@ export class DevelopmentService {
                         </div>
                     `,
                     from: GENESOFT_SUPPORT_EMAIL_FROM,
+                });
+                await this.repositoryBuildService.checkRepositoryBuildOverview({
+                    project_id: updatedIteration.project_id,
                 });
             }
             return updatedIteration;
