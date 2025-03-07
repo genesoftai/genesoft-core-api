@@ -7,7 +7,7 @@ import {
     BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { Conversation } from "./entity/conversation.entity";
 import { ConversationMessage } from "./entity/message.entity";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
@@ -37,6 +37,10 @@ import { FeatureService } from "@/feature/feature.service";
 import { Iteration } from "@/modules/development/entity/iteration.entity";
 import { IterationType } from "@/modules/constants/development";
 import { IterationTask } from "@/modules/development/entity/iteration-task.entity";
+import { File } from "@/modules/metadata/entity/file.entity";
+import { getS3FileUrl } from "@/utils/aws/s3";
+import { AWSConfigurationService } from "@/modules/configuration/aws";
+import { CallGeminiPayload } from "@/modules/types/llm/gemini";
 
 export interface ConversationMessageForWeb extends ConversationMessage {
     sender: {
@@ -44,6 +48,10 @@ export interface ConversationMessageForWeb extends ConversationMessage {
         email?: string;
         image?: string;
     };
+    files?: {
+        id: string;
+        url: string;
+    }[];
 }
 
 @Injectable()
@@ -73,6 +81,9 @@ export class ConversationService {
         private iterationRepository: Repository<Iteration>,
         @InjectRepository(IterationTask)
         private iterationTaskRepository: Repository<IterationTask>,
+        @InjectRepository(File)
+        private fileRepository: Repository<File>,
+        private awsConfigurationService: AWSConfigurationService,
     ) {}
 
     async createConversation(
@@ -116,6 +127,21 @@ export class ConversationService {
                         message.sender_id,
                     );
 
+                    let filesResult = [];
+
+                    if (message.file_ids) {
+                        const files = await this.fileRepository.find({
+                            where: { id: In(message.file_ids) },
+                        });
+                        filesResult = files.map((file) => ({
+                            id: file.id,
+                            url: getS3FileUrl(
+                                this.awsConfigurationService.awsS3BucketName,
+                                this.awsConfigurationService.awsRegion,
+                                file.path,
+                            ),
+                        }));
+                    }
                     return {
                         ...message,
                         sender: {
@@ -123,6 +149,7 @@ export class ConversationService {
                             email: user.email,
                             image: user?.image,
                         },
+                        files: filesResult,
                     };
                 }
 
@@ -454,12 +481,29 @@ export class ConversationService {
                     content: userInput,
                 },
             ];
+            const messageType = payload.message.message_type;
+            const geminiPayload: CallGeminiPayload = {
+                payload: {
+                    model: "gemini-2.0-flash",
+                    messages,
+                    nodeName: "talkToProjectManager",
+                },
+                type: messageType,
+            };
 
-            const result = await this.llmService.callGemini({
-                model: "gemini-2.0-flash",
-                messages,
-                nodeName: "talkToProjectManager",
-            });
+            if (messageType === "image") {
+                const file = await this.fileRepository.findOne({
+                    where: { id: payload.message.file_ids[0] },
+                });
+                const imageUrl = getS3FileUrl(
+                    this.awsConfigurationService.awsS3BucketName,
+                    this.awsConfigurationService.awsRegion,
+                    file?.path,
+                );
+                geminiPayload.imageUrl = imageUrl;
+            }
+
+            const result = await this.llmService.callGemini(geminiPayload);
 
             this.logger.log({
                 message: `${this.serviceName}.talkToProjectManager: Result`,

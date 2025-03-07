@@ -674,18 +674,47 @@ export class FrontendInfraService {
         return response;
     }
 
-    async createNewVercelDeployment(payload: CreateNewVercelDeploymentDto) {
-        const { project_id, deployment_id } = payload;
+    async findVercelProjectByProjectId(project_id: string) {
         const vercelProject = await this.vercelProjectRepository.findOne({
             where: { project_id },
         });
-        const repository = await this.githubRepositoryRepository.findOne({
-            where: { project_id, type: ProjectType.Web },
-        });
-
         if (!vercelProject) {
             throw new NotFoundException("Vercel project not found");
         }
+        const url = `${this.vercelApiBaseUrl}/v9/projects/${vercelProject.vercel_project_id}?teamId=${this.vercelConfigurationService.vercelTeamId}`;
+        const headers = {
+            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
+        };
+        const response = await lastValueFrom(
+            this.httpService.get(url, { headers }).pipe(
+                concatMap((res) => of(res.data)),
+                retry(2),
+                catchError((error: AxiosError) => {
+                    this.logger.error({
+                        message: `${this.serviceName}.findVercelProjectByProjectId: Error finding Vercel project`,
+                        metadata: { error },
+                    });
+                    throw error;
+                }),
+            ),
+        );
+        return response;
+    }
+
+    async createNewVercelDeployment(payload: CreateNewVercelDeploymentDto) {
+        const { project_id, deployment_id } = payload;
+        const vercelProject =
+            await this.findVercelProjectByProjectId(project_id);
+        this.logger.log({
+            message: `${this.serviceName}.createNewVercelDeployment: Vercel project`,
+            metadata: { vercelProject },
+        });
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: {
+                project_id,
+                type: ProjectType.Web,
+            },
+        });
 
         const headers = {
             Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
@@ -694,14 +723,14 @@ export class FrontendInfraService {
         const response = await lastValueFrom(
             this.httpService
                 .post(
-                    `${this.vercelApiBaseUrl}/v13/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}&forceNew=1`,
+                    `${this.vercelApiBaseUrl}/v13/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}&forceNew=1&skipAutoDetectionConfirmation=1`,
                     {
                         name: `${repository.name}-deployment-${deployment_id}`,
                         target: "preview",
                         gitSource: {
                             type: "github",
                             ref: "dev",
-                            repoId: `genesoftai/${repository.name}`,
+                            repoId: vercelProject?.link?.repoId,
                         },
                     },
                     { headers },
