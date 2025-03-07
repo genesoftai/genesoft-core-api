@@ -17,7 +17,8 @@ import { EmailModule } from "@/modules/email/email.module";
 import { Page } from "@/modules/project/entity/page.entity";
 import { Iteration } from "@/modules/development/entity/iteration.entity";
 import { IterationTask } from "@/modules/development/entity/iteration-task.entity";
-
+import { File } from "@/modules/metadata/entity/file.entity";
+import { AWSConfigurationModule } from "@/modules/configuration/aws";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -27,6 +28,7 @@ import { IterationTask } from "@/modules/development/entity/iteration-task.entit
             Page,
             Iteration,
             IterationTask,
+            File,
         ]),
         UserModule,
         GithubModule,
@@ -36,6 +38,7 @@ import { IterationTask } from "@/modules/development/entity/iteration-task.entit
         forwardRef(() => DevelopmentModule),
         forwardRef(() => PageModule),
         forwardRef(() => FeatureModule),
+        AWSConfigurationModule,
     ],
     controllers: [ConversationController],
     providers: [ConversationService, MessageService, Logger],
