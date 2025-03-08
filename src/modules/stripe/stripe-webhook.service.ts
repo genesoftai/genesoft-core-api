@@ -93,15 +93,29 @@ export class StripeWebhookService {
     }
 
     private async handleEvent(event: Stripe.Event): Promise<void> {
+        let customerEmail: string;
+        let customer: Record<string, any>;
         switch (event.type) {
+            case "checkout.session.completed":
+                const checkoutSession = event.data
+                    .object as Stripe.Checkout.Session;
+                customer = (await this.stripe.customers.retrieve(
+                    checkoutSession.customer as string,
+                )) as Record<string, any>;
+                customerEmail = customer.email;
+                this.logger.log({
+                    message: `Checkout session completed: ${checkoutSession.id}`,
+                    metadata: { checkoutSession, customer },
+                });
+                break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
             case "customer.subscription.deleted":
                 const subscription = event.data.object as Stripe.Subscription;
-                const customer = (await this.stripe.customers.retrieve(
+                customer = (await this.stripe.customers.retrieve(
                     subscription.customer as string,
                 )) as Record<string, any>;
-                const customerEmail = customer.email;
+                customerEmail = customer.email;
                 this.logger.log({
                     message: `Subscription event: ${event.type}`,
                     metadata: { subscription, customer },

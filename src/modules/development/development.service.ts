@@ -6,7 +6,7 @@ import {
     Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Between, In, Repository } from "typeorm";
 import { HttpService } from "@nestjs/axios";
 import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
 import { Iteration } from "./entity/iteration.entity";
@@ -46,6 +46,11 @@ import { PageService } from "@/page/page.service";
 import { FeatureService } from "@/feature/feature.service";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { OrganizationService } from "../organization/organization.service";
+import {
+    FREE_TIER_ITERATIONS_LIMIT,
+    STARTUP_TIER_ITERATIONS_LIMIT,
+} from "../constants/subscription";
+import { Subscription } from "../subscription/entity/subscription.entity";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -77,6 +82,8 @@ export class DevelopmentService {
         private readonly pageService: PageService,
         private readonly featureService: FeatureService,
         private readonly organizationService: OrganizationService,
+        @InjectRepository(Subscription)
+        private subscriptionRepository: Repository<Subscription>,
     ) {}
 
     // Iteration CRUD
@@ -1107,5 +1114,83 @@ export class DevelopmentService {
         });
 
         return iteration;
+    }
+
+    async getMonthlyIterationsOfOrganization(organizationId: string) {
+        try {
+            // Get all projects for the organization
+            const projects = await this.projectRepository.find({
+                where: { organization_id: organizationId },
+            });
+
+            // Get the first and last day of the current month
+            const now = new Date();
+            const firstDayOfMonth = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                1,
+            );
+            const lastDayOfMonth = new Date(
+                now.getFullYear(),
+                now.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999,
+            );
+
+            // Find all iterations for these projects created in the current month
+            const iterations = await this.iterationRepository.find({
+                where: {
+                    project_id: In(projects.map((project) => project.id)),
+                    created_at: Between(firstDayOfMonth, lastDayOfMonth),
+                },
+            });
+
+            const iterationCount = iterations.length;
+
+            this.logger.log({
+                message: `${this.serviceName}.getMonthlyIterationsOfOrganization: Retrieved monthly iterations`,
+                metadata: {
+                    organizationId,
+                    projectCount: projects.length,
+                    iterationCount,
+                    month: now.getMonth() + 1,
+                    year: now.getFullYear(),
+                },
+            });
+
+            const subscription = await this.subscriptionRepository.findOne({
+                where: { organization_id: organizationId },
+            });
+
+            if (!subscription) {
+                return {
+                    iterations,
+                    count: iterationCount,
+                    exceeded: iterationCount >= FREE_TIER_ITERATIONS_LIMIT,
+                    tier: "free",
+                    remaining: FREE_TIER_ITERATIONS_LIMIT - iterationCount,
+                };
+            }
+            const exceeded = iterationCount >= STARTUP_TIER_ITERATIONS_LIMIT;
+            const tier = subscription.tier;
+            const remaining = STARTUP_TIER_ITERATIONS_LIMIT - iterationCount;
+
+            return {
+                iterations,
+                count: iterationCount,
+                exceeded,
+                tier,
+                remaining,
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.getMonthlyIterationsOfOrganization: Failed to get monthly iterations`,
+                metadata: { organizationId, error: error.message },
+            });
+            throw error;
+        }
     }
 }

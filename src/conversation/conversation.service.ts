@@ -425,9 +425,11 @@ export class ConversationService {
             `;
 
             const userGuide = `
-            These are important information about how to use Genesoft, but you don't need to tell user about it every conversation, just when user curious about how Genesoft work or ask about it.
-            - Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser. 
+            These are important information about how to use Genesoft
+            - Tell them to check on development status tab on the right side if use desktop browser or preview tab on mobile browser then development status tab to see progress of the latest development sprint.
             - If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.
+
+            Keep in mind you don't need to tell user about it every conversation, just when user curious about how Genesoft work or ask about it. It so annoying when you talking about them every message response.
             `;
 
             const answerInstructions = `Please not use technical terms to talk with user unless user asks about it. Remember that our main target users are non-technical users. Please answer with concise and simple sentences that easy to understand and get into the point. Please answer like you are their colleague who are friendly and helpful with a sense of humor but serious on the point to make user want to talk with you like they want to work with their colleague. I want user to feel like work in the workspace like Slack when talking with you.`;
@@ -568,9 +570,30 @@ export class ConversationService {
             const project = await this.projectService.getProjectById(
                 conversation.project_id,
             );
-            const users = await this.userService.getUsersByOrganizationId(
-                project.organization_id,
-            );
+
+            const organizationId = project.organization_id;
+
+            const monthlyIterations =
+                await this.developmentService.getMonthlyIterationsOfOrganization(
+                    organizationId,
+                );
+
+            this.logger.log({
+                message: `${this.serviceName}.submitConversation: Monthly Iterations`,
+                metadata: { monthlyIterations },
+            });
+
+            if (
+                monthlyIterations.tier === "free" &&
+                monthlyIterations.exceeded
+            ) {
+                throw new BadRequestException(
+                    "You have exceeded the maximum number of sprints for free tier. Please upgrade to a startup plan to continue.",
+                );
+            }
+
+            const users =
+                await this.userService.getUsersByOrganizationId(organizationId);
             const usersEmail = users.map((user) => user.email);
             let pageName = "";
             if (conversation.page_id) {

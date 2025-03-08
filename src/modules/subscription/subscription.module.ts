@@ -8,10 +8,10 @@ import { AuthModule } from "../auth/auth.module";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../user/entity/user.entity";
 import { Subscription } from "./entity/subscription.entity";
-
+import { Organization } from "../organization/entity/organization.entity";
 @Module({
     imports: [
-        TypeOrmModule.forFeature([User, Subscription]),
+        TypeOrmModule.forFeature([User, Subscription, Organization]),
         StripeConfigurationModule,
         SupabaseConfigurationModule,
         UserModule,

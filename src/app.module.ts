@@ -29,6 +29,7 @@ import { BusinessLogicModule } from "./business-logic/business-logic.module";
 import { PageModule } from "./page/page.module";
 import { FeatureModule } from "./feature/feature.module";
 import { ConversationModule } from "./conversation/conversation.module";
+import { SubscriptionModule } from "./modules/subscription/subscription.module";
 
 @Module({
     imports: [
@@ -78,6 +79,7 @@ import { ConversationModule } from "./conversation/conversation.module";
         PageModule,
         FeatureModule,
         ConversationModule,
+        SubscriptionModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],
