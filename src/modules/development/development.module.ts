@@ -18,6 +18,7 @@ import { PageModule } from "@/page/page.module";
 import { FeatureModule } from "@/feature/feature.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { OrganizationModule } from "../organization/organization.module";
+import { Subscription } from "../subscription/entity/subscription.entity";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -28,6 +29,7 @@ import { OrganizationModule } from "../organization/organization.module";
             Organization,
             User,
             Conversation,
+            Subscription,
         ]),
         HttpModule,
         AiAgentConfigurationModule,

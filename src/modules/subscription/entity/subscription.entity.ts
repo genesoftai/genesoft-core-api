@@ -58,4 +58,7 @@ export class Subscription {
 
     @Column({ name: "tier", type: "text", nullable: true })
     tier: string;
+
+    @Column({ name: "subscription_id", nullable: true })
+    subscription_id: string;
 }

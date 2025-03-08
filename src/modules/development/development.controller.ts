@@ -44,6 +44,13 @@ export class DevelopmentController {
         return this.developmentService.getIterations();
     }
 
+    @Get("iteration/organization/:id/monthly")
+    getMonthlyIterationsOfOrganization(
+        @Param("id") id: string,
+    ): Promise<{ iterations: Iteration[]; count: number }> {
+        return this.developmentService.getMonthlyIterationsOfOrganization(id);
+    }
+
     @Get("iteration/:id")
     getIterationById(@Param("id") id: string): Promise<Iteration> {
         return this.developmentService.getIterationById(id);
