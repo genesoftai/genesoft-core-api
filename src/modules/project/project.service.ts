@@ -283,7 +283,8 @@ export class ProjectService {
                 message: `${this.serviceName}.getProjectBranding: Branding not found`,
                 metadata: { id, timestamp: new Date() },
             });
-            throw new NotFoundException(`Branding for project ${id} not found`);
+            // throw new NotFoundException(`Branding for project ${id} not found`);
+            return null;
         }
 
         return branding;

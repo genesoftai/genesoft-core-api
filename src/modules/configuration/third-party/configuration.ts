@@ -5,4 +5,5 @@ export default registerAs("thirdParty", () => ({
     resendGenesoftEmailAudienceId:
         process.env.RESEND_GENESOFT_EMAIL_AUDIENCE_ID || "",
     exaApiKey: process.env.EXA_API_KEY || "",
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
 }));

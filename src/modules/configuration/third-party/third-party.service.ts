@@ -18,4 +18,8 @@ export class ThirdPartyConfigurationService {
     get exaApiKey() {
         return this.configService.get("thirdParty.exaApiKey");
     }
+
+    get anthropicApiKey() {
+        return this.configService.get("thirdParty.anthropicApiKey");
+    }
 }
