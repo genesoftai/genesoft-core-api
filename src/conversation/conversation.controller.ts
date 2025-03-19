@@ -46,6 +46,20 @@ export class ConversationController {
         return this.conversationService.findConversationsByFeatureId(featureId);
     }
 
+    @Get("project/:projectId")
+    findByProjectId(
+        @Param("projectId") projectId: string,
+    ): Promise<Conversation[]> {
+        return this.conversationService.findConversationsByProjectId(projectId);
+    }
+
+    @Get("project/:projectId/iterations")
+    findIterationsByProjectId(@Param("projectId") projectId: string) {
+        return this.conversationService.findConversationsWithIterationsByProjectId(
+            projectId,
+        );
+    }
+
     @Get("iteration/:iterationId")
     findByIterationId(
         @Param("iterationId") iterationId: string,
@@ -110,6 +124,15 @@ export class ConversationController {
     ): Promise<Conversation> {
         return this.conversationService.getActiveConversationByFeatureId(
             featureId,
+        );
+    }
+
+    @Get("project/:projectId/active")
+    getActiveConversationByProjectId(
+        @Param("projectId") projectId: string,
+    ): Promise<Conversation> {
+        return this.conversationService.getActiveConversationByProjectId(
+            projectId,
         );
     }
 

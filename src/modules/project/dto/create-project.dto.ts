@@ -106,11 +106,11 @@ export class CreateProjectFromOnboardingDto {
 
     @IsNotEmpty()
     @IsString()
-    project_name: string;
-
-    @IsNotEmpty()
-    @IsString()
     project_description: string;
+
+    @IsOptional()
+    @IsString()
+    project_name?: string;
 
     @IsOptional()
     @ValidateNested()

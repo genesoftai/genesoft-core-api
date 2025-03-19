@@ -55,6 +55,9 @@ import { OrganizationRole } from "../constants/organization";
 import { AiAgentId, SystemId } from "../constants/agent";
 import { ConversationService } from "@/conversation/conversation.service";
 import { Conversation } from "@/conversation/entity/conversation.entity";
+import { CodesandboxService } from "../codesandbox/codesandbox.service";
+import { CodesandboxTemplateId } from "../constants/codesandbox";
+import { LlmService } from "../llm/llm.service";
 
 @Injectable()
 export class ProjectService {
@@ -104,6 +107,8 @@ export class ProjectService {
         private conversationService: ConversationService,
         @InjectRepository(Conversation)
         private conversationRepository: Repository<Conversation>,
+        private codesandboxService: CodesandboxService,
+        private llmService: LlmService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -295,16 +300,6 @@ export class ProjectService {
             metadata: { payload, timestamp: new Date() },
         });
 
-        const projects = await this.projectRepository.find({
-            where: { organization_id: payload.organization_id },
-        });
-
-        if (projects.length >= 3) {
-            throw new BadRequestException(
-                "Can only have one project per organization",
-            );
-        }
-
         // Create project with base fields
         const newProject = this.projectRepository.create({
             organization_id: payload.organization_id,
@@ -315,6 +310,17 @@ export class ProjectService {
         });
 
         const project = await this.projectRepository.save(newProject);
+
+        // const sandboxName = `nextjs_${project.id}`;
+        // const sandbox = await this.codesandboxService.createSandbox({
+        //     template: CodesandboxTemplateId.NextJsShadcn,
+        //     title: sandboxName,
+        //     description: `Next.js Shadcn project for ${sandboxName}`,
+        // });
+
+        // await this.projectRepository.update(project.id, {
+        //     sandbox_id: sandbox.id,
+        // });
 
         // Create and associate branding if provided
         if (payload.branding) {
@@ -375,11 +381,12 @@ export class ProjectService {
             }
         }
 
-        await this.githubService.createRepositoryFromTemplate({
-            projectTemplateName: ProjectTemplateName.NextJsWeb,
-            description: `NextJS (web) project for ${project.name}`,
-            projectId: project.id,
-        });
+        const githubRepository =
+            await this.githubService.createRepositoryFromTemplate({
+                projectTemplateName: ProjectTemplateName.NextJsWeb,
+                description: `NextJS (web) project for ${project.name}`,
+                projectId: project.id,
+            });
 
         this.logger.log({
             message: `${this.serviceName}.createProject: Project created`,
@@ -387,13 +394,6 @@ export class ProjectService {
                 projectId: project.id,
                 timestamp: new Date(),
             },
-        });
-
-        const supabaseProject =
-            await this.supabaseService.createNewSupabaseProject(project.id);
-        this.logger.log({
-            message: `${this.serviceName}.createProject: Supabase project created`,
-            metadata: { projectId: project.id, supabaseProject },
         });
 
         const vercelProject =
@@ -405,7 +405,22 @@ export class ProjectService {
             metadata: { projectId: project.id, vercelProject },
         });
 
+        // TODO: add api_doc.md to github repo to trigger deployment
+        await this.githubService.updateRepositoryContent({
+            repository: githubRepository.name,
+            path: "api_doc.md",
+            content: "#API documentation for the project",
+            message: "Add api_doc.md to github repo",
+            ref: "dev",
+            branch: "dev",
+            committer: {
+                name: "khemmapichpanyana",
+                email: "khemmapich@gmail.com",
+            },
+        });
+
         // Start develop web follow initial requirements
+        // TODO: uncomment when ai agent service read to create project
         await this.developmentService.createIteration({
             project_id: project.id,
             type: IterationType.Project,
@@ -417,35 +432,38 @@ export class ProjectService {
     async createProjectFromOnboarding(payload: CreateProjectFromOnboardingDto) {
         try {
             const user = await this.userService.getUserById(payload.user_id);
-            const organization =
-                await this.organizationService.createOrganization({
-                    name: `${user.email}'s Organization`,
-                    description: `Organization for onboarding ${user.email}`,
-                    userEmail: user.email,
+            const existingOrganization =
+                await this.organizationService.getOrganizationsForUser(user.id);
+            let organization;
+            if (existingOrganization.length >= 1) {
+                organization = existingOrganization[0];
+            } else {
+                organization =
+                    await this.organizationService.createOrganization({
+                        name: `${user.email}'s Organization`,
+                        description: `Organization for onboarding ${user.email}`,
+                        userEmail: user.email,
+                    });
+                await this.organizationService.addUserToOrganization({
+                    userId: user.id,
+                    organizationId: organization.id,
+                    role: OrganizationRole.Owner,
                 });
-            await this.organizationService.addUserToOrganization({
-                userId: user.id,
-                organizationId: organization.id,
-                role: OrganizationRole.Owner,
-            });
+            }
+            const projectName = await this.llmService.generateProjectName(
+                payload.project_description,
+            );
             const project = await this.createProject({
-                name: payload.project_name,
+                name: projectName,
                 description: payload.project_description,
                 organization_id: organization.id,
-                pages: [
-                    {
-                        name: "Landing Page",
-                        description: `Landing page of ${payload.project_name} for ${payload.project_description}`,
-                    },
-                ],
                 branding: {
                     logo_url: payload.branding.logo_url,
                     color: payload.branding.color,
                 },
             });
-            const firstPage = await this.pageRepository.findOne({
+            const iteration = await this.iterationRepository.findOne({
                 where: { project_id: project.id },
-                order: { created_at: "ASC" },
             });
 
             const conversation = await this.conversationRepository.save({
@@ -453,8 +471,8 @@ export class ProjectService {
                 name: "Project Creation",
                 description: "Conversation about the project creation",
                 user_id: SystemId.PageChannelSystemId,
-                page_id: firstPage.id,
                 status: "active",
+                iteration_id: iteration.id,
             });
 
             await this.conversationService.talkToProjectManager({
@@ -467,7 +485,7 @@ export class ProjectService {
                     sender_id: SystemId.PageChannelSystemId,
                 },
             });
-            return { project, page: firstPage };
+            return { project };
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createProjectFromOnboarding: Error creating project from onboarding`,
@@ -543,6 +561,7 @@ export class ProjectService {
         });
         return updated;
     }
+
     async updateBranding(id: string, payload: BrandingDto): Promise<Project> {
         this.logger.log({
             message: `${this.serviceName}.updateBranding: Updating project branding`,

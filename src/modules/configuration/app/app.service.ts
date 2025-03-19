@@ -44,4 +44,12 @@ export class AppConfigurationService {
     get nodeEnv() {
         return this.configService.get("app.nodeEnv");
     }
+
+    get freeTierIterationsLimit() {
+        return this.configService.get("app.freeTierIterationsLimit");
+    }
+
+    get startupTierIterationsLimit() {
+        return this.configService.get("app.startupTierIterationsLimit");
+    }
 }

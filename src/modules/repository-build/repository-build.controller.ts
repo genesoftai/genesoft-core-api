@@ -1,9 +1,10 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Post, Put } from "@nestjs/common";
 import { RepositoryBuildService } from "./repository-build.service";
 import {
     CheckFrontendRepositoryBuildDto,
     CheckRepositoryBuildOverviewDto,
     RecheckFrontendBuildDto,
+    UpdateRepositoryBuildStatusDto,
 } from "./dto/repository-build.dto";
 
 @Controller("repository-build")
@@ -31,5 +32,12 @@ export class RepositoryBuildController {
         return this.repositoryBuildService.recheckFrontendBuildWithoutRebuild(
             payload,
         );
+    }
+
+    @Put("status")
+    async updateRepositoryBuildStatus(
+        @Body() payload: UpdateRepositoryBuildStatusDto,
+    ) {
+        return this.repositoryBuildService.updateRepositoryBuildStatus(payload);
     }
 }

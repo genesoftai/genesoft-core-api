@@ -18,15 +18,8 @@ import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
 import { AxiosError } from "axios";
 import { VercelConfigurationService } from "@modules/configuration/vercel";
 import { VercelProject } from "./entity/vercel-project.entity";
-import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
-import { Supabase } from "@/modules/supabase/entity/supabase.entity";
-import { SupabaseService } from "@/modules/supabase/supabase.service";
-import { BackendInfraService } from "@/modules/backend-infra/backend-infra.service";
 import { CreateNewVercelDeploymentDto } from "./dto/create-new-deployment.dto";
-import {
-    GENESOFT_CORE_API_SERVICE_BASE_URL,
-    GENESOFT_CORE_API_SERVICE_API_KEY,
-} from "../constants/genesoft";
+
 @Injectable()
 export class FrontendInfraService {
     private readonly serviceName = "FrontendInfraService";
@@ -40,12 +33,6 @@ export class FrontendInfraService {
         private readonly vercelConfigurationService: VercelConfigurationService,
         @InjectRepository(VercelProject)
         private vercelProjectRepository: Repository<VercelProject>,
-        @InjectRepository(Supabase)
-        private supabaseRepository: Repository<Supabase>,
-        @InjectRepository(KoyebProject)
-        private koyebProjectRepository: Repository<KoyebProject>,
-        private readonly supabaseService: SupabaseService,
-        private readonly backendInfraService: BackendInfraService,
     ) {}
 
     // Vercel
@@ -220,29 +207,9 @@ export class FrontendInfraService {
     async getInitialVercelProjectEnvVars(
         project_id: string,
     ): Promise<EnvironmentVariableDto[]> {
-        const supabase = await this.supabaseRepository.findOne({
-            where: { project_id },
-        });
-
-        const anonKey = await this.supabaseService.getKeyInfoFromProjectApiKeys(
-            project_id,
-            "anon",
-        );
-
+        // const firebaseConfig = {}
         const environmentVariables = [
             // Production
-            {
-                key: "NEXT_PUBLIC_SUPABASE_URL",
-                target: ["production"],
-                value: supabase.url,
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-                target: ["production"],
-                value: anonKey.api_key,
-                type: "plain",
-            },
             {
                 key: "NEXT_PUBLIC_APP_URL",
                 target: ["production"],
@@ -262,32 +229,48 @@ export class FrontendInfraService {
                 type: "plain",
             },
             {
-                key: "GENESOFT_CORE_API_SERVICE_BASE_URL",
+                key: "NEXT_PUBLIC_FIREBASE_API_KEY",
                 target: ["production"],
-                value: GENESOFT_CORE_API_SERVICE_BASE_URL,
+                value: "xxx",
                 type: "plain",
             },
             {
-                key: "GENESOFT_CORE_API_SERVICE_API_KEY",
+                key: "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
                 target: ["production"],
-                value: GENESOFT_CORE_API_SERVICE_API_KEY,
+                value: "nextjs-firebase-web-template.firebaseapp.com",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+                target: ["production"],
+                value: "nextjs-firebase-web-template",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+                target: ["production"],
+                value: "nextjs-firebase-web-template.firebasestorage.app",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+                target: ["production"],
+                value: "xxx",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_APP_ID",
+                target: ["production"],
+                value: "xxx",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID",
+                target: ["production"],
+                value: "xxx",
                 type: "plain",
             },
             // Development
-            {
-                key: "NEXT_PUBLIC_SUPABASE_URL",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: supabase.url,
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: anonKey.api_key,
-                type: "plain",
-            },
             {
                 key: "NEXT_PUBLIC_APP_URL",
                 target: ["preview"],
@@ -310,17 +293,52 @@ export class FrontendInfraService {
                 type: "plain",
             },
             {
-                key: "GENESOFT_CORE_API_SERVICE_BASE_URL",
+                key: "NEXT_PUBLIC_FIREBASE_API_KEY",
                 target: ["preview"],
                 gitBranch: "dev",
-                value: GENESOFT_CORE_API_SERVICE_BASE_URL,
+                value: "xxx",
                 type: "plain",
             },
             {
-                key: "GENESOFT_CORE_API_SERVICE_API_KEY",
+                key: "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
                 target: ["preview"],
                 gitBranch: "dev",
-                value: GENESOFT_CORE_API_SERVICE_API_KEY,
+                value: "nextjs-firebase-web-template.firebaseapp.com",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: "nextjs-firebase-web-template",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: "nextjs-firebase-web-template.firebasestorage.app",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: "xxx",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_APP_ID",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: "xxx",
+                type: "plain",
+            },
+            {
+                key: "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID",
+                target: ["preview"],
+                gitBranch: "dev",
+                value: "xxx",
                 type: "plain",
             },
         ];
@@ -703,51 +721,78 @@ export class FrontendInfraService {
 
     async createNewVercelDeployment(payload: CreateNewVercelDeploymentDto) {
         const { project_id, deployment_id } = payload;
-        const vercelProject =
-            await this.findVercelProjectByProjectId(project_id);
-        this.logger.log({
-            message: `${this.serviceName}.createNewVercelDeployment: Vercel project`,
-            metadata: { vercelProject },
-        });
-        const repository = await this.githubRepositoryRepository.findOne({
-            where: {
-                project_id,
-                type: ProjectType.Web,
-            },
-        });
 
-        const headers = {
-            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
-        };
-
-        const response = await lastValueFrom(
-            this.httpService
-                .post(
-                    `${this.vercelApiBaseUrl}/v13/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}&forceNew=1&skipAutoDetectionConfirmation=1`,
-                    {
-                        name: `${repository.name}-deployment-${deployment_id}`,
-                        target: "preview",
-                        gitSource: {
-                            type: "github",
-                            ref: "dev",
-                            repoId: vercelProject?.link?.repoId,
+        try {
+            const vercelProject =
+                await this.findVercelProjectByProjectId(project_id);
+            const repository = await this.githubRepositoryRepository.findOne({
+                where: {
+                    project_id,
+                    type: ProjectType.Web,
+                },
+            });
+            const url = `${this.vercelApiBaseUrl}/v13/deployments?teamId=${this.vercelConfigurationService.vercelTeamId}`;
+            const data = {
+                name: `${repository.name}-instant-deployment`,
+                target: "preview",
+                gitSource: {
+                    type: "github",
+                    repo: repository.name,
+                    ref: "dev",
+                    org: "genesoftai",
+                },
+                project: vercelProject.vercel_project_id,
+                withLatestCommit: true,
+            };
+            this.logger.log({
+                message: `${this.serviceName}.createNewVercelDeployment: Data`,
+                metadata: { data },
+            });
+            const response = await lastValueFrom(
+                this.httpService
+                    .post(url, data, {
+                        headers: {
+                            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
                         },
-                    },
-                    { headers },
-                )
-                .pipe(
-                    concatMap((res) => of(res.data)),
-                    retry(2),
-                    catchError((error: AxiosError) => {
-                        this.logger.error({
-                            message: `${this.serviceName}.createNewVercelDeployment: Error creating deployment`,
-                            metadata: { error },
-                        });
-                        throw error;
-                    }),
-                ),
-        );
+                    })
+                    .pipe(
+                        concatMap((res) => of(res.data)),
+                        retry(2),
+                        catchError((error: AxiosError) => {
+                            this.logger.error({
+                                message: `${this.serviceName}.createNewVercelDeployment: Error creating deployment`,
+                                metadata: { error },
+                            });
+                            throw error;
+                        }),
+                    ),
+            );
+            this.logger.log({
+                message: `${this.serviceName}.createNewVercelDeployment: Vercel deployment`,
+                metadata: { response },
+            });
 
-        return response;
+            // const createResponse =
+            //     await this.vercel.deployments.createDeployment({
+            //         requestBody: {
+            //             name: `${repository.name}-deployment-${deployment_id}`,
+            //             target: "preview",
+            //             gitSource: {
+            //                 type: "github",
+            //                 repo: repository.name,
+            //                 ref: "dev",
+            //                 org: "genesoftai",
+            //             },
+            //         },
+            //     });
+
+            // return createResponse;
+            return response;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createNewVercelDeployment: Error creating deployment`,
+                metadata: { error },
+            });
+        }
     }
 }
