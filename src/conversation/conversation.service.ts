@@ -167,6 +167,17 @@ export class ConversationService {
         return finalMessages;
     }
 
+    async getActiveConversationByProjectId(
+        projectId: string,
+    ): Promise<Conversation> {
+        const conversation = await this.conversationRepository.findOne({
+            where: { project_id: projectId, status: "active" },
+            order: { created_at: "DESC" },
+        });
+
+        return conversation;
+    }
+
     async getActiveConversationByPageId(pageId: string): Promise<Conversation> {
         const conversation = await this.conversationRepository.findOne({
             where: { page_id: pageId, status: "active" },
@@ -185,6 +196,47 @@ export class ConversationService {
         });
 
         return conversation;
+    }
+
+    async findConversationsByProjectId(
+        projectId: string,
+    ): Promise<Conversation[]> {
+        const conversations = await this.conversationRepository.find({
+            where: { project_id: projectId },
+            order: { created_at: "ASC" },
+        });
+
+        return conversations;
+    }
+
+    async findConversationsWithIterationsByProjectId(
+        projectId: string,
+    ): Promise<Conversation[]> {
+        // Create a map of iterations by ID for faster lookups
+        const iterations = await this.iterationRepository.find({
+            where: { project_id: projectId },
+            order: { created_at: "ASC" },
+        });
+
+        const iterationMap = new Map();
+        iterations.forEach((iteration) => {
+            iterationMap.set(iteration.id, iteration);
+        });
+
+        // Get conversations and attach iterations in one pass
+        const conversations = await this.conversationRepository.find({
+            where: { project_id: projectId },
+            order: { created_at: "ASC" },
+        });
+
+        const filteredConversations = conversations
+            .slice(0, -1)
+            .filter((conversation) => conversation.name !== null);
+
+        return filteredConversations.map((conversation) => {
+            const iteration = iterationMap.get(conversation.iteration_id);
+            return { ...conversation, iteration };
+        });
     }
 
     async findConversationsByPageId(pageId: string): Promise<Conversation[]> {
@@ -290,70 +342,6 @@ export class ConversationService {
             conversation_id = newConversation.id;
         }
 
-        // Get the latest iteration for the project
-        const latestIteration = await this.iterationRepository.findOne({
-            where: { project_id: payload.project_id },
-            order: { created_at: "DESC" },
-        });
-
-        let iterationContext =
-            "Remember to use sprint instead of iteration so user can understand because we use sprint wording in web UI. Don't need to talk about sprint every response message if user didn't ask something related to it.";
-        if (latestIteration.type === IterationType.Project) {
-            iterationContext = `
-            These are the latest iteration for create the project:
-            Iteration ID: ${latestIteration.id}
-            Status: ${latestIteration.status}
-            Type: ${latestIteration.type}
-            
-            If user talking to you, tell them that you are working on the project and you will get back to them soon.
-            Tell them to check on development status tab on the right side if use desktop browser or web application information tab then development status tab if use mobile browser.
-            If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.
-            `;
-        } else if (latestIteration.type === IterationType.PageDevelopment) {
-            iterationContext = `
-            These are the latest iteration for update the page:
-            Iteration ID: ${latestIteration.id}
-            Status: ${latestIteration.status}
-            Type: ${latestIteration.type}
-            `;
-        } else if (latestIteration.type === IterationType.FeatureDevelopment) {
-            iterationContext = `
-            These are the latest iteration for update the feature:
-            Iteration ID: ${latestIteration.id}
-            Status: ${latestIteration.status}
-            Type: ${latestIteration.type}
-            `;
-        } else {
-            iterationContext = `
-            No latest iteration found for this project.
-            `;
-        }
-
-        const latestIterationTasks = await this.iterationTaskRepository.find({
-            where: { iteration_id: latestIteration.id },
-        });
-
-        if (latestIterationTasks.length > 0) {
-            for (const latestIterationTask of latestIterationTasks) {
-                iterationContext += `
-                Task: ${latestIterationTask.name}
-                Status: ${latestIterationTask.status}
-                Team: ${latestIterationTask.team}
-                `;
-
-                if (
-                    latestIterationTask.result &&
-                    latestIterationTask.result.past_steps
-                ) {
-                    for (const step of latestIterationTask.result.past_steps) {
-                        iterationContext += `
-                        - ${step}
-                        `;
-                    }
-                }
-            }
-        }
-
         try {
             const existingConversation =
                 await this.findConversationById(conversation_id);
@@ -390,11 +378,6 @@ export class ConversationService {
                     },
                 });
 
-            const messagesContext = `
-            These are historical messages between users and you as a project manager:
-            ${formattedMessages.join("\n")}
-            `;
-
             const frontendRepoTreeResponse =
                 await this.githubService.getRepositoryTrees({
                     repository: frontendRepository.name,
@@ -406,8 +389,10 @@ export class ConversationService {
             );
 
             const userInput = `
-            Please answer user messages:
+            These are historical messages between users and you as a project manager:
             ${formattedMessages.join("\n")}
+
+            Please answer user latest message:
             `;
 
             const systemMessage = `
@@ -419,17 +404,24 @@ export class ConversationService {
             4. Bridge the gap between business requirements and technical implementation
             5. Offer informative responses about project features, architecture, and development process
             6. Guide discussions to ensure feedback is actionable and aligned with project goals
-            7. Please tell user to click on Start Sprint button when they complted the conversation to inform software development team to start the development sprint.
+
+            Basic Integration needed from customer to make their web application work with Genesoft:
+            - Firebase database, authentication, and storage integration.
+            - Stripe payment integration.
+
+            Genesoft managed infrastructure:
+            - Code repository on Github.
+            - Web deployment on Vercel.
 
             Please engage in a helpful conversation while keeping both business value and technical feasibility in mind.
             `;
 
             const userGuide = `
             These are important information about how to use Genesoft
-            - Tell them to check on development status tab on the right side if use desktop browser or preview tab on mobile browser then development status tab to see progress of the latest development sprint.
+            - Tell them to clicked 'generate' button (not 'start sprint' button anymore) to start trigger the development sprint (don't need to tell them every time just tell when feel like user curious about it or user ready to start development sprint).
             - If deployment is in progess mean we're deploying customer web application, it may take a while to complete around 2-3 minutes since user see deployment in progress.
-
-            Keep in mind you don't need to tell user about it every conversation, just when user curious about how Genesoft work or ask about it. It so annoying when you talking about them every message response.
+            - User able to upload image in this conversation, and describe the image to Genesoft to make it easier for Genesoft to understand the user request.
+            - Tell user to refresh web preview after generation completed to see latest version of their web application.
             `;
 
             const answerInstructions = `Please not use technical terms to talk with user unless user asks about it. Remember that our main target users are non-technical users. Please answer with concise and simple sentences that easy to understand and get into the point. Please answer like you are their colleague who are friendly and helpful with a sense of humor but serious on the point to make user want to talk with you like they want to work with their colleague. I want user to feel like work in the workspace like Slack when talking with you.`;
@@ -459,24 +451,6 @@ export class ConversationService {
                 {
                     role: "user",
                     content: userGuide,
-                },
-                {
-                    role: "user",
-                    content:
-                        "If user want to add image to their web application tell them to send image url and specify the page and feature name that they want to implement image to.",
-                },
-                {
-                    role: "user",
-                    content:
-                        "For feature that Genesoft don't have for now, tell user to send email to support@genesoftai.com to request the feature, Genesoft will add the feature for user soon.",
-                },
-                {
-                    role: "user",
-                    content: messagesContext,
-                },
-                {
-                    role: "user",
-                    content: iterationContext,
                 },
                 {
                     role: "user",
@@ -567,6 +541,11 @@ export class ConversationService {
                 );
             }
 
+            const conversationName =
+                await this.llmService.generateConversationName(
+                    conversation.messages,
+                );
+
             const project = await this.projectService.getProjectById(
                 conversation.project_id,
             );
@@ -595,60 +574,26 @@ export class ConversationService {
             const users =
                 await this.userService.getUsersByOrganizationId(organizationId);
             const usersEmail = users.map((user) => user.email);
-            let pageName = "";
-            if (conversation.page_id) {
-                const page = await this.pageService.getPage(
-                    conversation.page_id,
-                );
-                pageName = page.name;
-            }
-            let featureName = "";
-            if (conversation.feature_id) {
-                const feature = await this.featureService.getFeature(
-                    conversation.feature_id,
-                );
-                featureName = feature.name;
-            }
 
-            const conversationCategory = conversation.page_id
-                ? "page"
-                : "feature";
-            const conversationChannelName =
-                conversationCategory === "page" ? pageName : featureName;
-
-            // 5. start `page/feature` iteration
-            let interation;
-            if (conversation.page_id) {
-                interation = await this.developmentService.createPageIteration({
-                    conversation_id: conversation.id,
-                    project_id: conversation.project_id,
-                    page_id: conversation.page_id,
-                });
-            } else if (conversation.feature_id) {
-                interation =
-                    await this.developmentService.createFeatureIteration({
-                        conversation_id: conversation.id,
-                        project_id: conversation.project_id,
-                        feature_id: conversation.feature_id,
-                    });
-            }
+            // TODO: recamp to only 1 type of iteration -> create core development iteration
+            const interation = await this.developmentService.createIteration({
+                conversation_id: conversation.id,
+                project_id: conversation.project_id,
+                type: IterationType.CoreDevelopment,
+                is_supabase_integration: false,
+            });
 
             // 2. Update the conversation status to submitted
             conversation.status = "submitted";
-            conversation.name = payload.name;
+            conversation.name = conversationName;
             conversation.iteration_id = interation.id;
             await this.conversationRepository.save(conversation);
 
             // 3. Send email to the user
             try {
-                const sprintTypeForSend =
-                    conversationCategory.charAt(0).toUpperCase() +
-                    conversationCategory.slice(1);
-                const targetId =
-                    conversation.feature_id || conversation.page_id;
                 await this.emailService.sendEmail({
                     to: usersEmail,
-                    subject: `${sprintTypeForSend} development sprint started for ${payload.name} sprint`,
+                    subject: `${project.name} web application development started for ${conversationName} generation`,
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                             <div style="text-align: center; margin-bottom: 20px;">
@@ -656,21 +601,19 @@ export class ConversationService {
                             </div>
                             <h2 style="color: #4a86e8; margin-bottom: 20px;">Development Sprint Started!</h2>
                             <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                We're pleased to inform you that the development sprint for your ${conversationCategory} has been successfully started.
+                                We're pleased to inform you that the development sprint has been successfully started.
                             </p>
                             <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
                                 <p style="margin: 0; font-size: 15px;">
                                     <strong>Project:</strong> ${project.name || "No project name provided"}<br>
-                                    <strong>Sprint:</strong> ${conversation.name || "No name provided"}<br>
-                                    <strong>${sprintTypeForSend}:</strong> ${conversationChannelName || "No name provided"}<br>
-                                    <strong>Description:</strong> ${project.description || "No description provided"}
+                                    <strong>Generation:</strong> ${conversation.name || "No name provided"}<br>
                                 </p>
                             </div>
                             <p style="font-size: 16px; line-height: 1.5; color: #333;">
                                 You can now track the progress in your project dashboard.
                             </p>
                             <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${conversation.project_id}/${conversationCategory}s/${targetId}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your ${sprintTypeForSend}</a>
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/${conversation.project_id}/ai-agent" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Project</a>
                             </div>
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
                                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>

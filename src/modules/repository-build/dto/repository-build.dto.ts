@@ -82,3 +82,13 @@ export class RecheckFrontendBuildDto {
     @IsNotEmpty()
     project_id: string;
 }
+
+export class UpdateRepositoryBuildStatusDto {
+    @IsString()
+    @IsNotEmpty()
+    iteration_id: string;
+
+    @IsString()
+    @IsNotEmpty()
+    status: string;
+}

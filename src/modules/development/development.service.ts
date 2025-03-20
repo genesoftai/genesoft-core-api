@@ -46,15 +46,14 @@ import { PageService } from "@/page/page.service";
 import { FeatureService } from "@/feature/feature.service";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { OrganizationService } from "../organization/organization.service";
-import {
-    FREE_TIER_ITERATIONS_LIMIT,
-    STARTUP_TIER_ITERATIONS_LIMIT,
-} from "../constants/subscription";
 import { Subscription } from "../subscription/entity/subscription.entity";
+import { AppConfigurationService } from "@/modules/configuration/app/app.service";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
     private readonly serviceName = "DevelopmentService";
+    private readonly freeTierIterationsLimit: number;
+    private readonly startupTierIterationsLimit: number;
 
     constructor(
         @InjectRepository(Iteration)
@@ -84,7 +83,13 @@ export class DevelopmentService {
         private readonly organizationService: OrganizationService,
         @InjectRepository(Subscription)
         private subscriptionRepository: Repository<Subscription>,
-    ) {}
+        private readonly appConfigurationService: AppConfigurationService,
+    ) {
+        this.freeTierIterationsLimit =
+            this.appConfigurationService.freeTierIterationsLimit;
+        this.startupTierIterationsLimit =
+            this.appConfigurationService.startupTierIterationsLimit;
+    }
 
     // Iteration CRUD
     async createIteration(payload: CreateIterationDto): Promise<Iteration> {
@@ -115,6 +120,29 @@ export class DevelopmentService {
                 );
                 this.logger.log({
                     message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
+                    metadata: { response: response.data },
+                });
+            } else if (payload.type === IterationType.CoreDevelopment) {
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Create Core Development iteration`,
+                });
+                const response = await lastValueFrom(
+                    this.httpService.post(
+                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
+                        {
+                            project_id: payload.project_id,
+                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                            iteration_id: savedIteration.id,
+                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                            branch: "dev",
+                            is_supabase_integration:
+                                payload.is_supabase_integration || false,
+                            conversation_id: payload.conversation_id,
+                        },
+                    ),
+                );
+                this.logger.log({
+                    message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
                     metadata: { response: response.data },
                 });
             }
@@ -383,79 +411,31 @@ export class DevelopmentService {
 
             if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.PageDevelopment
+                updatedIteration.type === IterationType.CoreDevelopment
             ) {
-                const page = await this.pageService.getPage(
-                    conversation.page_id,
-                );
                 await this.emailService.sendEmail({
                     to: [...userEmails, GENESOFT_AI_EMAIL],
-                    subject: `Page development sprint completed for ${conversation.name} sprint`,
+                    subject: `Web application development completed for ${conversation.name} conversation`,
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                             <div style="text-align: center; margin-bottom: 20px;">
                                 <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
                             </div>
-                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Page Development Sprint is Complete</h2>
+                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Web Application Development is Completed!</h2>
                             <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                We're pleased to inform you that the development sprint for your page has been successfully completed.
+                                We're pleased to inform you that the latest generation for your web application has been successfully completed.
                             </p>
                             <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
                                 <p style="margin: 0; font-size: 15px;">
                                     <strong>Project:</strong> ${project.name || "No project name provided"}<br>
-                                    <strong>Sprint:</strong> ${conversation.name || "No name provided"}<br>
-                                    <strong>Page:</strong> ${page.name || "No name provided"}<br>
-                                    <strong>Description:</strong> ${page.description || "No description provided"}
+                                    <strong>Conversation:</strong> ${conversation.name || "No name provided"}<br>
                                 </p>
                             </div>
                             <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                You can now review the completed work in your project dashboard.
+                                You can now review the completed work in your AI Agent page of Genesoft.
                             </p>
                             <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}/pages/${conversation.page_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Page</a>
-                            </div>
-                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
-                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
-                            </div>
-                        </div>
-                    `,
-                    from: GENESOFT_SUPPORT_EMAIL_FROM,
-                });
-                await this.repositoryBuildService.checkRepositoryBuildOverview({
-                    project_id: updatedIteration.project_id,
-                });
-            } else if (
-                status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.FeatureDevelopment
-            ) {
-                const feature = await this.featureService.getFeature(
-                    conversation.feature_id,
-                );
-                await this.emailService.sendEmail({
-                    to: [...userEmails, GENESOFT_AI_EMAIL],
-                    subject: `Feature development sprint completed for ${conversation.name} sprint`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-                            <div style="text-align: center; margin-bottom: 20px;">
-                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
-                            </div>
-                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Feature Development Sprint is Complete</h2>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                We're pleased to inform you that the development sprint for your feature has been successfully completed.
-                            </p>
-                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                                <p style="margin: 0; font-size: 15px;">
-                                    <strong>Project:</strong> ${project.name || "No project name provided"}<br>
-                                    <strong>Sprint:</strong> ${conversation.name || "No name provided"}<br>
-                                    <strong>Feature:</strong> ${feature.name || "No name provided"}<br>
-                                    <strong>Description:</strong> ${feature.description || "No description provided"}
-                                </p>
-                            </div>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                You can now review the completed work in your project dashboard.
-                            </p>
-                            <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}/features/${conversation.feature_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Feature</a>
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/${updatedIteration.project_id}/ai-agent" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View latest version of your web application</a>
                             </div>
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
                                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
@@ -1150,17 +1130,6 @@ export class DevelopmentService {
 
             const iterationCount = iterations.length;
 
-            this.logger.log({
-                message: `${this.serviceName}.getMonthlyIterationsOfOrganization: Retrieved monthly iterations`,
-                metadata: {
-                    organizationId,
-                    projectCount: projects.length,
-                    iterationCount,
-                    month: now.getMonth() + 1,
-                    year: now.getFullYear(),
-                },
-            });
-
             const subscription = await this.subscriptionRepository.findOne({
                 where: { organization_id: organizationId },
             });
@@ -1169,14 +1138,14 @@ export class DevelopmentService {
                 return {
                     iterations,
                     count: iterationCount,
-                    exceeded: iterationCount >= FREE_TIER_ITERATIONS_LIMIT,
+                    exceeded: iterationCount >= this.freeTierIterationsLimit,
                     tier: "free",
-                    remaining: FREE_TIER_ITERATIONS_LIMIT - iterationCount,
+                    remaining: this.freeTierIterationsLimit - iterationCount,
                 };
             }
-            const exceeded = iterationCount >= STARTUP_TIER_ITERATIONS_LIMIT;
+            const exceeded = iterationCount >= this.startupTierIterationsLimit;
             const tier = subscription.tier;
-            const remaining = STARTUP_TIER_ITERATIONS_LIMIT - iterationCount;
+            const remaining = this.startupTierIterationsLimit - iterationCount;
 
             return {
                 iterations,

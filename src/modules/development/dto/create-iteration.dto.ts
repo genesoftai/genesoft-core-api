@@ -16,6 +16,14 @@ export class CreateIterationDto {
     @IsBoolean()
     @IsOptional()
     is_updated_requirements?: boolean;
+
+    @IsBoolean()
+    @IsOptional()
+    is_supabase_integration?: boolean;
+
+    @IsString()
+    @IsOptional()
+    conversation_id?: string;
 }
 
 export class CreatePageIterationDto {

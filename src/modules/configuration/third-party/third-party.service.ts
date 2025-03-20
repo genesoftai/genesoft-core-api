@@ -18,4 +18,16 @@ export class ThirdPartyConfigurationService {
     get exaApiKey() {
         return this.configService.get("thirdParty.exaApiKey");
     }
+
+    get codesandboxApiKey() {
+        return this.configService.get("thirdParty.codesandboxApiKey");
+    }
+
+    get gcpApiKey() {
+        return this.configService.get("thirdParty.gcpApiKey");
+    }
+
+    get gcpOrganizationId() {
+        return this.configService.get("thirdParty.gcpOrganizationId");
+    }
 }

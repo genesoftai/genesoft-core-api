@@ -77,3 +77,11 @@ Nest is [MIT licensed](LICENSE).
 supabase db dump --db-url postgresql://postgres:7dnI2HzaHfc1Rf88@db.ygzsaiorzjifzfzgucod.supabase.co:5432/postgres > supabase/migration.sql
 
 <!-- Just to make update -->
+
+# Code sandbox template id
+
+1.Next.js -> fxis37
+The official Next.js template by the CodeSandbox team
+
+2.Next.js + Postgres -> k5hn76
+The perfect starter for a full-stack application using Next.js, Postgres and Drizzle-ORM.

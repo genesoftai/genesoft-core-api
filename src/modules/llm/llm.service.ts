@@ -8,6 +8,8 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import Exa from "exa-js";
 import { ThirdPartyConfigurationService } from "../configuration/third-party/third-party.service";
 import { ExaSearchResults } from "@langchain/exa";
+import { ConversationMessage } from "@/conversation/entity/message.entity";
+import { z } from "zod";
 
 @Injectable()
 export class LlmService {
@@ -117,6 +119,81 @@ export class LlmService {
                     },
                 ],
             });
+        }
+    }
+
+    async generateConversationName(
+        messages: ConversationMessage[],
+    ): Promise<string> {
+        const ConversationNameFormatter = z.object({
+            name: z.string().describe("The name of the conversation"),
+        });
+        try {
+            const formattedMessages = messages.map((message) => {
+                return `[${message.sender_type.toUpperCase()}] ${message.content}`;
+            });
+            const messagesContext = `
+            These are historical messages between users and you as a project manager:
+            ${formattedMessages.join("\n")}
+
+            Please generate a name for the conversation based on the messages.
+            Make it short and concise in 1 sentence.
+            `;
+            const chatOpenAI = new ChatOpenAI({
+                model: "gpt-4o-mini",
+            }).withStructuredOutput(ConversationNameFormatter);
+
+            const chatOpenAIWrapper = wrapSDK(chatOpenAI, {
+                name: "generateConversationName",
+                run_type: "llm",
+            });
+            const result = await chatOpenAIWrapper.invoke([
+                new HumanMessage({
+                    content: messagesContext,
+                }),
+            ]);
+            return result.name;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName} Error getting conversation name`,
+                error,
+            });
+            throw error;
+        }
+    }
+
+    async generateProjectName(description: string): Promise<string> {
+        const ProjectNameFormatter = z.object({
+            name: z.string().describe("The name of the project"),
+        });
+        try {
+            const input = `
+            This is the description of the project from user:
+            ${description}
+
+            Please generate a name for the project based on the description.
+            Make it short and concise in 1 sentence.
+            `;
+            const chatOpenAI = new ChatOpenAI({
+                model: "gpt-4o-mini",
+            }).withStructuredOutput(ProjectNameFormatter);
+
+            const chatOpenAIWrapper = wrapSDK(chatOpenAI, {
+                name: "generateProjectName",
+                run_type: "llm",
+            });
+            const result = await chatOpenAIWrapper.invoke([
+                new HumanMessage({
+                    content: input,
+                }),
+            ]);
+            return result.name;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName} Error getting project name`,
+                error,
+            });
+            throw error;
         }
     }
 }

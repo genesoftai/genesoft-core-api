@@ -26,6 +26,8 @@ import { UserModule } from "../user/user.module";
 import { OrganizationModule } from "../organization/organization.module";
 import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
+import { CodesandboxModule } from "../codesandbox/codesandbox.module";
+import { LlmModule } from "../llm/llm.module";
 
 @Module({
     imports: [
@@ -55,6 +57,8 @@ import { Conversation } from "@/conversation/entity/conversation.entity";
         forwardRef(() => DevelopmentModule),
         forwardRef(() => OrganizationModule),
         forwardRef(() => ConversationModule),
+        CodesandboxModule,
+        LlmModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],

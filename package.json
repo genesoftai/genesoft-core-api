@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",
+    "@codesandbox/sdk": "^0.11.0",
+    "@google-cloud/resource-manager": "^5.3.1",
     "@langchain/core": "^0.3.42",
     "@langchain/exa": "^0.1.0",
     "@langchain/google-genai": "^0.1.10",
@@ -42,7 +44,9 @@
     "axios": "^1.7.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "codesandbox": "^2.2.3",
     "exa-js": "^1.4.10",
+    "firebase-admin": "^13.2.0",
     "jszip": "^3.10.1",
     "langchain": "^0.3.15",
     "nest-winston": "^1.9.7",
