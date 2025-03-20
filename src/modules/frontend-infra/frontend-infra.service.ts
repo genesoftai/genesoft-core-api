@@ -209,68 +209,6 @@ export class FrontendInfraService {
     ): Promise<EnvironmentVariableDto[]> {
         // const firebaseConfig = {}
         const environmentVariables = [
-            // Production
-            {
-                key: "NEXT_PUBLIC_APP_URL",
-                target: ["production"],
-                value: "https://test.app.com",
-                type: "plain",
-            },
-            {
-                key: "NODE_ENV",
-                target: ["production"],
-                value: "production",
-                type: "plain",
-            },
-            {
-                key: "GENESOFT_PROJECT_ID",
-                target: ["production"],
-                value: project_id,
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_API_KEY",
-                target: ["production"],
-                value: "xxx",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-                target: ["production"],
-                value: "nextjs-firebase-web-template.firebaseapp.com",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-                target: ["production"],
-                value: "nextjs-firebase-web-template",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-                target: ["production"],
-                value: "nextjs-firebase-web-template.firebasestorage.app",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-                target: ["production"],
-                value: "xxx",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_APP_ID",
-                target: ["production"],
-                value: "xxx",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID",
-                target: ["production"],
-                value: "xxx",
-                type: "plain",
-            },
-            // Development
             {
                 key: "NEXT_PUBLIC_APP_URL",
                 target: ["preview"],
@@ -614,20 +552,12 @@ export class FrontendInfraService {
         }
 
         const events = await this.getDeploymentEvents(deployment.uid);
-        this.logger.log({
-            message: `${this.serviceName}.getLatestVercelDeployment: Deployment events`,
-            metadata: { events },
-        });
         events.forEach((event) => {
             const date = new Date(event.date).toLocaleString();
             const text = event.text;
             const type = event.type;
 
             errorMessage += `${date} - ${type}, ${event.info.type}: ${text}\n`;
-        });
-        this.logger.log({
-            message: `${this.serviceName}.getLatestVercelDeployment: Deployment events`,
-            metadata: { errorMessage },
         });
 
         return { deployment, status: "failed", errorMessage };
