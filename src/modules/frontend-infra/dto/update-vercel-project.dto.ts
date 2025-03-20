@@ -28,6 +28,10 @@ export class EnvironmentVariableDto {
     @IsString()
     @IsOptional()
     gitBranch?: string;
+
+    @IsString()
+    @IsOptional()
+    comment?: string;
 }
 
 export class AddEnvironmentVariablesToVercelProjectDto {

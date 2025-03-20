@@ -32,6 +32,7 @@ import { ConversationModule } from "./conversation/conversation.module";
 import { SubscriptionModule } from "./modules/subscription/subscription.module";
 import { CodesandboxModule } from "./modules/codesandbox/codesandbox.module";
 import { FirebaseModule } from "./modules/firebase/firebase.module";
+import { IntegrationModule } from "./modules/integration/integration.module";
 
 @Module({
     imports: [
@@ -84,6 +85,7 @@ import { FirebaseModule } from "./modules/firebase/firebase.module";
         SubscriptionModule,
         CodesandboxModule,
         FirebaseModule,
+        IntegrationModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],
