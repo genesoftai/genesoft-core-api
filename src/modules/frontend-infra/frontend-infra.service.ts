@@ -427,50 +427,59 @@ export class FrontendInfraService {
 
         return response;
     }
-
     async addOneEnvironmentVariableToVercelProject(
         payload: AddOneEnvironmentVariableToVercelProjectDto,
     ) {
         const { project_id, environment_variable } = payload;
 
-        const vercelProject = await this.vercelProjectRepository.findOne({
-            where: { project_id },
-        });
+        try {
+            const vercelProject = await this.vercelProjectRepository.findOne({
+                where: { project_id },
+            });
 
-        if (!vercelProject) {
-            throw new NotFoundException("Vercel project not found");
+            if (!vercelProject) {
+                throw new NotFoundException("Vercel project not found");
+            }
+
+            const url = `${this.vercelApiBaseUrl}/v10/projects/${vercelProject.vercel_project_id}/env?teamId=${this.vercelConfigurationService.vercelTeamId}&upsert=true`;
+            const headers = {
+                Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
+            };
+
+            this.logger.log({
+                message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: API Request`,
+                metadata: { url, environment_variable, headers },
+            });
+
+            const response = await lastValueFrom(
+                this.httpService
+                    .post(url, environment_variable, { headers })
+                    .pipe(
+                        concatMap((res) => of(res.data)),
+                        retry(2),
+                        catchError((error: AxiosError) => {
+                            this.logger.error({
+                                message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: Error adding environment variable`,
+                                metadata: { error },
+                            });
+                            throw error;
+                        }),
+                    ),
+            );
+
+            this.logger.log({
+                message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: Added environment variable`,
+                metadata: { response },
+            });
+
+            return response;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: Unexpected error`,
+                metadata: { error },
+            });
+            throw error;
         }
-
-        const url = `${this.vercelApiBaseUrl}/v10/projects/${vercelProject.vercel_project_id}/env?teamId=${this.vercelConfigurationService.vercelTeamId}&upsert=true`;
-        const headers = {
-            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
-        };
-
-        this.logger.log({
-            message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: API Request`,
-            metadata: { url, environment_variable, headers },
-        });
-
-        const response = await lastValueFrom(
-            this.httpService.post(url, environment_variable, { headers }).pipe(
-                concatMap((res) => of(res.data)),
-                retry(2),
-                catchError((error: AxiosError) => {
-                    this.logger.error({
-                        message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: Error adding environment variable`,
-                        metadata: { error },
-                    });
-                    throw error;
-                }),
-            ),
-        );
-
-        this.logger.log({
-            message: `${this.serviceName}.addOneEnvironmentVariableToVercelProject: Added environment variable`,
-            metadata: { response },
-        });
-
-        return response;
     }
 
     async deleteVercelProjectByProjectId(project_id: string) {
@@ -794,5 +803,31 @@ export class FrontendInfraService {
                 metadata: { error },
             });
         }
+    }
+
+    async getVercelProjectEnvVars(project_id: string) {
+        const vercelProject = await this.vercelProjectRepository.findOne({
+            where: { project_id },
+        });
+
+        const url = `${this.vercelApiBaseUrl}/v10/projects/${vercelProject.vercel_project_id}/env?teamId=${this.vercelConfigurationService.vercelTeamId}`;
+        const headers = {
+            Authorization: `Bearer ${this.vercelConfigurationService.vercelAccessToken}`,
+        };
+
+        const response = await lastValueFrom(
+            this.httpService.get(url, { headers }).pipe(
+                concatMap((res) => of(res.data)),
+                retry(2),
+                catchError((error: AxiosError) => {
+                    this.logger.error({
+                        message: `${this.serviceName}.getVercelProjectEnvVars: Error getting Vercel project env vars`,
+                        metadata: { error },
+                    });
+                    throw error;
+                }),
+            ),
+        );
+        return response;
     }
 }
