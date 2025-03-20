@@ -34,4 +34,7 @@ export class Project {
 
     @UpdateDateColumn({ name: "updated_at" })
     updated_at: Date;
+
+    @Column({ name: "sandbox_id", type: "text", nullable: true })
+    sandbox_id: string;
 }

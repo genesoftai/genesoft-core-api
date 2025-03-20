@@ -11,4 +11,6 @@ export default registerAs("app", () => ({
     databaseName: process.env.DATABASE_NAME,
     genesoftWebBaseUrl: process.env.GENESOFT_WEB_BASE_URL,
     nodeEnv: process.env.NODE_ENV,
+    freeTierIterationsLimit: process.env.FREE_TIER_ITERATIONS_LIMIT || 10,
+    startupTierIterationsLimit: process.env.STARTUP_TIER_ITERATIONS_LIMIT || 40,
 }));

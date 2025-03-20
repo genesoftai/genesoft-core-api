@@ -30,6 +30,8 @@ import { PageModule } from "./page/page.module";
 import { FeatureModule } from "./feature/feature.module";
 import { ConversationModule } from "./conversation/conversation.module";
 import { SubscriptionModule } from "./modules/subscription/subscription.module";
+import { CodesandboxModule } from "./modules/codesandbox/codesandbox.module";
+import { FirebaseModule } from "./modules/firebase/firebase.module";
 
 @Module({
     imports: [
@@ -80,6 +82,8 @@ import { SubscriptionModule } from "./modules/subscription/subscription.module";
         FeatureModule,
         ConversationModule,
         SubscriptionModule,
+        CodesandboxModule,
+        FirebaseModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

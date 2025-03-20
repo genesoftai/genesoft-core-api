@@ -103,7 +103,7 @@ export class GithubService {
         if (projectTemplateName === ProjectTemplateName.NestJsApi) {
             templateRepo = ProjectTemplate.NestJsApi;
         } else if (projectTemplateName === ProjectTemplateName.NextJsWeb) {
-            templateRepo = ProjectTemplate.NextJsWeb;
+            templateRepo = ProjectTemplate.NextJsWebFirebase;
         } else {
             throw new BadRequestException(
                 `${this.serviceName}.createRepositoryFromTemplate: Not Support Template`,

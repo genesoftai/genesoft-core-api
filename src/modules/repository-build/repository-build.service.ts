@@ -15,6 +15,7 @@ import {
     CheckRepositoryBuildOverviewDto,
     RecheckFrontendBuildDto,
     TriggerFrontendBuilderAgentDto,
+    UpdateRepositoryBuildStatusDto,
 } from "./dto/repository-build.dto";
 import { ProjectTemplateName, ProjectType } from "@/modules/constants/project";
 import { FrontendInfraService } from "@/modules/frontend-infra/frontend-infra.service";
@@ -73,7 +74,7 @@ export class RepositoryBuildService {
         await this.emailService.sendEmail({
             from: "Genesoft <support@genesoftai.com>",
             topic: `Technical Difficulties for ${project.name} to build your web application`,
-            to: [GENESOFT_AI_EMAIL],
+            to: [GENESOFT_AI_EMAIL, ...emails],
             subject: `Technical Issues Detected in ${type === "frontend" ? "Web" : "Backend"} Development`,
             html: `
                 <p>Hello, ${emails.join(", ")},</p>
@@ -216,43 +217,29 @@ export class RepositoryBuildService {
             };
         }
 
-        if (repositoryBuild.fix_attempts >= 3) {
-            await this.repositoryBuildRepository.update(
-                { id: repositoryBuild.id },
-                { status: "failed" },
-            );
-            await this.sendBuildFailureEmail(iteration_id, "frontend");
-            return {
-                status: "failed",
-                deployment: repositoryBuild,
-            };
-        }
+        const currentAttempts = repositoryBuild.fix_attempts + 1;
+        await this.triggerFrontendBuilderAgent({
+            project_id,
+            iteration_id,
+            frontend_repo_name: repository.name,
+            attempts: currentAttempts,
+        });
 
-        if (deployment.status === "failed") {
-            const currentAttempts = repositoryBuild.fix_attempts + 1;
-            await this.triggerFrontendBuilderAgent({
-                project_id,
-                iteration_id,
-                frontend_repo_name: repository.name,
-                attempts: currentAttempts,
-            });
-
-            await this.repositoryBuildRepository.update(
-                { id: repositoryBuild.id },
-                {
-                    status: "in_progress",
-                    fix_attempts: currentAttempts,
-                    fix_triggered: true,
-                    last_fix_attempt: new Date(),
-                    error_logs: deployment.errorMessage,
-                },
-            );
-
-            return {
+        await this.repositoryBuildRepository.update(
+            { id: repositoryBuild.id },
+            {
                 status: "in_progress",
-                deployment,
-            };
-        }
+                fix_attempts: currentAttempts,
+                fix_triggered: true,
+                last_fix_attempt: new Date(),
+                error_logs: deployment.errorMessage,
+            },
+        );
+
+        return {
+            status: "in_progress",
+            deployment,
+        };
     }
 
     async recheckFrontendBuildWithoutRebuild(payload: RecheckFrontendBuildDto) {
@@ -351,5 +338,15 @@ export class RepositoryBuildService {
                 ),
         );
         return response;
+    }
+
+    async updateRepositoryBuildStatus(payload: UpdateRepositoryBuildStatusDto) {
+        await this.repositoryBuildRepository.update(
+            { iteration_id: payload.iteration_id },
+            { status: payload.status },
+        );
+        return {
+            status: "success",
+        };
     }
 }
