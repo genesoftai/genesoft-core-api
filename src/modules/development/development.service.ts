@@ -115,6 +115,7 @@ export class DevelopmentService {
                             iteration_id: savedIteration.id,
                             frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
                             branch: "dev",
+                            sandbox_id: payload.sandbox_id || "",
                         },
                     ),
                 );
@@ -138,6 +139,7 @@ export class DevelopmentService {
                             is_supabase_integration:
                                 payload.is_supabase_integration || false,
                             conversation_id: payload.conversation_id,
+                            sandbox_id: payload.sandbox_id || "",
                         },
                     ),
                 );

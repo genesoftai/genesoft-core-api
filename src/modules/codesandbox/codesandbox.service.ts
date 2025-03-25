@@ -35,13 +35,12 @@ export class CodesandboxService {
 
     async createSandbox(payload: CreateSandboxDto) {
         const sandbox = await this.sdk.sandbox.create({
-            template: payload.template ?? CodesandboxTemplateId.NextJsShadcn,
+            template: payload.template ?? CodesandboxTemplateId.NewNextJsShadcn,
             title: payload.title ?? "Next.js Shadcn",
             description: payload.description ?? "A sandbox for Next.js Shadcn",
             autoConnect: true,
             vmTier: VMTier.Nano,
             hibernationTimeoutSeconds: 60 * 5,
-            path: "nextjs-web-template",
         });
 
         const id = sandbox.id;
