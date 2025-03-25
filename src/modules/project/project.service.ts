@@ -1,5 +1,4 @@
 import {
-    BadRequestException,
     forwardRef,
     Inject,
     Injectable,
@@ -48,16 +47,16 @@ import { BackendInfraService } from "@/modules/backend-infra/backend-infra.servi
 import { FrontendInfraService } from "@/modules/frontend-infra/frontend-infra.service";
 import { SupabaseService } from "../supabase/supabase.service";
 import { DevelopmentService } from "../development/development.service";
-import { IterationType } from "../constants/development";
 import { UserService } from "../user/user.service";
 import { OrganizationService } from "../organization/organization.service";
 import { OrganizationRole } from "../constants/organization";
-import { AiAgentId, SystemId } from "../constants/agent";
+import { SystemId } from "../constants/agent";
 import { ConversationService } from "@/conversation/conversation.service";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
+import { IterationType } from "../constants/development";
 
 @Injectable()
 export class ProjectService {
@@ -311,16 +310,16 @@ export class ProjectService {
 
         const project = await this.projectRepository.save(newProject);
 
-        // const sandboxName = `nextjs_${project.id}`;
-        // const sandbox = await this.codesandboxService.createSandbox({
-        //     template: CodesandboxTemplateId.NextJsShadcn,
-        //     title: sandboxName,
-        //     description: `Next.js Shadcn project for ${sandboxName}`,
-        // });
+        const sandboxName = `nextjs-web_${project.id}`;
+        const sandbox = await this.codesandboxService.createSandbox({
+            template: CodesandboxTemplateId.NewNextJsShadcn,
+            title: sandboxName,
+            description: `Next.js Shadcn project for ${sandboxName}`,
+        });
 
-        // await this.projectRepository.update(project.id, {
-        //     sandbox_id: sandbox.id,
-        // });
+        await this.projectRepository.update(project.id, {
+            sandbox_id: sandbox.id,
+        });
 
         // Create and associate branding if provided
         if (payload.branding) {
@@ -419,11 +418,10 @@ export class ProjectService {
             },
         });
 
-        // Start develop web follow initial requirements
-        // TODO: uncomment when ai agent service read to create project
         await this.developmentService.createIteration({
             project_id: project.id,
             type: IterationType.Project,
+            sandbox_id: sandbox.id,
         });
 
         return this.getProjectById(project.id);

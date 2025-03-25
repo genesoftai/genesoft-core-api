@@ -24,6 +24,10 @@ export class CreateIterationDto {
     @IsString()
     @IsOptional()
     conversation_id?: string;
+
+    @IsString()
+    @IsOptional()
+    sandbox_id?: string;
 }
 
 export class CreatePageIterationDto {
