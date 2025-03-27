@@ -8,13 +8,14 @@ import { SupabaseModule } from "../supabase/supabase.module";
 import { Iteration } from "../development/entity/iteration.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { RepositoryBuild } from "../repository-build/entity/repository-build.entity";
+import { Project } from "../project/entity/project.entity";
 @Module({
     imports: [
         ProjectModule,
         FrontendInfraModule,
         BackendInfraModule,
         SupabaseModule,
-        TypeOrmModule.forFeature([Iteration, RepositoryBuild]),
+        TypeOrmModule.forFeature([Iteration, RepositoryBuild, Project]),
     ],
     controllers: [WebApplicationController],
     providers: [WebApplicationService, Logger],

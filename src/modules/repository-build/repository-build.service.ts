@@ -174,6 +174,10 @@ export class RepositoryBuildService {
             throw new BadRequestException("Invalid payload");
         }
 
+        const project = await this.projectRepository.findOne({
+            where: { id: project_id },
+        });
+
         const repositoryBuildExisting =
             await this.repositoryBuildRepository.findOne({
                 where: { project_id, iteration_id, type: ProjectType.Web },
@@ -223,6 +227,7 @@ export class RepositoryBuildService {
             iteration_id,
             frontend_repo_name: repository.name,
             attempts: currentAttempts,
+            sandbox_id: project?.sandbox_id || "",
         });
 
         await this.repositoryBuildRepository.update(
@@ -312,8 +317,13 @@ export class RepositoryBuildService {
     }
 
     async triggerFrontendBuilderAgent(payload: TriggerFrontendBuilderAgentDto) {
-        const { project_id, iteration_id, frontend_repo_name, attempts } =
-            payload;
+        const {
+            project_id,
+            iteration_id,
+            frontend_repo_name,
+            attempts,
+            sandbox_id,
+        } = payload;
         const response = await lastValueFrom(
             this.httpService
                 .post(
@@ -323,6 +333,7 @@ export class RepositoryBuildService {
                         iteration_id,
                         frontend_repo_name,
                         attempts,
+                        sandbox_id: sandbox_id || "",
                     },
                 )
                 .pipe(

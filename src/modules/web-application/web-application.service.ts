@@ -7,6 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Iteration } from "../development/entity/iteration.entity";
 import { Repository } from "typeorm";
 import { RepositoryBuild } from "../repository-build/entity/repository-build.entity";
+import { Project } from "../project/entity/project.entity";
 
 @Injectable()
 export class WebApplicationService {
@@ -19,6 +20,8 @@ export class WebApplicationService {
         private iterationRepository: Repository<Iteration>,
         @InjectRepository(RepositoryBuild)
         private repositoryBuildRepository: Repository<RepositoryBuild>,
+        @InjectRepository(Project)
+        private projectRepository: Repository<Project>,
     ) {}
 
     async getWebApplication(projectId: string) {
@@ -27,6 +30,9 @@ export class WebApplicationService {
         const previewTarget = vercelProject.targets["preview"];
         const vercelDomain =
             await this.frontendInfraService.getProjectDomain(projectId);
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
 
         const status =
             previewTarget?.readyState === "READY" ? "deployed" : "not_deployed";
@@ -52,6 +58,9 @@ export class WebApplicationService {
             : null;
 
         const url = `https://${vercelDomain.domains[0].name}`;
+        const codesandboxUrl = project?.sandbox_id
+            ? `https://codesandbox.io/p/devbox/nextjs-web-${projectId}-${project?.sandbox_id}`
+            : null;
 
         return {
             url,
@@ -62,6 +71,8 @@ export class WebApplicationService {
             readyAt: previewTarget?.readyAt,
             readyStatus: previewTarget?.readyState,
             repositoryBuild,
+            codesandboxUrl,
+            sandboxId: project?.sandbox_id,
         };
     }
 }
