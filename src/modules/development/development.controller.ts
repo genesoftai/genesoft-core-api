@@ -242,15 +242,6 @@ export class DevelopmentController {
         return this.developmentService.getIterationPastSteps(id, team);
     }
 
-    @Post("project/:projectId/update-requirements")
-    triggerAiAgentToUpdateRequirements(
-        @Param("projectId") projectId: string,
-    ): Promise<Iteration> {
-        return this.developmentService.triggerAiAgentToUpdateRequirements(
-            projectId,
-        );
-    }
-
     @Post("page/iteration")
     createPageIteration(
         @Body() payload: CreatePageIterationDto,

@@ -3,6 +3,7 @@ enum CodesandboxTemplateId {
     ViteWeb = "ngjjsz",
     NextJsShadcn = "jggvy4",
     NewNextJsShadcn = "5l8rxl",
+    NewNestJsApi = "TBD",
 }
 
 export { CodesandboxTemplateId };

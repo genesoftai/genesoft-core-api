@@ -10,6 +10,10 @@ export class CreateIterationDto {
     type: string;
 
     @IsString()
+    @IsNotEmpty()
+    project_template_type: string;
+
+    @IsString()
     @IsOptional()
     feedback_id?: string;
 

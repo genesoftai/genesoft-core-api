@@ -14,4 +14,15 @@ enum ProjectType {
     Web = "web",
 }
 
-export { ProjectTemplate, ProjectTemplateName, ProjectType };
+enum ProjectTemplateType {
+    Web = "web",
+    WebAndBackend = "web-and-backend",
+    Backend = "backend",
+}
+
+export {
+    ProjectTemplate,
+    ProjectTemplateName,
+    ProjectType,
+    ProjectTemplateType,
+};

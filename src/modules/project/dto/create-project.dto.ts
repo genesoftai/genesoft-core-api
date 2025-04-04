@@ -75,6 +75,10 @@ export class CreateProjectDto {
     @IsString()
     description: string;
 
+    @IsNotEmpty()
+    @IsString()
+    project_type: string;
+
     @IsOptional()
     @IsString()
     purpose?: string;
@@ -107,6 +111,10 @@ export class CreateProjectFromOnboardingDto {
     @IsNotEmpty()
     @IsString()
     project_description: string;
+
+    @IsNotEmpty()
+    @IsString()
+    project_type: string;
 
     @IsOptional()
     @IsString()

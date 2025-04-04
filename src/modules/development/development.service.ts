@@ -24,7 +24,7 @@ import {
 } from "@/modules/constants/development";
 import { AiAgentTeam } from "@/modules/constants/agent";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent/ai-agent.service";
-import { ProjectTemplateName } from "../constants/project";
+import { ProjectTemplateName, ProjectTemplateType } from "../constants/project";
 import { EmailService } from "../email/email.service";
 import {
     GENESOFT_AI_EMAIL,
@@ -102,52 +102,126 @@ export class DevelopmentService {
             const iteration = this.iterationRepository.create(payload);
             const savedIteration =
                 await this.iterationRepository.save(iteration);
-            if (payload.type === IterationType.Project) {
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Create Project iteration`,
-                });
-                const response = await lastValueFrom(
-                    this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            branch: "dev",
-                            sandbox_id: payload.sandbox_id || "",
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
-                    metadata: { response: response.data },
-                });
-            } else if (payload.type === IterationType.CoreDevelopment) {
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Create Core Development iteration`,
-                });
-                const response = await lastValueFrom(
-                    this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            branch: "dev",
-                            is_supabase_integration:
-                                payload.is_supabase_integration || false,
-                            conversation_id: payload.conversation_id,
-                            sandbox_id: payload.sandbox_id || "",
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
-                    metadata: { response: response.data },
-                });
+
+            // Use a combination of type and template for the switch case
+            const iterationType = payload.type;
+            const templateType = payload.project_template_type || "";
+            const caseKey = `${iterationType}_${templateType}`;
+
+            switch (caseKey) {
+                case `${IterationType.Project}_${ProjectTemplateType.Web}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Project iteration`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                                iteration_id: savedIteration.id,
+                                frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                                branch: "dev",
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                case `${IterationType.CoreDevelopment}_${ProjectTemplateType.Web}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Core Development iteration`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                                iteration_id: savedIteration.id,
+                                frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                                branch: "dev",
+                                is_supabase_integration:
+                                    payload.is_supabase_integration || false,
+                                conversation_id: payload.conversation_id,
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                case `${IterationType.Project}_${ProjectTemplateType.Backend}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Project iteration for backend project`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/project`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
+                                iteration_id: savedIteration.id,
+                                backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                                branch: "dev",
+                                is_supabase_integration:
+                                    payload.is_supabase_integration || false,
+                                conversation_id: payload.conversation_id,
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                case `${IterationType.CoreDevelopment}_${ProjectTemplateType.Backend}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Core Development iteration for backend project`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/core`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
+                                iteration_id: savedIteration.id,
+                                backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                                branch: "dev",
+                                is_supabase_integration:
+                                    payload.is_supabase_integration || false,
+                                conversation_id: payload.conversation_id,
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                default: {
+                    // No specific action needed for other iteration types
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: No specific action for iteration type ${iterationType} with template ${templateType}`,
+                    });
+                }
             }
+
             return savedIteration;
         } catch (error) {
             this.logger.error({
@@ -1082,20 +1156,6 @@ export class DevelopmentService {
             });
             throw error;
         }
-    }
-
-    async triggerAiAgentToUpdateRequirements(projectId: string) {
-        const project = await this.projectRepository.findOne({
-            where: { id: projectId },
-        });
-
-        const iteration = await this.createIteration({
-            project_id: project.id,
-            type: IterationType.Requirements,
-            is_updated_requirements: true,
-        });
-
-        return iteration;
     }
 
     async getMonthlyIterationsOfOrganization(organizationId: string) {

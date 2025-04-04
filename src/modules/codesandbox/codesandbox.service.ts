@@ -41,6 +41,7 @@ export class CodesandboxService {
             autoConnect: true,
             vmTier: VMTier.Nano,
             hibernationTimeoutSeconds: 60 * 5,
+            privacy: "public",
         });
 
         const id = sandbox.id;

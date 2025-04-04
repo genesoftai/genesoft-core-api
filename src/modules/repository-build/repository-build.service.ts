@@ -115,7 +115,7 @@ export class RepositoryBuildService {
             to: [...emails, GENESOFT_AI_EMAIL],
             subject: `${project.name} web application is ready for review`,
             html: `
-                <p>Hello, ${emails.join(", ")},</p>
+                <p>Hello</p>
                 <p>Your ${type === "frontend" ? "web application" : "backend service"} development for ${project.name} has been completed successfully.</p>
                 <p>Your web application is now ready for your review.</p>
                 <p>Please review the changes and provide your feedback.</p>

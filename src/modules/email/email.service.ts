@@ -11,9 +11,9 @@ import {
     SendSupportEmailDto,
 } from "./dto/email-contact.dto";
 import {
-    GENESOFT_AI_EMAIL,
     GENESOFT_BASE_URL,
     GENESOFT_LOGO_IMAGE_URL,
+    GENESOFT_SUPPORT_EMAIL,
     GENESOFT_SUPPORT_EMAIL_FROM,
 } from "../constants/genesoft";
 
@@ -114,7 +114,7 @@ export class EmailService {
         const { companyName, email, reason } = payload;
 
         const data = await this.sendEmail({
-            to: [email, GENESOFT_AI_EMAIL],
+            to: [email, GENESOFT_SUPPORT_EMAIL],
             subject: `We received your contact for enterprise plan request from ${companyName}`,
             html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
@@ -153,7 +153,7 @@ export class EmailService {
         const { email, query } = payload;
 
         const data = await this.sendEmail({
-            to: [email, GENESOFT_AI_EMAIL],
+            to: [email, GENESOFT_SUPPORT_EMAIL],
             subject: `Support Request from ${email}`,
             html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
