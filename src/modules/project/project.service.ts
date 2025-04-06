@@ -1172,8 +1172,8 @@ ${formattedBranding}
         const results = [];
 
         for (const repo of repositories) {
-            const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoft/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
-            
+            const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoftai/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
+
             try {
                 const response = await new Promise<{ data: string; error: string }>((resolve, reject) => {
                     exec(command, (error, stdout, stderr) => {
