@@ -468,4 +468,38 @@ export class SupabaseService {
             dbStructure: result,
         };
     }
+
+    async getGithubUsername(accessToken: string): Promise<string | null> {
+        this.logger.log({
+            message: `${this.serviceName}.getGithubUsername: Getting GitHub username from Supabase`,
+        });
+
+        try {
+            const response = await lastValueFrom(
+                this.httpService.get(`${this.supabaseBaseUrl}/v1/auth/user`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }),
+            );
+
+            // Check if identities exist and find the GitHub identity
+            const githubIdentity = response.data?.user?.identities?.find(
+                (identity: any) => identity.provider === "github",
+            );
+
+            // Extract username from identity_data if GitHub identity exists
+            if (githubIdentity && githubIdentity.identity_data) {
+                return githubIdentity.identity_data.user_name || null;
+            }
+
+            return null;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.getGithubUsername: Error getting GitHub username`,
+                error,
+            });
+            return null;
+        }
+    }
 }

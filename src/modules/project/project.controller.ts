@@ -7,6 +7,7 @@ import {
     Patch,
     Post,
     UseGuards,
+    Headers,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import {
@@ -153,5 +154,16 @@ export class ProjectController {
     @Get(":id/updated-requirements")
     async getUpdatedRequirements(@Param("id") id: string) {
         return this.projectService.getUpdatedRequirements(id);
+    }
+
+    @Post(":id/github-access")
+    async requestGithubAccess(
+        @Param("id") id: string,
+        @Headers("Authorization") accessToken: string,
+    ) {
+        return this.projectService.requestGithubAccess(
+            id,
+            accessToken.split(" ")[1],
+        );
     }
 }

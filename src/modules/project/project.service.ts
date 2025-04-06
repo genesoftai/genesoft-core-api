@@ -58,6 +58,7 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
+import { HttpService } from "@nestjs/axios";
 
 @Injectable()
 export class ProjectService {
@@ -109,6 +110,7 @@ export class ProjectService {
         private conversationRepository: Repository<Conversation>,
         private codesandboxService: CodesandboxService,
         private llmService: LlmService,
+        private httpService: HttpService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -1128,5 +1130,82 @@ ${formattedBranding}
         }
 
         return formattedUpdatedRequirements;
+    }
+
+    async requestGithubAccess(projectId: string, accessToken: string) {
+        this.logger.log({
+            message: `${this.serviceName}.requestGithubAccess: Requesting GitHub access`,
+            metadata: { projectId },
+        });
+
+        // Get the project to verify it exists
+        const project = await this.getProjectById(projectId);
+        if (!project) {
+            throw new NotFoundException(
+                `Project with id ${projectId} not found`,
+            );
+        }
+
+        // Get GitHub username from Supabase
+        const githubUsername = await this.supabaseService.getGithubUsername(
+            accessToken,
+        );
+        if (!githubUsername) {
+            throw new BadRequestException(
+                "GitHub username not found in Supabase",
+            );
+        }
+
+        // Get all repositories for this project
+        const repositories = await this.githubRepoRepository.find({
+            where: { project_id: projectId }
+        });
+
+        if (!repositories || repositories.length === 0) {
+            throw new NotFoundException(
+                `No GitHub repositories found for project ${projectId}`,
+            );
+        }
+
+        // Execute GitHub CLI command to add collaborator for each repository
+        const { exec } = require('child_process');
+        const results = [];
+
+        for (const repo of repositories) {
+            const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoft/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
+            
+            try {
+                const response = await new Promise<{ data: string; error: string }>((resolve, reject) => {
+                    exec(command, (error, stdout, stderr) => {
+                        if (error) {
+                            this.logger.error({
+                                message: `${this.serviceName}.requestGithubAccess: Error executing GitHub CLI command for repository ${repo.name}`,
+                                error,
+                            });
+                            reject(error);
+                            return;
+                        }
+                        resolve({ data: stdout, error: stderr });
+                    });
+                });
+                results.push({
+                    repository: repo.name,
+                    success: true,
+                    data: response.data
+                });
+            } catch (error) {
+                results.push({
+                    repository: repo.name,
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+
+        return {
+            success: true,
+            message: "GitHub access request processed for all repositories",
+            results
+        };
     }
 }
