@@ -154,4 +154,16 @@ export class ProjectController {
     async getUpdatedRequirements(@Param("id") id: string) {
         return this.projectService.getUpdatedRequirements(id);
     }
+
+    @Post(":id/github-access")
+    async requestGithubAccess(
+        @Param("id") id: string,
+        @Body() payload: { uid: string },
+    ) {
+        try {
+            return this.projectService.requestGithubAccess(id, payload.uid);
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
 }
