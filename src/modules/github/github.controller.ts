@@ -11,6 +11,7 @@ import {
     Delete,
     RawBodyRequest,
     Req,
+    Logger,
 } from "@nestjs/common";
 import { GithubService } from "./github.service";
 import { ApiTags } from "@nestjs/swagger";
@@ -194,7 +195,7 @@ export class GithubController {
             const pullRequest = payload.pull_request;
             const repository = payload.repository;
 
-            console.log(
+            Logger.log(
                 `Pull request ${action} for ${repository.full_name} #${pullRequest.number}: ${pullRequest.title}`,
             );
             // Check if PR is not from khemmapichpanyana and is targeting the dev branch
@@ -212,11 +213,11 @@ export class GithubController {
                         merge_method: "merge",
                     });
 
-                    console.log(
+                    Logger.log(
                         `Automatically merged PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch`,
                     );
                 } catch (error) {
-                    console.error(
+                    Logger.error(
                         `Failed to auto-merge PR #${pullRequest.number}:`,
                         error,
                     );
@@ -227,7 +228,7 @@ export class GithubController {
                 action === "opened" &&
                 !pullRequest.mergeable
             ) {
-                console.log(
+                Logger.log(
                     `PR #${pullRequest.number} is not mergeable due to conflicts, waiting for updates`,
                 );
             }
@@ -248,16 +249,16 @@ export class GithubController {
                             merge_method: "merge",
                         });
 
-                        console.log(
+                        Logger.log(
                             `Automatically merged updated PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch after conflicts were resolved`,
                         );
                     } else {
-                        console.log(
+                        Logger.log(
                             `Updated PR #${pullRequest.number} is not mergeable yet, waiting for conflicts to be fully resolved`,
                         );
                     }
                 } catch (error) {
-                    console.error(
+                    Logger.error(
                         `Failed to auto-merge updated PR #${pullRequest.number}:`,
                         error,
                     );
