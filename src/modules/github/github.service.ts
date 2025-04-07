@@ -836,20 +836,19 @@ export class GithubService {
         }
     }
 
-    async addUserToCollaborator(repoName: string) {
-        const url = `https://api.github.com/repos/${this.githubOwner}/${repoName}/collaborators`;
+    async addUserToCollaborator(repoName: string, username: string) {
+        const url = `https://api.github.com/repos/${this.githubOwner}/${repoName}/collaborators/${username}`;
         return lastValueFrom(
             this.httpService.put(
                 url,
-                {},
+                {
+                    permission: "triage",
+                },
                 {
                     headers: {
                         Accept: "application/vnd.github+json",
                         Authorization: `Bearer ${this.githubAccessToken}`,
                         "X-GitHub-Api-Version": "2022-11-28",
-                    },
-                    params: {
-                        permission: "triage",
                     },
                 },
             ),

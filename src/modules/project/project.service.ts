@@ -1183,13 +1183,22 @@ ${formattedBranding}
             try {
                 const response = await this.githubService.addUserToCollaborator(
                     repo.name,
+                    githubUsername,
                 );
+                this.logger.log({
+                    message: `${this.serviceName}.requestGithubAccess: Response`,
+                    metadata: { response: response.status },
+                });
                 results.push({
                     repository: repo.name,
                     success: true,
                     data: response.data,
                 });
             } catch (error) {
+                this.logger.error({
+                    message: `${this.serviceName}.requestGithubAccess: Error adding user to collaborator`,
+                    metadata: { error },
+                });
                 results.push({
                     repository: repo.name,
                     success: false,

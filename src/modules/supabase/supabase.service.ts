@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from "uuid";
 import * as postgres from "postgres";
 import { getDbStructureString } from "../../utils/supabase/db";
 import { createClient } from "@supabase/supabase-js";
-
 @Injectable()
 export class SupabaseService {
     private readonly serviceName = "SupabaseService";
@@ -26,7 +25,7 @@ export class SupabaseService {
         private supabaseConfigurationService: SupabaseConfigurationService,
     ) {
         this.supabaseAdmin = createClient(
-            this.supabaseConfigurationService.supabaseProjectUrl,
+            "https://" + this.supabaseConfigurationService.supabaseProjectUrl,
             this.supabaseConfigurationService.supabaseServiceRoleKey,
             {
                 auth: {

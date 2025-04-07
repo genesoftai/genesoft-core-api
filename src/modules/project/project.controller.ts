@@ -7,7 +7,6 @@ import {
     Patch,
     Post,
     UseGuards,
-    Headers,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import {
@@ -159,11 +158,12 @@ export class ProjectController {
     @Post(":id/github-access")
     async requestGithubAccess(
         @Param("id") id: string,
-        @Headers("Authorization") accessToken: string,
+        @Body() payload: { uid: string },
     ) {
-        return this.projectService.requestGithubAccess(
-            id,
-            accessToken.split(" ")[1],
-        );
+        try {
+            return this.projectService.requestGithubAccess(id, payload.uid);
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
     }
 }
