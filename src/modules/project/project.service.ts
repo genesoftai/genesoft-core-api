@@ -59,7 +59,6 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
-import { exec } from "child_process";
 
 @Injectable()
 export class ProjectService implements OnModuleInit {
@@ -1180,25 +1179,11 @@ ${formattedBranding}
         const results = [];
 
         for (const repo of repositories) {
-            const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoftai/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
-
+            // const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoftai/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
             try {
-                const response = await new Promise<{
-                    data: string;
-                    error: string;
-                }>((resolve, reject) => {
-                    exec(command, (error, stdout, stderr) => {
-                        if (error) {
-                            this.logger.error({
-                                message: `${this.serviceName}.requestGithubAccess: Error executing GitHub CLI command for repository ${repo.name}`,
-                                error,
-                            });
-                            reject(error);
-                            return;
-                        }
-                        resolve({ data: stdout, error: stderr });
-                    });
-                });
+                const response = await this.githubService.addUserToCollaborator(
+                    repo.name,
+                );
                 results.push({
                     repository: repo.name,
                     success: true,

@@ -830,4 +830,24 @@ export class GithubService {
             throw error;
         }
     }
+
+    async addUserToCollaborator(repoName: string) {
+        const url = `https://api.github.com/repos/${this.githubOwner}/${repoName}/collaborators`;
+        return lastValueFrom(
+            this.httpService.put(
+                url,
+                {},
+                {
+                    headers: {
+                        Accept: "application/vnd.github+json",
+                        Authorization: `Bearer ${this.githubAccessToken}`,
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    params: {
+                        permission: "triage",
+                    },
+                },
+            ),
+        );
+    }
 }
