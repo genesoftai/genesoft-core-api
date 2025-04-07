@@ -6,6 +6,7 @@ import {
     Logger,
     LoggerService,
     NotFoundException,
+    OnModuleInit,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
@@ -58,10 +59,10 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
-import { HttpService } from "@nestjs/axios";
+import { exec } from "child_process";
 
 @Injectable()
-export class ProjectService {
+export class ProjectService implements OnModuleInit {
     private readonly serviceName = "ProjectService";
 
     constructor(
@@ -83,7 +84,6 @@ export class ProjectService {
         private feedbackRepository: Repository<Feedback>,
         @InjectRepository(File)
         private fileRepository: Repository<File>,
-
         @InjectRepository(ReferenceLink)
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
@@ -110,12 +110,22 @@ export class ProjectService {
         private conversationRepository: Repository<Conversation>,
         private codesandboxService: CodesandboxService,
         private llmService: LlmService,
-        private httpService: HttpService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
             metadata: { timestamp: new Date() },
         });
+    }
+
+    async onModuleInit() {
+        this.logger.log({
+            message: `${this.serviceName}.onModuleInit: Service initialized`,
+        });
+
+        // this.requestGithubAccess(
+        //     "5858afc6-ebe9-4cb5-8e52-59b3d0e51bb6",
+        //     "6fa8fb9c-86c6-4bf0-8f4e-7a2e40c4c788",
+        // );
     }
 
     async getAllProjects(): Promise<Project[]> {
@@ -1132,7 +1142,7 @@ ${formattedBranding}
         return formattedUpdatedRequirements;
     }
 
-    async requestGithubAccess(projectId: string, accessToken: string) {
+    async requestGithubAccess(projectId: string, uId: string) {
         this.logger.log({
             message: `${this.serviceName}.requestGithubAccess: Requesting GitHub access`,
             metadata: { projectId },
@@ -1147,9 +1157,8 @@ ${formattedBranding}
         }
 
         // Get GitHub username from Supabase
-        const githubUsername = await this.supabaseService.getGithubUsername(
-            accessToken,
-        );
+        const githubUsername =
+            await this.supabaseService.getGithubUsername(uId);
         if (!githubUsername) {
             throw new BadRequestException(
                 "GitHub username not found in Supabase",
@@ -1158,7 +1167,7 @@ ${formattedBranding}
 
         // Get all repositories for this project
         const repositories = await this.githubRepoRepository.find({
-            where: { project_id: projectId }
+            where: { project_id: projectId },
         });
 
         if (!repositories || repositories.length === 0) {
@@ -1168,14 +1177,16 @@ ${formattedBranding}
         }
 
         // Execute GitHub CLI command to add collaborator for each repository
-        const { exec } = require('child_process');
         const results = [];
 
         for (const repo of repositories) {
             const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoftai/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
 
             try {
-                const response = await new Promise<{ data: string; error: string }>((resolve, reject) => {
+                const response = await new Promise<{
+                    data: string;
+                    error: string;
+                }>((resolve, reject) => {
                     exec(command, (error, stdout, stderr) => {
                         if (error) {
                             this.logger.error({
@@ -1191,13 +1202,13 @@ ${formattedBranding}
                 results.push({
                     repository: repo.name,
                     success: true,
-                    data: response.data
+                    data: response.data,
                 });
             } catch (error) {
                 results.push({
                     repository: repo.name,
                     success: false,
-                    error: error.message
+                    error: error.message,
                 });
             }
         }
@@ -1205,7 +1216,7 @@ ${formattedBranding}
         return {
             success: true,
             message: "GitHub access request processed for all repositories",
-            results
+            results,
         };
     }
 }

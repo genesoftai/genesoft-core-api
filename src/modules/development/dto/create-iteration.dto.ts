@@ -10,8 +10,9 @@ export class CreateIterationDto {
     type: string;
 
     @IsString()
+    @IsOptional()
     @IsNotEmpty()
-    project_template_type: string;
+    project_template_type?: string;
 
     @IsString()
     @IsOptional()
