@@ -2,12 +2,15 @@ import {
     Body,
     Controller,
     Get,
+    Headers,
     Param,
     Post,
     Put,
     Query,
     UseGuards,
     Delete,
+    RawBodyRequest,
+    Req,
 } from "@nestjs/common";
 import { GithubService } from "./github.service";
 import { ApiTags } from "@nestjs/swagger";
@@ -28,12 +31,19 @@ import {
     MergePullRequestDto,
 } from "./dto/pull-requests.dto";
 import { DeleteFileContentFromRepositoryDto } from "./dto/delete-repository-content.dto";
+import { Request } from "express";
+import { AppConfigurationService } from "../configuration/app";
+import * as crypto from "crypto";
 
 @ApiTags("Github")
 @Controller("github")
 export class GithubController {
     private controllerName = GithubController.name;
-    constructor(private readonly githubService: GithubService) {}
+
+    constructor(
+        private readonly githubService: GithubService,
+        private readonly appConfigurationService: AppConfigurationService,
+    ) {}
 
     @Get("repository")
     @UseGuards(AuthGuard)
@@ -146,5 +156,124 @@ export class GithubController {
             project_id,
             branch,
         });
+    }
+
+    @Post("webhook")
+    async handleWebhook(
+        @Req() req: RawBodyRequest<Request>,
+        @Headers("x-github-event") eventType: string,
+        @Headers("x-hub-signature-256") signature: string,
+    ) {
+        const rawBody = req.rawBody;
+        const webhookSecret = this.appConfigurationService.githubWebhookSecret;
+
+        if (!webhookSecret) {
+            return {
+                status: "error",
+                message: "Webhook secret not configured",
+            };
+        }
+
+        // Verify webhook signature
+        const hmac = crypto.createHmac("sha256", webhookSecret);
+        const calculatedSignature = `sha256=${hmac
+            .update(rawBody)
+            .digest("hex")}`;
+
+        if (signature !== calculatedSignature) {
+            return {
+                status: "error",
+                message: "Invalid signature",
+            };
+        }
+
+        // Handle different event types
+        if (eventType === "pull_request") {
+            const payload = JSON.parse(rawBody.toString());
+            const action = payload.action;
+            const pullRequest = payload.pull_request;
+            const repository = payload.repository;
+
+            console.log(
+                `Pull request ${action} for ${repository.full_name} #${pullRequest.number}: ${pullRequest.title}`,
+            );
+            // Check if PR is not from khemmapichpanyana and is targeting the dev branch
+            if (
+                pullRequest.user.login !== "khemmapichpanyana" &&
+                pullRequest.base.ref === "dev" &&
+                action === "opened" &&
+                pullRequest.mergeable
+            ) {
+                try {
+                    // Automatically merge the PR
+                    await this.githubService.mergePullRequest({
+                        repository: repository.name,
+                        pull_number: pullRequest.number,
+                        merge_method: "merge",
+                    });
+
+                    console.log(
+                        `Automatically merged PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch`,
+                    );
+                } catch (error) {
+                    console.error(
+                        `Failed to auto-merge PR #${pullRequest.number}:`,
+                        error,
+                    );
+                }
+            } else if (
+                pullRequest.user.login !== "khemmapichpanyana" &&
+                pullRequest.base.ref === "dev" &&
+                action === "opened" &&
+                !pullRequest.mergeable
+            ) {
+                console.log(
+                    `PR #${pullRequest.number} is not mergeable due to conflicts, waiting for updates`,
+                );
+            }
+            // Also handle PR updates (when conflicts are resolved)
+            if (
+                pullRequest.user.login !== "khemmapichpanyana" &&
+                pullRequest.base.ref === "dev" &&
+                action === "synchronize" &&
+                !pullRequest.merged
+            ) {
+                try {
+                    // Check if PR is mergeable after update
+                    if (pullRequest.mergeable) {
+                        // Automatically merge the PR after conflicts were resolved
+                        await this.githubService.mergePullRequest({
+                            repository: repository.name,
+                            pull_number: pullRequest.number,
+                            merge_method: "merge",
+                        });
+
+                        console.log(
+                            `Automatically merged updated PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch after conflicts were resolved`,
+                        );
+                    } else {
+                        console.log(
+                            `Updated PR #${pullRequest.number} is not mergeable yet, waiting for conflicts to be fully resolved`,
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        `Failed to auto-merge updated PR #${pullRequest.number}:`,
+                        error,
+                    );
+                }
+            }
+
+            // Here you can add specific logic for different PR actions
+            // For example, you might want to:
+            // - Update a database record
+            // - Trigger a notification
+            // - Run automated tests
+            // - etc.
+        }
+
+        return {
+            status: "success",
+        };
     }
 }

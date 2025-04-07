@@ -41,6 +41,7 @@ import {
 } from "./dto/workflow.dto";
 import * as AdmZip from "adm-zip";
 import { DeleteFileContentFromRepositoryDto } from "./dto/delete-repository-content.dto";
+import { AppConfigurationService } from "../configuration/app";
 
 @Injectable()
 export class GithubService {
@@ -56,6 +57,7 @@ export class GithubService {
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
         private readonly githubConfigurationService: GithubConfigurationService,
+        private readonly appConfigurationService: AppConfigurationService,
         @Inject(Logger) private readonly logger: LoggerService,
     ) {
         this.serviceName = GithubService.name;
@@ -183,6 +185,9 @@ export class GithubService {
             full_name: data.full_name,
             is_active: true,
         });
+
+        // Create webhook for PR events
+        await this.createRepositoryWebhook(githubRepository.name);
 
         this.logger.log({
             message: `${this.serviceName}.createRepositoryFromTemplate: Success create repository from template`,
@@ -849,5 +854,75 @@ export class GithubService {
                 },
             ),
         );
+    }
+
+    /**
+     * Creates a webhook for a repository to listen for PR events
+     * @param repositoryName The name of the repository
+     */
+    async createRepositoryWebhook(repositoryName: string) {
+        this.logger.log({
+            message: `${this.serviceName}.createRepositoryWebhook: Creating webhook for repository`,
+            metadata: { repositoryName },
+        });
+
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repositoryName}/hooks`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+            Accept: "application/vnd.github.v3+json",
+        };
+
+        const webhookUrl = this.appConfigurationService.githubWebhookUrl;
+        const webhookSecret = this.appConfigurationService.githubWebhookSecret;
+
+        if (!webhookUrl || !webhookSecret) {
+            this.logger.error({
+                message: `${this.serviceName}.createRepositoryWebhook: Webhook URL or secret not configured`,
+            });
+            return;
+        }
+
+        const body = {
+            name: "web",
+            active: true,
+            events: ["pull_request"],
+            config: {
+                url: webhookUrl,
+                content_type: "json",
+                secret: webhookSecret,
+                insecure_ssl: "0",
+            },
+        };
+
+        try {
+            const { data } = await lastValueFrom(
+                this.httpService
+                    .post(url, body, {
+                        headers,
+                    })
+                    .pipe(
+                        catchError((error: AxiosError) => {
+                            this.logger.error({
+                                message: `${this.serviceName}.createRepositoryWebhook: Error creating webhook`,
+                                metadata: { error: error.response?.data },
+                            });
+                            throw error;
+                        }),
+                    ),
+            );
+
+            this.logger.log({
+                message: `${this.serviceName}.createRepositoryWebhook: Successfully created webhook`,
+                metadata: { data },
+            });
+
+            return data;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createRepositoryWebhook: Failed to create webhook`,
+                metadata: { error },
+            });
+            // Don't throw the error to prevent blocking repository creation
+        }
     }
 }
