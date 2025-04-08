@@ -52,4 +52,12 @@ export class AppConfigurationService {
     get startupTierIterationsLimit() {
         return this.configService.get("app.startupTierIterationsLimit");
     }
+
+    get githubWebhookUrl() {
+        return this.configService.get("app.githubWebhookUrl");
+    }
+
+    get githubWebhookSecret() {
+        return this.configService.get("app.githubWebhookSecret");
+    }
 }

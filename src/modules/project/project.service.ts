@@ -6,6 +6,7 @@ import {
     Logger,
     LoggerService,
     NotFoundException,
+    OnModuleInit,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
@@ -60,7 +61,7 @@ import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
 
 @Injectable()
-export class ProjectService {
+export class ProjectService implements OnModuleInit {
     private readonly serviceName = "ProjectService";
 
     constructor(
@@ -82,7 +83,6 @@ export class ProjectService {
         private feedbackRepository: Repository<Feedback>,
         @InjectRepository(File)
         private fileRepository: Repository<File>,
-
         @InjectRepository(ReferenceLink)
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
@@ -114,6 +114,17 @@ export class ProjectService {
             message: `${this.serviceName}.constructor: Service initialized`,
             metadata: { timestamp: new Date() },
         });
+    }
+
+    async onModuleInit() {
+        this.logger.log({
+            message: `${this.serviceName}.onModuleInit: Service initialized`,
+        });
+
+        // this.requestGithubAccess(
+        //     "5858afc6-ebe9-4cb5-8e52-59b3d0e51bb6",
+        //     "6fa8fb9c-86c6-4bf0-8f4e-7a2e40c4c788",
+        // );
     }
 
     async getAllProjects(): Promise<Project[]> {
@@ -1134,5 +1145,78 @@ ${formattedBranding}
         }
 
         return formattedUpdatedRequirements;
+    }
+
+    async requestGithubAccess(projectId: string, uId: string) {
+        this.logger.log({
+            message: `${this.serviceName}.requestGithubAccess: Requesting GitHub access`,
+            metadata: { projectId },
+        });
+
+        // Get the project to verify it exists
+        const project = await this.getProjectById(projectId);
+        if (!project) {
+            throw new NotFoundException(
+                `Project with id ${projectId} not found`,
+            );
+        }
+
+        // Get GitHub username from Supabase
+        const githubUsername =
+            await this.supabaseService.getGithubUsername(uId);
+        if (!githubUsername) {
+            throw new BadRequestException(
+                "GitHub username not found in Supabase",
+            );
+        }
+
+        // Get all repositories for this project
+        const repositories = await this.githubRepoRepository.find({
+            where: { project_id: projectId },
+        });
+
+        if (!repositories || repositories.length === 0) {
+            throw new NotFoundException(
+                `No GitHub repositories found for project ${projectId}`,
+            );
+        }
+
+        // Execute GitHub CLI command to add collaborator for each repository
+        const results = [];
+
+        for (const repo of repositories) {
+            // const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoftai/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
+            try {
+                const response = await this.githubService.addUserToCollaborator(
+                    repo.name,
+                    githubUsername,
+                );
+                this.logger.log({
+                    message: `${this.serviceName}.requestGithubAccess: Response`,
+                    metadata: { response: response.status },
+                });
+                results.push({
+                    repository: repo.name,
+                    success: true,
+                    data: response.data,
+                });
+            } catch (error) {
+                this.logger.error({
+                    message: `${this.serviceName}.requestGithubAccess: Error adding user to collaborator`,
+                    metadata: { error },
+                });
+                results.push({
+                    repository: repo.name,
+                    success: false,
+                    error: error.message,
+                });
+            }
+        }
+
+        return {
+            success: true,
+            message: "GitHub access request processed for all repositories",
+            results,
+        };
     }
 }
