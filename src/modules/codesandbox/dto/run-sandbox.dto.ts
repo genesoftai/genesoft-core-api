@@ -36,3 +36,9 @@ export class RunPreviewTaskOnSandboxDto {
     @IsString()
     sandbox_id: string;
 }
+
+export class KillAllShellsDto {
+    @IsNotEmpty()
+    @IsString()
+    sandbox_id: string;
+}

@@ -9,6 +9,11 @@ import {
 export class BackendInfraController {
     constructor(private readonly backendInfraService: BackendInfraService) {}
 
+    @Get("project/:projectId")
+    getBackendServiceInfo(@Param("projectId") projectId: string) {
+        return this.backendInfraService.getBackendServiceInfo(projectId);
+    }
+
     @Post("koyeb/project")
     createNewProjectInKoyeb(@Body() payload: CreateKoyebProjectDto) {
         return this.backendInfraService.createNewProjectInKoyeb(

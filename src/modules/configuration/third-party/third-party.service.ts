@@ -30,4 +30,8 @@ export class ThirdPartyConfigurationService {
     get gcpOrganizationId() {
         return this.configService.get("thirdParty.gcpOrganizationId");
     }
+
+    get perplexityApiKey() {
+        return this.configService.get("thirdParty.perplexityApiKey");
+    }
 }

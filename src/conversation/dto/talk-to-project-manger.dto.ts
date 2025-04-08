@@ -26,3 +26,18 @@ export class TalkToProjectManagerDto {
     @IsString()
     page_id?: string;
 }
+
+export class TalkToBackendDeveloperDto {
+    @IsNotEmpty()
+    @IsString()
+    project_id: string;
+
+    @IsOptional()
+    @IsString()
+    conversation_id?: string;
+
+    @IsNotEmpty()
+    @ValidateNested()
+    @Type(() => CreateMessageDto)
+    message: CreateMessageDto;
+}

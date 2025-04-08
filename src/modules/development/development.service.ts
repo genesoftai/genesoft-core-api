@@ -146,8 +146,6 @@ export class DevelopmentService {
                                 iteration_id: savedIteration.id,
                                 frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
                                 branch: "dev",
-                                is_supabase_integration:
-                                    payload.is_supabase_integration || false,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -173,8 +171,6 @@ export class DevelopmentService {
                                 iteration_id: savedIteration.id,
                                 backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
                                 branch: "dev",
-                                is_supabase_integration:
-                                    payload.is_supabase_integration || false,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -200,8 +196,6 @@ export class DevelopmentService {
                                 iteration_id: savedIteration.id,
                                 backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
                                 branch: "dev",
-                                is_supabase_integration:
-                                    payload.is_supabase_integration || false,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -487,83 +481,87 @@ export class DevelopmentService {
 
             if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.CoreDevelopment
+                updatedIteration.type === IterationType.CoreDevelopment &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Web}_nextjs`
             ) {
-                await this.emailService.sendEmail({
-                    to: [...userEmails, GENESOFT_AI_EMAIL],
-                    subject: `Web application development completed for ${conversation.name} conversation`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-                            <div style="text-align: center; margin-bottom: 20px;">
-                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
-                            </div>
-                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Web Application Development is Completed!</h2>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                We're pleased to inform you that the latest generation for your web application has been successfully completed.
-                            </p>
-                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                                <p style="margin: 0; font-size: 15px;">
-                                    <strong>Project:</strong> ${project.name || "No project name provided"}<br>
-                                    <strong>Conversation:</strong> ${conversation.name || "No name provided"}<br>
-                                </p>
-                            </div>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                You can now review the completed work in your AI Agent page of Genesoft.
-                            </p>
-                            <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/${updatedIteration.project_id}/ai-agent" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View latest version of your web application</a>
-                            </div>
-                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
-                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
-                            </div>
-                        </div>
-                    `,
-                    from: GENESOFT_SUPPORT_EMAIL_FROM,
-                });
+                // await this.emailService.sendEmail({
+                //     to: [...userEmails, GENESOFT_AI_EMAIL],
+                //     subject: `Web application development completed for ${conversation.name} conversation`,
+                //     html: `
+                //         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                //             <div style="text-align: center; margin-bottom: 20px;">
+                //                 <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                //             </div>
+                //             <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Web Application Development is Completed!</h2>
+                //             <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                //                 We're pleased to inform you that the latest generation for your web application has been successfully completed.
+                //             </p>
+                //             <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                //                 <p style="margin: 0; font-size: 15px;">
+                //                     <strong>Project:</strong> ${project.name || "No project name provided"}<br>
+                //                     <strong>Conversation:</strong> ${conversation.name || "No name provided"}<br>
+                //                 </p>
+                //             </div>
+                //             <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                //                 You can now review the completed work in your AI Agent page of Genesoft.
+                //             </p>
+                //             <div style="text-align: center; margin: 25px 0;">
+                //                 <a href="${GENESOFT_BASE_URL}/dashboard/project/${updatedIteration.project_id}/ai-agent" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View latest version of your web application</a>
+                //             </div>
+                //             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                //                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                //             </div>
+                //         </div>
+                //     `,
+                //     from: GENESOFT_SUPPORT_EMAIL_FROM,
+                // });
                 await this.repositoryBuildService.checkRepositoryBuildOverview({
                     project_id: updatedIteration.project_id,
                 });
             } else if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.Project
+                updatedIteration.type === IterationType.Project &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Web}_nextjs`
             ) {
                 const project = await this.projectService.getProjectById(
                     updatedIteration.project_id,
                 );
-                await this.emailService.sendEmail({
-                    to: [...userEmails, GENESOFT_AI_EMAIL],
-                    subject: `Project initialization completed successfully for ${project?.name}`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-                            <div style="text-align: center; margin-bottom: 20px;">
-                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
-                            </div>
-                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Project Has Been Successfully Initialized</h2>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                We're pleased to inform you that your project has been successfully initialized and is ready for use.
-                            </p>
-                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                                <p style="margin: 0; font-size: 15px;">
-                                    <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
-                                    <strong>Description:</strong> ${project?.description || "No description provided"}
-                                </p>
-                            </div>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
-                                You can now access your project dashboard to start working with your newly initialized project.
-                            </p>
-                            <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Project</a>
-                            </div>
-                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
-                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
-                            </div>
-                            <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
-                                <strong>Important:</strong> Your project is now being enhanced with powerful infrastructure! The Genesoft team is currently setting up critical components (backend services, authentication systems, deployment pipelines, etc.) to make your project fully functional. We're working diligently to complete this process and will notify you immediately when your project infrastructure is ready for use. This final step will unlock the full potential of your application!
-                            </p>
-                        </div>
-                    `,
-                    from: GENESOFT_SUPPORT_EMAIL_FROM,
-                });
+                // await this.emailService.sendEmail({
+                //     to: [...userEmails, GENESOFT_AI_EMAIL],
+                //     subject: `Project initialization completed successfully for ${project?.name}`,
+                //     html: `
+                //         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                //             <div style="text-align: center; margin-bottom: 20px;">
+                //                 <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                //             </div>
+                //             <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Project Has Been Successfully Initialized</h2>
+                //             <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                //                 We're pleased to inform you that your project has been successfully initialized and is ready for use.
+                //             </p>
+                //             <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                //                 <p style="margin: 0; font-size: 15px;">
+                //                     <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
+                //                     <strong>Description:</strong> ${project?.description || "No description provided"}
+                //                 </p>
+                //             </div>
+                //             <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                //                 You can now access your project dashboard to start working with your newly initialized project.
+                //             </p>
+                //             <div style="text-align: center; margin: 25px 0;">
+                //                 <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Project</a>
+                //             </div>
+                //             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                //                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                //             </div>
+                //             <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
+                //                 <strong>Important:</strong> Your project is now being enhanced with powerful infrastructure! The Genesoft team is currently setting up critical components (backend services, authentication systems, deployment pipelines, etc.) to make your project fully functional. We're working diligently to complete this process and will notify you immediately when your project infrastructure is ready for use. This final step will unlock the full potential of your application!
+                //             </p>
+                //         </div>
+                //     `,
+                //     from: GENESOFT_SUPPORT_EMAIL_FROM,
+                // });
                 await this.repositoryBuildService.checkRepositoryBuildOverview({
                     project_id: updatedIteration.project_id,
                 });

@@ -71,9 +71,13 @@ export class CreateProjectDto {
     @IsString()
     name: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    description: string;
+    description?: string;
+
+    @IsOptional()
+    @IsString()
+    backend_requirements?: string;
 
     @IsNotEmpty()
     @IsString()
@@ -110,11 +114,15 @@ export class CreateProjectFromOnboardingDto {
 
     @IsNotEmpty()
     @IsString()
-    project_description: string;
-
-    @IsNotEmpty()
-    @IsString()
     project_type: string;
+
+    @IsOptional()
+    @IsString()
+    project_description?: string;
+
+    @IsOptional()
+    @IsString()
+    backend_requirements?: string;
 
     @IsOptional()
     @IsString()
