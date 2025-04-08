@@ -828,7 +828,8 @@ export class CodesandboxService {
                         output.includes("ready in") ||
                         output.includes("Local:") ||
                         output.includes("localhost:") ||
-                        output.includes("started server on")
+                        output.includes("started server on") ||
+                        output.includes("Nest application successfully started")
                     ) {
                         resolve(allOutput);
                     }
