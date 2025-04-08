@@ -164,8 +164,9 @@ export class GithubController {
         @Req() req: RawBodyRequest<Request>,
         @Headers("x-github-event") eventType: string,
         @Headers("x-hub-signature-256") signature: string,
+        @Body() payload: any,
     ) {
-        const rawBody = req.rawBody;
+        // const rawBody = req.rawBody;
         const webhookSecret = this.appConfigurationService.githubWebhookSecret;
 
         if (!webhookSecret) {
@@ -175,10 +176,11 @@ export class GithubController {
             };
         }
 
+        const stringifiedPayload = JSON.stringify(payload);
         // Verify webhook signature
         const hmac = crypto.createHmac("sha256", webhookSecret);
         const calculatedSignature = `sha256=${hmac
-            .update(rawBody)
+            .update(stringifiedPayload)
             .digest("hex")}`;
 
         if (signature !== calculatedSignature) {
@@ -190,7 +192,6 @@ export class GithubController {
 
         // Handle different event types
         if (eventType === "pull_request") {
-            const payload = JSON.parse(rawBody.toString());
             const action = payload.action;
             const pullRequest = payload.pull_request;
             const repository = payload.repository;
