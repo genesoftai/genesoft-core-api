@@ -8,4 +8,5 @@ export default registerAs("thirdParty", () => ({
     codesandboxApiKey: process.env.CSB_API_KEY || "",
     gcpApiKey: process.env.GCP_API_KEY || "",
     gcpOrganizationId: process.env.GCP_ORGANIZATION_ID || "",
+    perplexityApiKey: process.env.PERPLEXITY_API_KEY || "",
 }));

@@ -6,6 +6,7 @@ export enum AiAgentTeam {
 
 export enum AiAgentId {
     GenesoftProjectManager = "50ca1ff7-c23e-49b9-9d60-d40030cc0ad9",
+    GenesoftBackendDeveloper = "205d57c2-6297-4b9d-83c7-2fb230804023",
 }
 
 export enum AiAgentName {

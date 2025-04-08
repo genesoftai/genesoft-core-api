@@ -11,7 +11,6 @@ export class CreateIterationDto {
 
     @IsString()
     @IsOptional()
-    @IsNotEmpty()
     project_template_type?: string;
 
     @IsString()

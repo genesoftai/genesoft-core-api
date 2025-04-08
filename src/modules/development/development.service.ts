@@ -146,8 +146,6 @@ export class DevelopmentService {
                                 iteration_id: savedIteration.id,
                                 frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
                                 branch: "dev",
-                                is_supabase_integration:
-                                    payload.is_supabase_integration || false,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -173,8 +171,6 @@ export class DevelopmentService {
                                 iteration_id: savedIteration.id,
                                 backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
                                 branch: "dev",
-                                is_supabase_integration:
-                                    payload.is_supabase_integration || false,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -200,8 +196,6 @@ export class DevelopmentService {
                                 iteration_id: savedIteration.id,
                                 backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
                                 branch: "dev",
-                                is_supabase_integration:
-                                    payload.is_supabase_integration || false,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -421,6 +415,7 @@ export class DevelopmentService {
             }
             const iterationTasks = await this.iterationTaskRepository.find({
                 where: { iteration_id: iteration.id },
+                order: { created_at: "ASC" },
             });
             return {
                 ...iteration,
@@ -487,7 +482,9 @@ export class DevelopmentService {
 
             if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.CoreDevelopment
+                updatedIteration.type === IterationType.CoreDevelopment &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Web}_nextjs`
             ) {
                 await this.emailService.sendEmail({
                     to: [...userEmails, GENESOFT_AI_EMAIL],
@@ -525,11 +522,10 @@ export class DevelopmentService {
                 });
             } else if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.Project
+                updatedIteration.type === IterationType.Project &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Web}_nextjs`
             ) {
-                const project = await this.projectService.getProjectById(
-                    updatedIteration.project_id,
-                );
                 await this.emailService.sendEmail({
                     to: [...userEmails, GENESOFT_AI_EMAIL],
                     subject: `Project initialization completed successfully for ${project?.name}`,
@@ -552,7 +548,7 @@ export class DevelopmentService {
                                 You can now access your project dashboard to start working with your newly initialized project.
                             </p>
                             <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Project</a>
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View</a>
                             </div>
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
                                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
@@ -566,6 +562,86 @@ export class DevelopmentService {
                 });
                 await this.repositoryBuildService.checkRepositoryBuildOverview({
                     project_id: updatedIteration.project_id,
+                });
+            } else if (
+                status === IterationStatus.Done &&
+                updatedIteration.type === IterationType.CoreDevelopment &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Backend}_nestjs`
+            ) {
+                await this.emailService.sendEmail({
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
+                    subject: `Backend service development completed successfully for ${project?.name}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                            </div>
+                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Backend Service Has Been Successfully Developed</h2>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                We're pleased to inform you that the core development of your backend service has been successfully completed and is ready for use.
+                            </p>
+                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 15px;">
+                                    <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
+                                    <strong>Backend Requirements:</strong> ${project?.backend_requirements || "No backend requirements provided"}
+                                </p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                You can now access your project dashboard to review your backend service and its API endpoints.
+                            </p>
+                            <div style="text-align: center; margin: 25px 0;">
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View</a>
+                            </div>
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
+                                <strong>Important:</strong> Your backend service is now ready for integration! The API endpoints have been developed according to your specifications. You can now connect your frontend applications to these endpoints or use them with API testing tools. If you need any assistance with integration or have questions about the API functionality, our support team is ready to help.
+                            </p>
+                        </div>
+                    `,
+                    from: GENESOFT_SUPPORT_EMAIL_FROM,
+                });
+            } else if (
+                status === IterationStatus.Done &&
+                updatedIteration.type === IterationType.Project &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Backend}_nestjs`
+            ) {
+                await this.emailService.sendEmail({
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
+                    subject: `Backend service project initialization completed successfully for ${project?.name}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                            </div>
+                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Backend Service Project Has Been Successfully Initialized</h2>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                We're pleased to inform you that your backend service project has been successfully initialized and is ready for development.
+                            </p>
+                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 15px;">
+                                    <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
+                                    <strong>Backend Requirements:</strong> ${project?.backend_requirements || "No backend requirements provided"}
+                                </p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                You can now access your project dashboard to monitor the development progress of your backend service.
+                            </p>
+                            <div style="text-align: center; margin: 25px 0;">
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View</a>
+                            </div>
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
+                                <strong>Important:</strong> Your backend service project is now being set up! Our system is currently configuring the API architecture, database models, and authentication systems based on your specifications. The core development phase will begin shortly, during which we'll implement all the requested endpoints and business logic. You'll receive another notification when your backend service is fully developed and ready for integration with your frontend applications.
+                            </p>
+                        </div>
+                    `,
+                    from: GENESOFT_SUPPORT_EMAIL_FROM,
                 });
             }
             return updatedIteration;

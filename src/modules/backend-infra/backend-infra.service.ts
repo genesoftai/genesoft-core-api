@@ -12,6 +12,9 @@ import { AWSConfigurationService } from "@/modules/configuration/aws";
 import { KoyebProject } from "./entity/koyeb-project.entity";
 import { KoyebConfigurationService } from "@/modules/configuration/koyeb";
 import { AppConfigurationService } from "@/modules/configuration/app";
+import { CodesandboxService } from "../codesandbox/codesandbox.service";
+import { Iteration } from "../development/entity/iteration.entity";
+import { Project } from "../project/entity/project.entity";
 
 @Injectable()
 export class BackendInfraService {
@@ -31,7 +34,46 @@ export class BackendInfraService {
         private readonly koyebProjectRepository: Repository<KoyebProject>,
         private readonly koyebConfigurationService: KoyebConfigurationService,
         private readonly appConfigurationService: AppConfigurationService,
+        @InjectRepository(Iteration)
+        private readonly iterationRepository: Repository<Iteration>,
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
     ) {}
+
+    async getBackendServiceInfo(projectId: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+        let developmentStatus = "development_done";
+        const iteration = await this.iterationRepository.findOne({
+            where: { project_id: projectId },
+            order: { created_at: "DESC" },
+        });
+
+        if (iteration && iteration.status === "in_progress") {
+            developmentStatus =
+                iteration.type === "page"
+                    ? "page_iteration_in_progress"
+                    : "feature_iteration_in_progress";
+        }
+        const developmentDoneAt = iteration?.updated_at
+            ? new Date(iteration.updated_at).getTime()
+            : null;
+
+        const codesandboxUrl = project?.sandbox_id
+            ? `https://codesandbox.io/p/devbox/nextjs-web-${projectId}-${project?.sandbox_id}`
+            : null;
+        const port = 8000;
+        const codesandboxPreviewUrl = `https://${project?.sandbox_id}-${port}.csb.app`;
+
+        return {
+            developmentStatus,
+            developmentDoneAt,
+            codesandboxUrl,
+            sandboxId: project?.sandbox_id,
+            codesandboxPreviewUrl,
+        };
+    }
 
     async createNewProjectInKoyeb(projectId: string) {
         try {

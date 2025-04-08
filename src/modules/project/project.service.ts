@@ -254,6 +254,8 @@ export class ProjectService implements OnModuleInit {
                 "target_audience",
                 "created_at",
                 "updated_at",
+                "project_template_type",
+                "backend_requirements",
             ],
         });
         const pages = await this.getProjectPages(id);
@@ -289,17 +291,13 @@ export class ProjectService implements OnModuleInit {
         return features;
     }
 
-    async getProjectBranding(id: string): Promise<Branding> {
+    async getProjectBranding(id: string): Promise<Branding | object> {
         const branding = await this.brandingRepository.findOne({
             where: { projectId: id },
         });
 
         if (!branding) {
-            this.logger.warn({
-                message: `${this.serviceName}.getProjectBranding: Branding not found`,
-                metadata: { id, timestamp: new Date() },
-            });
-            throw new NotFoundException(`Branding for project ${id} not found`);
+            return {};
         }
 
         return branding;
@@ -337,6 +335,7 @@ export class ProjectService implements OnModuleInit {
             description: payload.description,
             purpose: payload.purpose,
             target_audience: payload.target_audience,
+            project_template_type: `${payload.project_type}_nextjs`,
         });
 
         const project = await this.projectRepository.save(newProject);
@@ -395,7 +394,7 @@ export class ProjectService implements OnModuleInit {
         await this.githubService.updateRepositoryContent({
             repository: githubRepository.name,
             path: "api_doc.md",
-            content: "#API documentation for the project",
+            content: "# API documentation for the project",
             message: "Add api_doc.md to github repo",
             ref: "dev",
             branch: "dev",
@@ -416,13 +415,17 @@ export class ProjectService implements OnModuleInit {
     }
 
     async createBackendProject(payload: CreateProjectDto): Promise<Project> {
+        this.logger.log({
+            message: `${this.serviceName}.createBackendProject: Creating new project`,
+            metadata: { payload, timestamp: new Date() },
+        });
         // Create web and backend project
         const newProject = this.projectRepository.create({
             organization_id: payload.organization_id,
             name: payload.name,
             description: payload.description,
-            purpose: payload.purpose,
-            target_audience: payload.target_audience,
+            backend_requirements: payload.backend_requirements,
+            project_template_type: `${payload.project_type}_nestjs`,
         });
 
         const project = await this.projectRepository.save(newProject);
@@ -450,21 +453,22 @@ export class ProjectService implements OnModuleInit {
             metadata: {
                 projectId: project.id,
                 timestamp: new Date(),
+                githubRepository,
             },
         });
 
-        await this.githubService.updateRepositoryContent({
-            repository: githubRepository.name,
-            path: "api_doc.md",
-            content: "#API documentation for the project",
-            message: "Add api_doc.md to github repo",
-            ref: "dev",
-            branch: "dev",
-            committer: {
-                name: "khemmapichpanyana",
-                email: "khemmapich@gmail.com",
-            },
-        });
+        // await this.githubService.updateRepositoryContent({
+        //     repository: githubRepository.name,
+        //     path: "api_doc.md",
+        //     content: "# API documentation for the project",
+        //     message: "Add api_doc.md to github repo",
+        //     ref: "dev",
+        //     branch: "dev",
+        //     committer: {
+        //         name: "khemmapichpanyana",
+        //         email: "khemmapich@gmail.com",
+        //     },
+        // });
 
         await this.developmentService.createIteration({
             project_id: project.id,
@@ -509,6 +513,7 @@ export class ProjectService implements OnModuleInit {
 
             const projectName = await this.llmService.generateProjectName(
                 payload.project_description,
+                payload.backend_requirements,
             );
 
             if (payload.project_type === ProjectTemplateType.Web) {
@@ -552,6 +557,7 @@ export class ProjectService implements OnModuleInit {
                     description: payload.project_description,
                     organization_id: organization.id,
                     project_type: payload.project_type,
+                    backend_requirements: payload.backend_requirements,
                 });
                 const iteration = await this.iterationRepository.findOne({
                     where: { project_id: project.id },
@@ -567,16 +573,16 @@ export class ProjectService implements OnModuleInit {
                     iteration_id: iteration.id,
                 });
 
-                await this.conversationService.talkToProjectManager({
-                    project_id: project.id,
-                    conversation_id: conversation.id,
-                    message: {
-                        content: `Please update user with latest information about the project creation of ${project.name}`,
-                        sender_type: "system",
-                        message_type: "text",
-                        sender_id: SystemId.GenesoftProjectManager,
-                    },
-                });
+                // await this.conversationService.talkToProjectManager({
+                //     project_id: project.id,
+                //     conversation_id: conversation.id,
+                //     message: {
+                //         content: `Please update user with latest information about the project creation of ${project.name}`,
+                //         sender_type: "system",
+                //         message_type: "text",
+                //         sender_id: SystemId.GenesoftProjectManager,
+                //     },
+                // });
                 return { project };
             } else if (
                 payload.project_type === ProjectTemplateType.WebAndBackend
@@ -1020,7 +1026,7 @@ export class ProjectService implements OnModuleInit {
         const formattedInfo = formatBasicInfo(info as Project);
         const formattedFeatures = formatFeatures(features);
         const formattedPages = formatPages(pages);
-        const formattedBranding = formatBranding(branding);
+        const formattedBranding = formatBranding(branding as Branding);
 
         const documentation = `
 Project Documentation
