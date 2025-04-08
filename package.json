@@ -48,7 +48,6 @@
     "class-validator": "^0.14.1",
     "codesandbox": "^2.2.3",
     "exa-js": "^1.4.10",
-    "firebase-admin": "^13.2.0",
     "jszip": "^3.10.1",
     "langchain": "^0.3.15",
     "nest-winston": "^1.9.7",
