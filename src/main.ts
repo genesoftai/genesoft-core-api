@@ -32,7 +32,7 @@ async function bootstrap() {
         "/api/stripe/webhook",
         bodyParser.raw({ type: "application/json" }),
     );
-
+    
     await app.listen(port);
     console.log(`Genesoft Core API service start listening on port ${port}`);
 }
