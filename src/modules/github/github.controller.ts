@@ -199,40 +199,48 @@ export class GithubController {
             Logger.log(
                 `Pull request ${action} for ${repository.full_name} #${pullRequest.number}: ${pullRequest.title}`,
             );
+
             // Check if PR is not from khemmapichpanyana and is targeting the dev branch
             if (
                 pullRequest.user.login !== "khemmapichpanyana" &&
                 pullRequest.base.ref === "dev" &&
-                action === "opened" &&
-                pullRequest.mergeable
+                action === "opened"
             ) {
-                try {
-                    // Automatically merge the PR
-                    await this.githubService.mergePullRequest({
-                        repository: repository.name,
-                        pull_number: pullRequest.number,
-                        merge_method: "merge",
-                    });
+                // Wait 10 seconds for mergeable state to be calculated by GitHub
+                setTimeout(async () => {
+                    try {
+                        // Get updated PR details with accurate mergeable state
+                        const updatedPR =
+                            await this.githubService.getPullRequest({
+                                repository: repository.name,
+                                pull_number: pullRequest.number,
+                            });
 
-                    Logger.log(
-                        `Automatically merged PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch`,
-                    );
-                } catch (error) {
-                    Logger.error(
-                        `Failed to auto-merge PR #${pullRequest.number}:`,
-                        error,
-                    );
-                }
-            } else if (
-                pullRequest.user.login !== "khemmapichpanyana" &&
-                pullRequest.base.ref === "dev" &&
-                action === "opened" &&
-                !pullRequest.mergeable
-            ) {
-                Logger.log(
-                    `PR #${pullRequest.number} is not mergeable due to conflicts, waiting for updates`,
-                );
+                        if (updatedPR && updatedPR.mergeable) {
+                            // Automatically merge the PR if mergeable
+                            await this.githubService.mergePullRequest({
+                                repository: repository.name,
+                                pull_number: pullRequest.number,
+                                merge_method: "merge",
+                            });
+
+                            Logger.log(
+                                `Automatically merged PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch`,
+                            );
+                        } else {
+                            Logger.log(
+                                `PR #${pullRequest.number} is not mergeable due to conflicts, waiting for updates`,
+                            );
+                        }
+                    } catch (error) {
+                        Logger.error(
+                            `Failed to auto-merge PR #${pullRequest.number}:`,
+                            error,
+                        );
+                    }
+                }, 10000); // 10 seconds delay
             }
+
             // Also handle PR updates (when conflicts are resolved)
             if (
                 pullRequest.user.login !== "khemmapichpanyana" &&
@@ -265,13 +273,6 @@ export class GithubController {
                     );
                 }
             }
-
-            // Here you can add specific logic for different PR actions
-            // For example, you might want to:
-            // - Update a database record
-            // - Trigger a notification
-            // - Run automated tests
-            // - etc.
         }
 
         return {

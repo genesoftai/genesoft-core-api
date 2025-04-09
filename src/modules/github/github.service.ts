@@ -546,6 +546,47 @@ export class GithubService {
 
         return data;
     }
+    
+    async getPullRequest(payload: { repository: string; pull_number: number }) {
+        const { repository, pull_number } = payload;
+        const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/pulls/${pull_number}`;
+        const headers = {
+            Authorization: `Bearer ${this.githubAccessToken}`,
+            Accept: "application/vnd.github.v3+json",
+        };
+
+        this.logger.log({
+            message: `${this.serviceName}.getPullRequest: Getting pull request details`,
+            metadata: { url },
+        });
+
+        try {
+            const { data } = await lastValueFrom(
+                this.httpService
+                    .get(url, {
+                        headers,
+                    })
+                    .pipe(
+                        catchError((error: AxiosError) => {
+                            this.logger.error({
+                                message: `${this.serviceName}.getPullRequest: Error getting pull request details`,
+                                metadata: { error },
+                            });
+                            throw error;
+                        }),
+                    ),
+            );
+
+            console.log(data);
+            return data;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.getPullRequest: Failed to get pull request details`,
+                metadata: { error },
+            });
+            throw error;
+        }
+    }
 
     async getWorkflowRuns(payload: GetWorkflowRunsDto) {
         const { repository, branch } = payload;
