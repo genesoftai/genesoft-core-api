@@ -12,7 +12,6 @@ import {
     RawBodyRequest,
     Req,
     Logger,
-    OnModuleInit,
 } from "@nestjs/common";
 import { GithubService } from "./github.service";
 import { ApiTags } from "@nestjs/swagger";
