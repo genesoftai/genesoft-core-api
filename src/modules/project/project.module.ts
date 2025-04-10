@@ -28,6 +28,9 @@ import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
+import { ProjectDbManagerService } from "./project-db-manager.service";
+import { ProjectDb } from "./entity/project-db.entity";
+import { ConfigModule } from "@nestjs/config";
 
 @Module({
     imports: [
@@ -46,6 +49,7 @@ import { LlmModule } from "../llm/llm.module";
             VercelProject,
             KoyebProject,
             Conversation,
+            ProjectDb,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -59,9 +63,10 @@ import { LlmModule } from "../llm/llm.module";
         forwardRef(() => ConversationModule),
         CodesandboxModule,
         LlmModule,
+        ConfigModule,
     ],
-    providers: [ProjectService, Logger],
+    providers: [ProjectService, Logger, ProjectDbManagerService],
     controllers: [ProjectController],
-    exports: [ProjectService],
+    exports: [ProjectService, ProjectDbManagerService],
 })
 export class ProjectModule {}

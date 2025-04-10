@@ -58,6 +58,7 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
+import { ProjectDbManagerService } from "./project-db-manager.service";
 
 @Injectable()
 export class ProjectService {
@@ -109,6 +110,7 @@ export class ProjectService {
         private conversationRepository: Repository<Conversation>,
         private codesandboxService: CodesandboxService,
         private llmService: LlmService,
+        private projectDbManagerService: ProjectDbManagerService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -224,11 +226,15 @@ export class ProjectService {
             where: { project_id: id },
         });
 
+        // Get database disk usage
+        const dbDiskUsage = await this.projectDbManagerService.getDatabaseDiskUsage(id);
+
         return {
             project,
             supabase,
             vercel,
             koyeb,
+            dbDiskUsage,
         };
     }
 
@@ -686,6 +692,9 @@ export class ProjectService {
             message: `${this.serviceName}.createInfrastructure: Vercel project created`,
             metadata: { projectId: project.id, vercelProject },
         });
+
+        // Create project database
+        await this.projectDbManagerService.createProjectDatabase(projectId);
     }
 
     async updateProjectInfo(
@@ -943,6 +952,9 @@ export class ProjectService {
         }
 
         await this.projectRepository.delete(id);
+
+        // Delete project database
+        await this.projectDbManagerService.deleteProjectDatabase(id);
 
         this.logger.log({
             message: `${this.serviceName}.deleteProject: Project deleted`,
