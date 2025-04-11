@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ProjectDb } from "./entity/project-db.entity";
@@ -52,6 +52,14 @@ export class ProjectDbManagerService {
         });
         if (!project) {
             throw new Error("Project not found");
+        }
+
+        // Check if project already has a database
+        const existingDb = await this.projectDbRepository.findOne({
+            where: { project_id: projectId },
+        });
+        if (existingDb) {
+            throw new Error("Project already has a database");
         }
 
         const dbName = this.generateDbName(project.name);
@@ -191,5 +199,53 @@ export class ProjectDbManagerService {
         } finally {
             await client.end();
         }
+    }
+
+    async getProjectDatabaseCredentials(projectId: string): Promise<{
+        db_name: string;
+        db_user: string;
+        db_password: string;
+    }> {
+        const projectDb = await this.projectDbRepository.findOne({
+            where: { project_id: projectId },
+        });
+
+        if (!projectDb) {
+            throw new NotFoundException(
+                `Database for project ${projectId} not found`,
+            );
+        }
+
+        return {
+            db_name: projectDb.db_name,
+            db_user: projectDb.db_user,
+            db_password: projectDb.db_password,
+        };
+    }
+
+    async getProjectDatabaseInfo(projectId: string): Promise<{
+        db_name: string;
+        disk_usage: number;
+        expired_at: Date | null;
+        created_at: Date;
+        updated_at: Date;
+    }> {
+        const projectDb = await this.projectDbRepository.findOne({
+            where: { project_id: projectId },
+        });
+
+        if (!projectDb) {
+            throw new NotFoundException(
+                `Database for project ${projectId} not found`,
+            );
+        }
+
+        return {
+            db_name: projectDb.db_name,
+            disk_usage: projectDb.disk_usage,
+            expired_at: projectDb.expired_at,
+            created_at: projectDb.created_at,
+            updated_at: projectDb.updated_at,
+        };
     }
 }

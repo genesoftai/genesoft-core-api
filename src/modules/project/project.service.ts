@@ -692,9 +692,6 @@ export class ProjectService {
             message: `${this.serviceName}.createInfrastructure: Vercel project created`,
             metadata: { projectId: project.id, vercelProject },
         });
-
-        // Create project database
-        await this.projectDbManagerService.createProjectDatabase(projectId);
     }
 
     async updateProjectInfo(

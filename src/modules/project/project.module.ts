@@ -1,4 +1,5 @@
 import { forwardRef, Logger, Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
 import { ProjectService } from "./project.service";
 import { ProjectController } from "./project.controller";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -63,6 +64,7 @@ import { ConfigModule } from "@nestjs/config";
         forwardRef(() => ConversationModule),
         CodesandboxModule,
         LlmModule,
+        HttpModule,
         ConfigModule,
     ],
     providers: [ProjectService, Logger, ProjectDbManagerService],
