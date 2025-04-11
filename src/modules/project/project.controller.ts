@@ -178,4 +178,16 @@ export class ProjectController {
     async getProjectDatabaseInfo(@Param("id") id: string) {
         return this.projectDbManagerService.getProjectDatabaseInfo(id);
     }
+
+    @Post(":id/github-access")
+    async requestGithubAccess(
+        @Param("id") id: string,
+        @Body() payload: { uid: string },
+    ) {
+        try {
+            return this.projectService.requestGithubAccess(id, payload.uid);
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
 }

@@ -10,7 +10,11 @@ Basic Information
 Project Name: ${info.name}
 Description: ${info.description}
 Purpose: ${info.purpose}
-Target Audience: ${info.target_audience}`;
+Target Audience: ${info.target_audience}
+----------------
+Backend Requirements:
+${info.backend_requirements}
+`;
 }
 
 export function formatFeatures(features: Feature[]): string {

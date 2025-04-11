@@ -13,4 +13,6 @@ export default registerAs("app", () => ({
     nodeEnv: process.env.NODE_ENV,
     freeTierIterationsLimit: process.env.FREE_TIER_ITERATIONS_LIMIT || 10,
     startupTierIterationsLimit: process.env.STARTUP_TIER_ITERATIONS_LIMIT || 40,
+    githubWebhookUrl: process.env.GITHUB_WEBHOOK_URL,
+    githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
 }));

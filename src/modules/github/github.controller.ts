@@ -2,12 +2,16 @@ import {
     Body,
     Controller,
     Get,
+    Headers,
     Param,
     Post,
     Put,
     Query,
     UseGuards,
     Delete,
+    RawBodyRequest,
+    Req,
+    Logger,
 } from "@nestjs/common";
 import { GithubService } from "./github.service";
 import { ApiTags } from "@nestjs/swagger";
@@ -28,12 +32,19 @@ import {
     MergePullRequestDto,
 } from "./dto/pull-requests.dto";
 import { DeleteFileContentFromRepositoryDto } from "./dto/delete-repository-content.dto";
+import { Request } from "express";
+import { AppConfigurationService } from "../configuration/app";
+import * as crypto from "crypto";
 
 @ApiTags("Github")
 @Controller("github")
 export class GithubController {
     private controllerName = GithubController.name;
-    constructor(private readonly githubService: GithubService) {}
+
+    constructor(
+        private readonly githubService: GithubService,
+        private readonly appConfigurationService: AppConfigurationService,
+    ) {}
 
     @Get("repository")
     @UseGuards(AuthGuard)
@@ -146,5 +157,126 @@ export class GithubController {
             project_id,
             branch,
         });
+    }
+
+    @Post("webhook")
+    async handleWebhook(
+        @Req() req: RawBodyRequest<Request>,
+        @Headers("x-github-event") eventType: string,
+        @Headers("x-hub-signature-256") signature: string,
+        @Body() payload: any,
+    ) {
+        // const rawBody = req.rawBody;
+        const webhookSecret = this.appConfigurationService.githubWebhookSecret;
+
+        if (!webhookSecret) {
+            return {
+                status: "error",
+                message: "Webhook secret not configured",
+            };
+        }
+
+        const stringifiedPayload = JSON.stringify(payload);
+        // Verify webhook signature
+        const hmac = crypto.createHmac("sha256", webhookSecret);
+        const calculatedSignature = `sha256=${hmac
+            .update(stringifiedPayload)
+            .digest("hex")}`;
+
+        if (signature !== calculatedSignature) {
+            return {
+                status: "error",
+                message: "Invalid signature",
+            };
+        }
+
+        // Handle different event types
+        if (eventType === "pull_request") {
+            const action = payload.action;
+            const pullRequest = payload.pull_request;
+            const repository = payload.repository;
+
+            Logger.log(
+                `Pull request ${action} for ${repository.full_name} #${pullRequest.number}: ${pullRequest.title}`,
+            );
+
+            // Check if PR is not from khemmapichpanyana and is targeting the dev branch
+            if (
+                pullRequest.user.login !== "khemmapichpanyana" &&
+                pullRequest.base.ref === "dev" &&
+                action === "opened"
+            ) {
+                // Wait 10 seconds for mergeable state to be calculated by GitHub
+                setTimeout(async () => {
+                    try {
+                        // Get updated PR details with accurate mergeable state
+                        const updatedPR =
+                            await this.githubService.getPullRequest({
+                                repository: repository.name,
+                                pull_number: pullRequest.number,
+                            });
+
+                        if (updatedPR && updatedPR.mergeable) {
+                            // Automatically merge the PR if mergeable
+                            await this.githubService.mergePullRequest({
+                                repository: repository.name,
+                                pull_number: pullRequest.number,
+                                merge_method: "merge",
+                            });
+
+                            Logger.log(
+                                `Automatically merged PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch`,
+                            );
+                        } else {
+                            Logger.log(
+                                `PR #${pullRequest.number} is not mergeable due to conflicts, waiting for updates`,
+                            );
+                        }
+                    } catch (error) {
+                        Logger.error(
+                            `Failed to auto-merge PR #${pullRequest.number}:`,
+                            error,
+                        );
+                    }
+                }, 10000); // 10 seconds delay
+            }
+
+            // Also handle PR updates (when conflicts are resolved)
+            if (
+                pullRequest.user.login !== "khemmapichpanyana" &&
+                pullRequest.base.ref === "dev" &&
+                action === "synchronize" &&
+                !pullRequest.merged
+            ) {
+                try {
+                    // Check if PR is mergeable after update
+                    if (pullRequest.mergeable) {
+                        // Automatically merge the PR after conflicts were resolved
+                        await this.githubService.mergePullRequest({
+                            repository: repository.name,
+                            pull_number: pullRequest.number,
+                            merge_method: "merge",
+                        });
+
+                        Logger.log(
+                            `Automatically merged updated PR #${pullRequest.number} from ${pullRequest.user.login} into dev branch after conflicts were resolved`,
+                        );
+                    } else {
+                        Logger.log(
+                            `Updated PR #${pullRequest.number} is not mergeable yet, waiting for conflicts to be fully resolved`,
+                        );
+                    }
+                } catch (error) {
+                    Logger.error(
+                        `Failed to auto-merge updated PR #${pullRequest.number}:`,
+                        error,
+                    );
+                }
+            }
+        }
+
+        return {
+            status: "success",
+        };
     }
 }

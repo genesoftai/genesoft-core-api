@@ -95,6 +95,7 @@ export class OrganizationService {
     async getOrganizationProjects(id: string): Promise<object> {
         const projects = await this.projectRepository.find({
             where: { organization_id: id },
+            order: { created_at: "DESC" },
         });
         return projects;
     }

@@ -260,6 +260,70 @@ export class CodesandboxService {
         }
     }
 
+    async writeFileOnSandboxWithoutHibernate(payload: WriteFileOnSandboxDto) {
+        const { sandbox_id, path, content } = payload;
+        this.logger.log({
+            message: `${this.serviceName}: Writing file on sandbox`,
+            metadata: {
+                sandbox_id,
+                path,
+                content,
+            },
+        });
+        // const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        // const sandboxSession = await sandbox.sessions.create("write_file", {
+        //     permission: "write",
+        // });
+        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+
+        this.logger.log({
+            message: `${this.serviceName}: Sandbox started`,
+            metadata: {
+                sandbox_id,
+            },
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}: Sandbox opened`,
+            metadata: {
+                sandbox_id,
+                // sandboxSession,
+            },
+        });
+
+        try {
+            // Use sandbox.fs directly instead of creating a session
+            await sandbox.fs.writeTextFile(path, content, {
+                create: true,
+                overwrite: true,
+            });
+
+            this.logger.log({
+                message: `${this.serviceName}: File written on sandbox`,
+                metadata: {
+                    sandbox_id,
+                    path,
+                },
+            });
+
+            return {
+                sandbox_id,
+                path,
+                status: "file_written",
+            };
+        } catch (error) {
+            // await sandbox.hibernate();
+            this.logger.error({
+                message: `${this.serviceName}: Error writing file on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
     /**
      * Read text content from a file in the sandbox
      */
@@ -285,6 +349,40 @@ export class CodesandboxService {
             };
         } catch (error) {
             await sandbox.hibernate();
+            this.logger.error({
+                message: `${this.serviceName}: Error reading file on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Read text content from a file in the sandbox
+     */
+    async readFileOnSandboxWithoutHibernate(payload: ReadFileOnSandboxDto) {
+        const { sandbox_id, path } = payload;
+        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        this.logger.log({
+            message: `${this.serviceName}: Reading file on sandbox`,
+            metadata: {
+                sandbox_id,
+                path,
+                sandbox,
+            },
+        });
+        try {
+            const content = await sandbox.fs.readTextFile(path);
+            return {
+                sandbox_id,
+                path,
+                status: "file_read",
+                content,
+            };
+        } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}: Error reading file on sandbox`,
                 metadata: {
@@ -554,6 +652,31 @@ export class CodesandboxService {
         }
     }
 
+    async runCommandOnSandboxWithoutWaiting(payload: RunCommandOnSandboxDto) {
+        const { sandbox_id, command } = payload;
+        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        try {
+            // Run the command
+            sandbox.shells.run(command);
+
+            return {
+                sandbox_id,
+                command,
+                status: "command_running",
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}: Error running command on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            await sandbox.hibernate();
+            throw error;
+        }
+    }
+
     async runTaskOnSandbox(payload: RunTaskOnSandboxDto) {
         const { sandbox_id, task } = payload;
         this.logger.log({
@@ -582,6 +705,36 @@ export class CodesandboxService {
             });
             await sandbox.hibernate();
             return result;
+        } catch (error) {
+            await sandbox.hibernate();
+            this.logger.error({
+                message: `${this.serviceName}: Error running task on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+        }
+    }
+
+    async runTaskOnSandboxAsBackgroundProcess(payload: RunTaskOnSandboxDto) {
+        const { sandbox_id, task } = payload;
+        this.logger.log({
+            message: `${this.serviceName}: Attempting to run task on sandbox`,
+            metadata: {
+                sandbox_id,
+                task,
+            },
+        });
+        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        try {
+            const result = await sandbox.tasks.runTask(task);
+            return {
+                sandbox_id,
+                task,
+                status: "task_running",
+                result,
+            };
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
@@ -675,7 +828,8 @@ export class CodesandboxService {
                         output.includes("ready in") ||
                         output.includes("Local:") ||
                         output.includes("localhost:") ||
-                        output.includes("started server on")
+                        output.includes("started server on") ||
+                        output.includes("Nest application successfully started")
                     ) {
                         resolve(allOutput);
                     }
@@ -768,6 +922,33 @@ export class CodesandboxService {
             });
             await sandbox.hibernate();
             throw error;
+        }
+    }
+
+    async killAllShells(sandbox_id: string) {
+        try {
+            const sandbox = await this.sdk.sandbox.open(sandbox_id);
+            const shells = await sandbox.shells.getShells();
+            for (const shell of shells) {
+                this.logger.log({
+                    message: `${this.serviceName}: Killing shell`,
+                    metadata: {
+                        shell_id: shell.id,
+                        sandbox_id,
+                        name: shell.name,
+                        output: shell.getOutput(),
+                    },
+                });
+                await shell.kill();
+            }
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}: Error killing all shells`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
         }
     }
 }

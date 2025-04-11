@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Delete } from "@nestjs/common";
 import { CodesandboxService } from "./codesandbox.service";
 import { CreateSandboxDto } from "./dto/create-sandbox.dto";
 import {
+    KillAllShellsDto,
     RunBuildTaskOnSandboxDto,
     RunCommandOnSandboxDto,
     RunDevTaskOnSandboxDto,
@@ -55,9 +56,23 @@ export class CodesandboxController {
         return this.codesandboxService.writeFileOnSandbox(payload);
     }
 
+    @Post("files/write/fast")
+    async writeFileWithoutHibernate(@Body() payload: WriteFileOnSandboxDto) {
+        return this.codesandboxService.writeFileOnSandboxWithoutHibernate(
+            payload,
+        );
+    }
+
     @Post("files/read")
     async readFile(@Body() payload: ReadFileOnSandboxDto) {
         return this.codesandboxService.readFileOnSandbox(payload);
+    }
+
+    @Post("files/read/fast")
+    async readFileWithoutHibernate(@Body() payload: ReadFileOnSandboxDto) {
+        return this.codesandboxService.readFileOnSandboxWithoutHibernate(
+            payload,
+        );
     }
 
     @Delete("files/delete")
@@ -90,9 +105,23 @@ export class CodesandboxController {
         return this.codesandboxService.runCommandOnSandbox(payload);
     }
 
+    @Post("command/run/background")
+    async runCommandWithoutWaiting(@Body() payload: RunCommandOnSandboxDto) {
+        return this.codesandboxService.runCommandOnSandboxWithoutWaiting(
+            payload,
+        );
+    }
+
     @Post("task/run")
     async runTask(@Body() payload: RunTaskOnSandboxDto) {
         return this.codesandboxService.runTaskOnSandbox(payload);
+    }
+
+    @Post("task/run/background")
+    async runTaskAsBackgroundProcess(@Body() payload: RunTaskOnSandboxDto) {
+        return this.codesandboxService.runTaskOnSandboxAsBackgroundProcess(
+            payload,
+        );
     }
 
     @Post("task/run/build")
@@ -112,6 +141,11 @@ export class CodesandboxController {
         return this.codesandboxService.runPreviewTaskOnSandbox(
             payload.sandbox_id,
         );
+    }
+
+    @Post("shells/kill/all")
+    async killAllShells(@Body() payload: KillAllShellsDto) {
+        return this.codesandboxService.killAllShells(payload.sandbox_id);
     }
 }
 
