@@ -12,7 +12,10 @@ import * as crypto from "crypto";
 @Injectable()
 export class ProjectEnvManagementService {
     private readonly algorithm = "aes-256-gcm";
-    private readonly key = Buffer.from(process.env.ENCRYPTION_KEY || "", "hex");
+    private readonly key = Buffer.from(
+        process.env.PROJECT_ENV_KEY || "",
+        "hex",
+    );
 
     constructor(
         @InjectRepository(ProjectEnv)
