@@ -32,6 +32,9 @@ import { LlmModule } from "../llm/llm.module";
 import { ProjectDbManagerService } from "./project-db-manager.service";
 import { ProjectDb } from "./entity/project-db.entity";
 import { ConfigModule } from "@nestjs/config";
+import { ProjectEnv } from "./entity/project-env.entity";
+import { ProjectEnvManagementService } from "./project-env-management.service";
+import { ProjectEnvController } from "./project-env.controller";
 
 @Module({
     imports: [
@@ -51,6 +54,7 @@ import { ConfigModule } from "@nestjs/config";
             KoyebProject,
             Conversation,
             ProjectDb,
+            ProjectEnv,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -67,8 +71,17 @@ import { ConfigModule } from "@nestjs/config";
         HttpModule,
         ConfigModule,
     ],
-    providers: [ProjectService, Logger, ProjectDbManagerService],
-    controllers: [ProjectController],
-    exports: [ProjectService, ProjectDbManagerService],
+    providers: [
+        ProjectService,
+        Logger,
+        ProjectDbManagerService,
+        ProjectEnvManagementService,
+    ],
+    controllers: [ProjectController, ProjectEnvController],
+    exports: [
+        ProjectService,
+        ProjectDbManagerService,
+        ProjectEnvManagementService,
+    ],
 })
 export class ProjectModule {}
