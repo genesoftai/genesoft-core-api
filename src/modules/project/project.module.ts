@@ -35,6 +35,8 @@ import { ConfigModule } from "@nestjs/config";
 import { ProjectEnv } from "./entity/project-env.entity";
 import { ProjectEnvManagementService } from "./project-env-management.service";
 import { ProjectEnvController } from "./project-env.controller";
+import { Collection } from "../collection/entity/collection.entity";
+import { CollectionModule } from "../collection/collection.module";
 
 @Module({
     imports: [
@@ -55,6 +57,7 @@ import { ProjectEnvController } from "./project-env.controller";
             Conversation,
             ProjectDb,
             ProjectEnv,
+            Collection,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -82,6 +85,7 @@ import { ProjectEnvController } from "./project-env.controller";
         ProjectService,
         ProjectDbManagerService,
         ProjectEnvManagementService,
+        CollectionModule,
     ],
 })
 export class ProjectModule {}

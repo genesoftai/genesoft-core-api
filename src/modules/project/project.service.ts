@@ -52,7 +52,7 @@ import { DevelopmentService } from "../development/development.service";
 import { UserService } from "../user/user.service";
 import { OrganizationService } from "../organization/organization.service";
 import { OrganizationRole } from "../constants/organization";
-import { SystemId } from "../constants/agent";
+import { AiAgentId, SystemId } from "../constants/agent";
 import { ConversationService } from "@/conversation/conversation.service";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxService } from "../codesandbox/codesandbox.service";
@@ -60,6 +60,9 @@ import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
 import { ProjectDbManagerService } from "./project-db-manager.service";
+import { GetProjectsDto } from "./dto/get-project.dto";
+import { Collection } from "../collection/entity/collection.entity";
+import { CollectionService } from "../collection/collection.service";
 
 @Injectable()
 export class ProjectService implements OnModuleInit {
@@ -111,6 +114,8 @@ export class ProjectService implements OnModuleInit {
         private codesandboxService: CodesandboxService,
         private llmService: LlmService,
         private projectDbManagerService: ProjectDbManagerService,
+        @InjectRepository(Collection)
+        private collectionService: CollectionService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -309,6 +314,23 @@ export class ProjectService implements OnModuleInit {
         return branding;
     }
 
+    async getProjectsByIds(query: string): Promise<Project[]> {
+        if (query) {
+            const ids = query.split(",");
+            try {
+                return await this.projectRepository.find({
+                    where: { id: In(ids) },
+                    order: { created_at: "ASC" },
+                });
+            } catch (error) {
+                this.logger.error("Failed to get projects by ids", error.stack);
+                throw error;
+            }
+        } else {
+            return [];
+        }
+    }
+
     async createProject(
         payload: CreateProjectDto,
     ): Promise<Project | { webProject: Project; backendProject: Project }> {
@@ -410,12 +432,14 @@ export class ProjectService implements OnModuleInit {
             },
         });
 
-        await this.developmentService.createIteration({
-            project_id: project.id,
-            type: IterationType.Project,
-            sandbox_id: sandbox.id,
-            project_template_type: ProjectTemplateType.Web,
-        });
+        if (payload.is_create_iteration) {
+            await this.developmentService.createIteration({
+                project_id: project.id,
+                type: IterationType.Project,
+                sandbox_id: sandbox.id,
+                project_template_type: ProjectTemplateType.Web,
+            });
+        }
 
         return project;
     }
@@ -463,25 +487,14 @@ export class ProjectService implements OnModuleInit {
             },
         });
 
-        // await this.githubService.updateRepositoryContent({
-        //     repository: githubRepository.name,
-        //     path: "api_doc.md",
-        //     content: "# API documentation for the project",
-        //     message: "Add api_doc.md to github repo",
-        //     ref: "dev",
-        //     branch: "dev",
-        //     committer: {
-        //         name: "khemmapichpanyana",
-        //         email: "khemmapich@gmail.com",
-        //     },
-        // });
-
-        await this.developmentService.createIteration({
-            project_id: project.id,
-            type: IterationType.Project,
-            sandbox_id: sandbox.id,
-            project_template_type: ProjectTemplateType.Backend,
-        });
+        if (payload.is_create_iteration) {
+            await this.developmentService.createIteration({
+                project_id: project.id,
+                type: IterationType.Project,
+                sandbox_id: sandbox.id,
+                project_template_type: ProjectTemplateType.Backend,
+            });
+        }
 
         return project;
     }
@@ -489,14 +502,24 @@ export class ProjectService implements OnModuleInit {
     async createWebAndBackendProject(
         payload: CreateProjectDto,
     ): Promise<{ webProject: Project; backendProject: Project }> {
-        const webProject = await this.createWebProject(payload);
-        const backendProject = await this.createBackendProject(payload);
+        const webProject = await this.createWebProject({
+            ...payload,
+            is_create_iteration: false,
+        });
+        const backendProject = await this.createBackendProject({
+            ...payload,
+            is_create_iteration: false,
+        });
 
         return { webProject, backendProject };
     }
 
     async createProjectFromOnboarding(payload: CreateProjectFromOnboardingDto) {
         try {
+            this.logger.log({
+                message: `${this.serviceName}.createProjectFromOnboarding: Creating project from onboarding`,
+                metadata: { payload, timestamp: new Date() },
+            });
             const user = await this.userService.getUserById(payload.user_id);
             const existingOrganization =
                 await this.organizationService.getOrganizationsForUser(user.id);
@@ -532,6 +555,7 @@ export class ProjectService implements OnModuleInit {
                         logo_url: payload.branding.logo_url,
                         color: payload.branding.color,
                     },
+                    is_create_iteration: true,
                 });
                 const iteration = await this.iterationRepository.findOne({
                     where: { project_id: project.id },
@@ -579,16 +603,16 @@ export class ProjectService implements OnModuleInit {
                     iteration_id: iteration.id,
                 });
 
-                // await this.conversationService.talkToProjectManager({
-                //     project_id: project.id,
-                //     conversation_id: conversation.id,
-                //     message: {
-                //         content: `Please update user with latest information about the project creation of ${project.name}`,
-                //         sender_type: "system",
-                //         message_type: "text",
-                //         sender_id: SystemId.GenesoftProjectManager,
-                //     },
-                // });
+                await this.conversationService.talkToBackendDeveloper({
+                    project_id: project.id,
+                    conversation_id: conversation.id,
+                    message: {
+                        content: `Please update user with latest information about the project creation of ${project.name}`,
+                        sender_type: "system",
+                        message_type: "text",
+                        sender_id: SystemId.GenesoftProjectManager,
+                    },
+                });
                 return { project };
             } else if (
                 payload.project_type === ProjectTemplateType.WebAndBackend
@@ -604,34 +628,52 @@ export class ProjectService implements OnModuleInit {
                             color: payload.branding.color,
                         },
                     });
-                const webIteration = await this.iterationRepository.findOne({
-                    where: { project_id: webProject.id },
-                });
-                const backendIteration = await this.iterationRepository.findOne(
-                    {
-                        where: { project_id: backendProject.id },
-                    },
-                );
+                const collection =
+                    await this.collectionService.createCollection({
+                        name: `${webProject.name} web integrated with ${backendProject.name} backend service`,
+                        description: `Collection for ${webProject.name} web project and ${backendProject.name} backend service project`,
+                        web_project_id: webProject.id,
+                        backend_service_project_ids: [backendProject.id],
+                        organization_id: organization.id,
+                    });
+                // const webIteration = await this.iterationRepository.findOne({
+                //     where: { project_id: webProject.id },
+                // });
+                // const backendIteration = await this.iterationRepository.findOne(
+                //     {
+                //         where: { project_id: backendProject.id },
+                //     },
+                // );
 
-                const webConversation = await this.conversationRepository.save({
-                    project_id: webProject.id,
-                    name: "Web Project Creation",
-                    description: "Conversation about the web project creation",
-                    user_id: SystemId.GenesoftProjectManager,
-                    status: "active",
-                    iteration_id: webIteration.id,
-                });
+                // const webConversation = await this.conversationRepository.save({
+                //     project_id: webProject.id,
+                //     name: "Web Project Creation",
+                //     description: "Conversation about the web project creation",
+                //     user_id: SystemId.GenesoftProjectManager,
+                //     status: "active",
+                //     iteration_id: webIteration.id,
+                // });
 
-                await this.conversationService.talkToProjectManager({
-                    project_id: webProject.id,
-                    conversation_id: webConversation.id,
-                    message: {
-                        content: `Please update user with latest information about the web project creation of ${webProject.name}`,
-                        sender_type: "system",
-                        message_type: "text",
-                        sender_id: SystemId.GenesoftProjectManager,
-                    },
-                });
+                // await this.conversationService.talkToProjectManager({
+                //     project_id: webProject.id,
+                //     conversation_id: webConversation.id,
+                //     message: {
+                //         content: `Please update user with latest information about the web project creation of ${webProject.name}`,
+                //         sender_type: "system",
+                //         message_type: "text",
+                //         sender_id: SystemId.GenesoftProjectManager,
+                //     },
+                // });
+
+                const backendIteration =
+                    await this.developmentService.createIteration({
+                        project_id: backendProject.id,
+                        type: IterationType.Project,
+                        project_template_type: ProjectTemplateType.Backend,
+                        sandbox_id: backendProject.sandbox_id,
+                        is_create_web_project: true,
+                        collection_id: collection.id,
+                    });
 
                 const backendConversation =
                     await this.conversationRepository.save({
@@ -644,17 +686,17 @@ export class ProjectService implements OnModuleInit {
                         iteration_id: backendIteration.id,
                     });
 
-                await this.conversationService.talkToProjectManager({
+                await this.conversationService.talkToBackendDeveloper({
                     project_id: backendProject.id,
                     conversation_id: backendConversation.id,
                     message: {
                         content: `Please update user with latest information about the backend project creation of ${backendProject.name}`,
                         sender_type: "system",
                         message_type: "text",
-                        sender_id: SystemId.GenesoftProjectManager,
+                        sender_id: AiAgentId.GenesoftBackendDeveloper,
                     },
                 });
-                return { webProject, backendProject };
+                return { webProject, backendProject, collection };
             } else {
                 throw new BadRequestException(
                     `Invalid project type: ${payload.project_type}`,

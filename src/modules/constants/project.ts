@@ -20,9 +20,15 @@ enum ProjectTemplateType {
     Backend = "backend",
 }
 
+enum ProjectTemplateTypeInProjectTable {
+    WebNextJs = "web_nextjs",
+    BackendNestJs = "backend_nestjs",
+}
+
 export {
     ProjectTemplate,
     ProjectTemplateName,
     ProjectType,
     ProjectTemplateType,
+    ProjectTemplateTypeInProjectTable,
 };

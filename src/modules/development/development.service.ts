@@ -48,6 +48,7 @@ import { Conversation } from "@/conversation/entity/conversation.entity";
 import { OrganizationService } from "../organization/organization.service";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationService } from "@/modules/configuration/app/app.service";
+import { Collection } from "../collection/entity/collection.entity";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -84,6 +85,8 @@ export class DevelopmentService {
         @InjectRepository(Subscription)
         private subscriptionRepository: Repository<Subscription>,
         private readonly appConfigurationService: AppConfigurationService,
+        @InjectRepository(Collection)
+        private collectionRepository: Repository<Collection>,
     ) {
         this.freeTierIterationsLimit =
             this.appConfigurationService.freeTierIterationsLimit;
@@ -173,6 +176,9 @@ export class DevelopmentService {
                                 branch: "dev",
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
+                                is_create_web_project:
+                                    payload.is_create_web_project,
+                                collection_id: payload.collection_id,
                             },
                         ),
                     );
@@ -649,6 +655,39 @@ export class DevelopmentService {
             this.logger.error({
                 message: `${this.serviceName}.updateIterationStatus: Failed to update iteration status`,
                 metadata: { id, status, error: error.message },
+            });
+            throw error;
+        }
+    }
+
+    async createWebIterationByCollectionId(
+        collectionId: string,
+    ): Promise<Iteration> {
+        try {
+            const collection = await this.collectionRepository.findOne({
+                where: { id: collectionId },
+            });
+            if (!collection) {
+                throw new Error("Collection not found");
+            }
+            const project = await this.projectRepository.findOne({
+                where: { id: collection.web_project_id },
+            });
+            if (!project) {
+                throw new Error("Project not found");
+            }
+            const iteration = await this.createIteration({
+                type: IterationType.Project,
+                project_template_type: ProjectTemplateType.Web,
+                project_id: project.id,
+                sandbox_id: project.sandbox_id,
+            });
+
+            return iteration;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createWebIterationByCollectionId: Failed to create web iteration by collection id`,
+                metadata: { collectionId, error: error.message },
             });
             throw error;
         }

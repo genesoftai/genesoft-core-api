@@ -6,6 +6,7 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     UseGuards,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
@@ -29,6 +30,11 @@ export class ProjectController {
         private readonly projectService: ProjectService,
         private readonly projectDbManagerService: ProjectDbManagerService,
     ) {}
+
+    @Get()
+    async getProjects(@Query("ids") ids: string) {
+        return this.projectService.getProjectsByIds(ids);
+    }
 
     @Post()
     async createProject(@Body() payload: CreateProjectDto) {

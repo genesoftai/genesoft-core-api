@@ -6,10 +6,10 @@ import { OrganizationService } from "./organization.service";
 import { AuthModule } from "../auth/auth.module";
 import { User } from "../user/entity/user.entity";
 import { Project } from "../project/entity/project.entity";
-
+import { Collection } from "../collection/entity/collection.entity";
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Organization, User, Project]),
+        TypeOrmModule.forFeature([Organization, User, Project, Collection]),
         AuthModule,
     ],
     controllers: [OrganizationController],
