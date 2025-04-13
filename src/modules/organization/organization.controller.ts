@@ -17,7 +17,7 @@ import {
     RemoveUserFromOrganization,
     UpdateUserRole,
 } from "./dto/update-organization.dto";
-import { User } from "../user/entity/user.entity";
+import { Collection } from "../collection/entity/collection.entity";
 
 @Controller("organization")
 @UseGuards(AuthGuard)
@@ -88,5 +88,12 @@ export class OrganizationController {
     @Get(":id/users")
     async getUsersForOrganization(@Param("id") id: string): Promise<object[]> {
         return this.organizationService.getUsersForOrganization(id);
+    }
+
+    @Get(":id/collections")
+    async getCollectionsByOrganizationId(
+        @Param("id") id: string,
+    ): Promise<Collection[]> {
+        return this.organizationService.getCollectionsByOrganizationId(id);
     }
 }

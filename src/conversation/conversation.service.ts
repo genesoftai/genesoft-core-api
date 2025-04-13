@@ -20,6 +20,7 @@ import { AiAgentId, AiAgentName } from "@/modules/constants/agent";
 import {
     TalkToBackendDeveloperDto,
     TalkToProjectManagerDto,
+    TalkToWebAiAgentsDto,
 } from "./dto/talk-to-project-manger.dto";
 import { GithubRepository } from "@/modules/github/entity/github-repository.entity";
 import { ProjectService } from "@/modules/project/project.service";
@@ -41,6 +42,7 @@ import { getS3FileUrl } from "@/utils/aws/s3";
 import { AWSConfigurationService } from "@/modules/configuration/aws";
 import { CallGeminiPayload } from "@/modules/types/llm/gemini";
 import { CallBackendDeveloperAgent } from "@/modules/types/llm/backend-agent";
+import { CallFrontendDeveloperAgent } from "@/modules/types/llm/frontend-agent";
 
 export interface ConversationMessageForWeb extends ConversationMessage {
     sender: {
@@ -331,6 +333,26 @@ export class ConversationService {
         });
     }
 
+    async talkToWebAiAgents(payload: TalkToWebAiAgentsDto) {
+        let conversation_id = payload.conversation_id;
+        if (!conversation_id) {
+            const newConversation = await this.createConversation({
+                project_id: payload.project_id,
+            });
+            conversation_id = newConversation.id;
+        }
+        const userMessage = payload.message.content;
+        const aiAgent =
+            await this.llmService.determineAiAgentForWebConversation(
+                userMessage,
+            );
+        if (aiAgent === "frontend_developer") {
+            return this.talkToFrontendDeveloper(payload);
+        } else {
+            return this.talkToProjectManager(payload);
+        }
+    }
+
     async talkToProjectManager(payload: TalkToProjectManagerDto) {
         let conversation_id = payload.conversation_id;
         if (!conversation_id) {
@@ -404,10 +426,6 @@ export class ConversationService {
             4. Bridge the gap between business requirements and technical implementation
             5. Offer informative responses about project features, architecture, and development process
             6. Guide discussions to ensure feedback is actionable and aligned with project goals
-
-            Basic Integration needed from customer to make their web application work with Genesoft:
-            - Firebase database, authentication, and storage integration.
-            - Stripe payment integration.
 
             Genesoft managed infrastructure:
             - Code repository on Github.
@@ -521,6 +539,199 @@ export class ConversationService {
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.talkToProjectManager: Error`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
+    async talkToFrontendDeveloper(payload: TalkToWebAiAgentsDto) {
+        let conversation_id = payload.conversation_id;
+        if (!conversation_id) {
+            const newConversation = await this.createConversation({
+                project_id: payload.project_id,
+            });
+            conversation_id = newConversation.id;
+        }
+
+        try {
+            const existingConversation =
+                await this.findConversationById(conversation_id);
+
+            if (!existingConversation) {
+                throw new NotFoundException("Conversation not found");
+            }
+
+            await this.addMessageToConversation(
+                existingConversation.id,
+                payload.message,
+            );
+
+            const updatedConversation = await this.findConversationById(
+                existingConversation.id,
+            );
+
+            const formattedMessages = updatedConversation.messages.map(
+                (message) => {
+                    return `[${message.sender_type.toUpperCase()}] ${message.content}`;
+                },
+            );
+
+            const projectDocumentation =
+                await this.projectService.getOverallProjectDocumentation(
+                    payload.project_id,
+                );
+
+            const frontendRepository =
+                await this.githubRepositoryRepository.findOne({
+                    where: {
+                        project_id: payload.project_id,
+                        type: ProjectType.Web,
+                    },
+                });
+
+            const frontendRepoTreeResponse =
+                await this.githubService.getRepositoryTrees({
+                    repository: frontendRepository.name,
+                    branch: "dev",
+                });
+
+            const frontendRepoTree = formatGithubRepositoryTree(
+                frontendRepoTreeResponse,
+            );
+
+            const userInput = `
+            These are historical messages between users and Software dvelopment team of AI Agents (project manager and frontend developer):
+            ${formattedMessages.join("\n")}
+
+            Please answer user latest message:
+            `;
+
+            const systemMessage = `
+            You are a Frontend Developer with extensive experience in Next.js 15 App Router and modern web development. 
+            Your role is to:
+            1. Provide technical guidance and solutions for frontend development questions
+            2. Explain frontend concepts, architecture, and implementation details clearly
+            3. Help users understand how their web application is structured and functions
+            4. Offer code examples and best practices when appropriate
+            5. Assist with troubleshooting frontend issues
+            6. Provide insights on UI/UX implementation and optimization
+
+            Technical stack information:
+            - Framework: Next.js 15 App Router
+            - UI Library: Tailwind CSS, Shadcn/UI
+            - Payment Processing: Stripe
+            - Deployment: Vercel
+            - API service: Core API service that responsible for handling all backend logic and data storage by Genesoft Backend Developer AI Agent.
+
+            Please engage in a helpful technical conversation while providing accurate and practical frontend development advice.
+            `;
+
+            const answerInstructions = `Please use appropriate technical terms when discussing frontend development concepts. Be thorough but concise in your explanations, and provide code examples when they would be helpful. Focus on practical solutions that follow best practices for Next.js 15 App Router development.`;
+            const formatInstructions = `Please use good markdown format in your answers, including code blocks with proper syntax highlighting, headings, lists, and emphasis where appropriate to make technical information more readable.`;
+
+            const messages: BaseMessageLike[] = [
+                {
+                    role: "user",
+                    content: systemMessage,
+                },
+                {
+                    role: "user",
+                    content: projectDocumentation,
+                },
+                {
+                    role: "user",
+                    content: frontendRepoTree,
+                },
+                {
+                    role: "user",
+                    content: answerInstructions,
+                },
+                {
+                    role: "user",
+                    content: formatInstructions,
+                },
+                {
+                    role: "user",
+                    content: userInput,
+                },
+            ];
+            const messageType = payload.message.message_type;
+            const geminiPayload: CallFrontendDeveloperAgent = {
+                payload: {
+                    model: "gemini-2.0-flash",
+                    messages,
+                    nodeName: "talkToFrontendDeveloper",
+                },
+                type: messageType,
+                branch: "dev",
+                repository: frontendRepository.name,
+                projectDocumentation,
+                latestRepoTree: frontendRepoTree,
+            };
+
+            if (messageType === "image") {
+                const file = await this.fileRepository.findOne({
+                    where: { id: payload.message.file_ids[0] },
+                });
+                const imageUrl = getS3FileUrl(
+                    this.awsConfigurationService.awsS3BucketName,
+                    this.awsConfigurationService.awsRegion,
+                    file?.path,
+                );
+                geminiPayload.imageUrl = imageUrl;
+            }
+
+            const result =
+                await this.llmService.callFrontendDeveloperAgent(geminiPayload);
+
+            this.logger.log({
+                message: `${this.serviceName}.talkToFrontendDeveloper: Result`,
+                metadata: {
+                    result,
+                },
+            });
+
+            const content = Array.isArray(result)
+                ? (result as BaseMessage[])
+                      .map((item: BaseMessage) => item.text.trim())
+                      .join("\n")
+                : result;
+
+            const aiMessage: Partial<ConversationMessage> = {
+                content: content as string,
+                sender_type: "ai_agent",
+                conversation_id,
+                message_type: "text",
+                sender_id: AiAgentId.GenesoftFrontendDeveloper,
+            };
+
+            this.logger.log({
+                message: `${this.serviceName}.talkToFrontendDeveloper: AI Message`,
+                metadata: {
+                    aiMessage,
+                },
+            });
+
+            await this.addMessageToConversation(
+                existingConversation.id,
+                aiMessage as CreateMessageDto,
+            );
+
+            this.logger.log({
+                message: `${this.serviceName}.talkToFrontendDeveloper: Updated Conversation`,
+            });
+
+            const updatedConversationAfterAiMessage =
+                await this.findConversationById(existingConversation.id);
+
+            return updatedConversationAfterAiMessage;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.talkToFrontendDeveloper: Error`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,

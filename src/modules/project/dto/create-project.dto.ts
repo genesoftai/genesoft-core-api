@@ -5,6 +5,7 @@ import {
     IsArray,
     ValidateNested,
     IsNotEmpty,
+    IsBoolean,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -105,6 +106,10 @@ export class CreateProjectDto {
     @ValidateNested({ each: true })
     @Type(() => FeatureDto)
     features?: FeatureDto[];
+
+    @IsOptional()
+    @IsBoolean()
+    is_create_iteration?: boolean;
 }
 
 export class CreateProjectFromOnboardingDto {

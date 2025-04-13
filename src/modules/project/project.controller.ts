@@ -6,6 +6,7 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     UseGuards,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
@@ -25,6 +26,11 @@ import { AuthGuard } from "../auth/auth.guard";
 @UseGuards(AuthGuard)
 export class ProjectController {
     constructor(private readonly projectService: ProjectService) {}
+
+    @Get()
+    async getProjects(@Query("ids") ids: string) {
+        return this.projectService.getProjectsByIds(ids);
+    }
 
     @Post()
     async createProject(@Body() payload: CreateProjectDto) {

@@ -18,6 +18,7 @@ import {
 } from "./dto/update-organization.dto";
 import { OrganizationRole } from "../constants/organization";
 import { UserWithRole } from "../types/organization";
+import { Collection } from "../collection/entity/collection.entity";
 
 @Injectable()
 export class OrganizationService {
@@ -32,6 +33,8 @@ export class OrganizationService {
         private userRepository: Repository<User>,
         @InjectRepository(Project)
         private projectRepository: Repository<Project>,
+        @InjectRepository(Collection)
+        private collectionRepository: Repository<Collection>,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -98,6 +101,22 @@ export class OrganizationService {
             order: { created_at: "DESC" },
         });
         return projects;
+    }
+
+    async getCollectionsByOrganizationId(
+        organizationId: string,
+    ): Promise<Collection[]> {
+        try {
+            return await this.collectionRepository.find({
+                where: { organization_id: organizationId },
+            });
+        } catch (error) {
+            this.logger.error(
+                "Failed to get collections by organization id",
+                error.stack,
+            );
+            throw error;
+        }
     }
 
     async createOrganization(

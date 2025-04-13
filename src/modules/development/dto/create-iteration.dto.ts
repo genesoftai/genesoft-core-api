@@ -32,6 +32,14 @@ export class CreateIterationDto {
     @IsString()
     @IsOptional()
     sandbox_id?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    is_create_web_project?: boolean;
+
+    @IsString()
+    @IsOptional()
+    collection_id?: string;
 }
 
 export class CreatePageIterationDto {
