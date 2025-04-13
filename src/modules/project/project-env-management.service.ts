@@ -8,6 +8,8 @@ import {
     ProjectEnvResponseDto,
 } from "./dto/project-env.dto";
 import * as crypto from "crypto";
+import { FrontendInfraService } from "../frontend-infra/frontend-infra.service";
+import { Project } from "./entity/project.entity";
 
 @Injectable()
 export class ProjectEnvManagementService {
@@ -20,6 +22,9 @@ export class ProjectEnvManagementService {
     constructor(
         @InjectRepository(ProjectEnv)
         private readonly projectEnvRepository: Repository<ProjectEnv>,
+        private frontendInfraService: FrontendInfraService,
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
     ) {}
 
     private encrypt(text: string): string {
@@ -42,6 +47,19 @@ export class ProjectEnvManagementService {
         return decrypted;
     }
 
+    private async isWebProject(projectId: string): Promise<boolean> {
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        if (!project) {
+            return false;
+        }
+
+        // Check if project_template_type starts with "web_"
+        return project.project_template_type?.startsWith("web_") || false;
+    }
+
     async create(
         projectId: string,
         dto: CreateProjectEnvDto,
@@ -55,6 +73,24 @@ export class ProjectEnvManagementService {
         });
 
         const savedEnv = await this.projectEnvRepository.save(env);
+
+        // Sync with Vercel if it's a web project
+        const isWeb = await this.isWebProject(projectId);
+        if (isWeb) {
+            await this.frontendInfraService.addOneEnvironmentVariableToVercelProject(
+                {
+                    project_id: projectId,
+                    environment_variable: {
+                        key: dto.key,
+                        value: dto.value,
+                        type: "plain",
+                        target: ["preview"],
+                        gitBranch: "dev",
+                    },
+                },
+            );
+        }
+
         return {
             ...savedEnv,
             value: dto.value,
@@ -83,6 +119,24 @@ export class ProjectEnvManagementService {
         }
 
         const savedEnv = await this.projectEnvRepository.save(env);
+
+        // Sync with Vercel if it's a web project and value has changed
+        const isWeb = await this.isWebProject(projectId);
+        if (isWeb && dto.value !== undefined) {
+            await this.frontendInfraService.addOneEnvironmentVariableToVercelProject(
+                {
+                    project_id: projectId,
+                    environment_variable: {
+                        key: env.key,
+                        value: dto.value,
+                        type: "plain",
+                        target: ["preview"],
+                        gitBranch: "dev",
+                    },
+                },
+            );
+        }
+
         return {
             ...savedEnv,
             value:
@@ -122,13 +176,47 @@ export class ProjectEnvManagementService {
     }
 
     async remove(id: string, projectId: string): Promise<void> {
+        const env = await this.projectEnvRepository.findOne({
+            where: { id, projectId },
+        });
+
+        if (!env) {
+            throw new NotFoundException(
+                `Environment variable with id ${id} not found`,
+            );
+        }
+
+        // Get the key before deletion for Vercel sync
+        const key = env.key;
+
         const result = await this.projectEnvRepository.delete({
             id,
             projectId,
         });
+
         if (result.affected === 0) {
             throw new NotFoundException(
                 `Environment variable with id ${id} not found`,
+            );
+        }
+
+        // If web project, we would need to delete from Vercel too
+        // Note: Current FrontendInfraService API doesn't have a method to delete a single env var
+        // This is a limitation and would require extending the FrontendInfraService
+        const isWeb = await this.isWebProject(projectId);
+        if (isWeb) {
+            // As a workaround, we could set the value to an empty string
+            await this.frontendInfraService.addOneEnvironmentVariableToVercelProject(
+                {
+                    project_id: projectId,
+                    environment_variable: {
+                        key: key,
+                        value: "", // Set to empty
+                        type: "plain",
+                        target: ["preview"],
+                        gitBranch: "dev",
+                    },
+                },
             );
         }
     }
