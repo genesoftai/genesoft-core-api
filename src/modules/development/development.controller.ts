@@ -51,6 +51,13 @@ export class DevelopmentController {
         return this.developmentService.getMonthlyIterationsOfOrganization(id);
     }
 
+    @Post("iteration/collection/:id/web")
+    createWebIterationByCollectionId(
+        @Param("id") id: string,
+    ): Promise<Iteration> {
+        return this.developmentService.createWebIterationByCollectionId(id);
+    }
+
     @Get("iteration/:id")
     getIterationById(@Param("id") id: string): Promise<Iteration> {
         return this.developmentService.getIterationById(id);

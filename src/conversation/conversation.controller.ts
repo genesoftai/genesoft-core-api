@@ -16,6 +16,7 @@ import { ConversationMessage } from "./entity/message.entity";
 import {
     TalkToBackendDeveloperDto,
     TalkToProjectManagerDto,
+    TalkToWebAiAgentsDto,
 } from "./dto/talk-to-project-manger.dto";
 import { SubmitConversationDto } from "./dto/submit-conversation.dto";
 
@@ -137,6 +138,11 @@ export class ConversationController {
         return this.conversationService.getActiveConversationByProjectId(
             projectId,
         );
+    }
+
+    @Post("talk/web-ai-agents")
+    talkToWebAiAgents(@Body() payload: TalkToWebAiAgentsDto) {
+        return this.conversationService.talkToWebAiAgents(payload);
     }
 
     @Post("talk/project-manager")

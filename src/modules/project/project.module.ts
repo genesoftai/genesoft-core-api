@@ -29,6 +29,8 @@ import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
+import { Collection } from "../collection/entity/collection.entity";
+import { CollectionModule } from "../collection/collection.module";
 
 @Module({
     imports: [
@@ -47,6 +49,7 @@ import { LlmModule } from "../llm/llm.module";
             VercelProject,
             KoyebProject,
             Conversation,
+            Collection,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -60,7 +63,8 @@ import { LlmModule } from "../llm/llm.module";
         forwardRef(() => ConversationModule),
         CodesandboxModule,
         LlmModule,
-        HttpModule
+        HttpModule,
+        CollectionModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [ProjectController],

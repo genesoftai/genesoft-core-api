@@ -230,55 +230,6 @@ export class FrontendInfraService {
                 value: project_id,
                 type: "plain",
             },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_API_KEY",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "xxx",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "nextjs-firebase-web-template.firebaseapp.com",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "nextjs-firebase-web-template",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "nextjs-firebase-web-template.firebasestorage.app",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "xxx",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_APP_ID",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "xxx",
-                type: "plain",
-            },
-            {
-                key: "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID",
-                target: ["preview"],
-                gitBranch: "dev",
-                value: "xxx",
-                type: "plain",
-            },
         ];
 
         return environmentVariables;

@@ -20,6 +20,7 @@ import { Conversation } from "@/conversation/entity/conversation.entity";
 import { OrganizationModule } from "../organization/organization.module";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationModule } from "../configuration/app";
+import { Collection } from "../collection/entity/collection.entity";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -31,6 +32,7 @@ import { AppConfigurationModule } from "../configuration/app";
             User,
             Conversation,
             Subscription,
+            Collection,
         ]),
         HttpModule,
         AiAgentConfigurationModule,
