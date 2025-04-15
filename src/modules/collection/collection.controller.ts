@@ -55,7 +55,7 @@ export class CollectionController {
 
     @Get(":id")
     @UseGuards(AuthGuard)
-    getCollection(@Param("id") id: string): Promise<Collection> {
+    getCollection(@Param("id") id: string) {
         return this.collectionService.getCollection(id);
     }
 

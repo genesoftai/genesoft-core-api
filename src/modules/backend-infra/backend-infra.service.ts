@@ -12,7 +12,6 @@ import { AWSConfigurationService } from "@/modules/configuration/aws";
 import { KoyebProject } from "./entity/koyeb-project.entity";
 import { KoyebConfigurationService } from "@/modules/configuration/koyeb";
 import { AppConfigurationService } from "@/modules/configuration/app";
-import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { Iteration } from "../development/entity/iteration.entity";
 import { Project } from "../project/entity/project.entity";
 

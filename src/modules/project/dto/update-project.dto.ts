@@ -79,6 +79,10 @@ export class UpdateProjectDto {
     target_audience?: string;
 
     @IsOptional()
+    @IsString()
+    backend_requirements?: string;
+
+    @IsOptional()
     @ValidateNested()
     @Type(() => BrandingDto)
     branding?: BrandingDto;

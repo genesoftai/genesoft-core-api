@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Collection } from "./entity/collection.entity";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { CreateCollectionDto } from "./dto/create-collection.dto";
 import { Project } from "../project/entity/project.entity";
 import { ProjectTemplateTypeInProjectTable } from "../constants/project";
@@ -31,9 +31,30 @@ export class CollectionService {
         }
     }
 
-    async getCollection(id: string): Promise<Collection> {
+    async getCollection(id: string) {
         try {
-            return await this.collectionRepository.findOne({ where: { id } });
+            const collection = await this.collectionRepository.findOne({
+                where: { id },
+            });
+            if (!collection) {
+                throw new Error("Collection not found");
+            }
+            const webProject = await this.projectRepository.findOne({
+                where: { id: collection.web_project_id },
+            });
+            if (!webProject) {
+                throw new Error("Web project not found");
+            }
+            const backendProjects = await this.projectRepository.find({
+                where: {
+                    id: In(collection.backend_service_project_ids),
+                },
+            });
+            return {
+                ...collection,
+                web_project: webProject,
+                backend_service_projects: backendProjects,
+            };
         } catch (error) {
             this.logger.error("Failed to get collection", error.stack);
             throw error;

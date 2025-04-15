@@ -39,7 +39,7 @@ export class CodesandboxService {
             title: payload.title ?? "Next.js Shadcn",
             description: payload.description ?? "A sandbox for Next.js Shadcn",
             autoConnect: true,
-            vmTier: VMTier.Nano,
+            vmTier: VMTier.Micro,
             hibernationTimeoutSeconds: 60 * 5,
             privacy: "public",
         });
@@ -51,28 +51,22 @@ export class CodesandboxService {
                 id: sandbox.id,
             },
         });
-        // Listen to setup progress
-        sandbox.setup.onSetupProgressUpdate((progress) => {
-            console.log(
-                `Setup progress: ${progress.currentStepIndex + 1}/${progress.steps.length}`,
-            );
-            console.log(
-                `Current step: ${progress.steps[progress.currentStepIndex].name}`,
-            );
-        });
+        // // Listen to setup progress
+        // sandbox.setup.onSetupProgressUpdate((progress) => {
+        //     console.log(
+        //         `Setup progress: ${progress.currentStepIndex + 1}/${progress.steps.length}`,
+        //     );
+        //     console.log(
+        //         `Current step: ${progress.steps[progress.currentStepIndex].name}`,
+        //     );
+        // });
 
-        // Get current progress
-        const progress = await sandbox.setup.getProgress();
-        console.log(`Setup state: ${progress.state}`);
-        const result = await sandbox.setup.waitForFinish();
-        this.logger.log({
-            message: `${this.serviceName}: Setup result`,
-            metadata: {
-                result,
-            },
-        });
+        // // Get current progress
+        // const progress = await sandbox.setup.getProgress();
+        // console.log(`Setup state: ${progress.state}`);
+        // const result = await sandbox.setup.waitForFinish();
 
-        await sandbox.hibernate();
+        // await sandbox.hibernate();
 
         return {
             id,
@@ -82,28 +76,11 @@ export class CodesandboxService {
 
     async getSandbox(id: string) {
         const sandbox = await this.sdk.sandbox.open(id);
-        this.logger.log({
-            message: `${this.serviceName}: Sandbox`,
-            metadata: {
-                sandbox,
-            },
-        });
 
         try {
             const setup = sandbox.setup;
-            this.logger.log({
-                message: `${this.serviceName}: Setup`,
-                metadata: {
-                    setup,
-                },
-            });
+
             const ports = sandbox.ports.getOpenedPorts();
-            this.logger.log({
-                message: `${this.serviceName}: Ports`,
-                metadata: {
-                    ports,
-                },
-            });
 
             await sandbox.hibernate();
             return {
@@ -126,12 +103,6 @@ export class CodesandboxService {
     async startSandbox(id: string) {
         // const data = await this.sdk.sandbox.start(id);
         const sandbox = await this.sdk.sandbox.open(id);
-        this.logger.log({
-            message: `${this.serviceName}: Data`,
-            metadata: {
-                sandbox,
-            },
-        });
 
         // Listen to setup progress
         sandbox.setup.onSetupProgressUpdate((progress) => {
@@ -196,34 +167,12 @@ export class CodesandboxService {
      */
     async writeFileOnSandbox(payload: WriteFileOnSandboxDto) {
         const { sandbox_id, path, content } = payload;
-        this.logger.log({
-            message: `${this.serviceName}: Writing file on sandbox`,
-            metadata: {
-                sandbox_id,
-                path,
-                content,
-            },
-        });
+
         // const sandbox = await this.sdk.sandbox.open(sandbox_id);
         // const sandboxSession = await sandbox.sessions.create("write_file", {
         //     permission: "write",
         // });
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
-
-        this.logger.log({
-            message: `${this.serviceName}: Sandbox started`,
-            metadata: {
-                sandbox_id,
-            },
-        });
-
-        this.logger.log({
-            message: `${this.serviceName}: Sandbox opened`,
-            metadata: {
-                sandbox_id,
-                // sandboxSession,
-            },
-        });
 
         try {
             // Use sandbox.fs directly instead of creating a session
@@ -233,14 +182,6 @@ export class CodesandboxService {
             });
 
             await sandbox.hibernate();
-
-            this.logger.log({
-                message: `${this.serviceName}: File written on sandbox`,
-                metadata: {
-                    sandbox_id,
-                    path,
-                },
-            });
 
             return {
                 sandbox_id,
@@ -262,48 +203,18 @@ export class CodesandboxService {
 
     async writeFileOnSandboxWithoutHibernate(payload: WriteFileOnSandboxDto) {
         const { sandbox_id, path, content } = payload;
-        this.logger.log({
-            message: `${this.serviceName}: Writing file on sandbox`,
-            metadata: {
-                sandbox_id,
-                path,
-                content,
-            },
-        });
+
         // const sandbox = await this.sdk.sandbox.open(sandbox_id);
         // const sandboxSession = await sandbox.sessions.create("write_file", {
         //     permission: "write",
         // });
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
 
-        this.logger.log({
-            message: `${this.serviceName}: Sandbox started`,
-            metadata: {
-                sandbox_id,
-            },
-        });
-
-        this.logger.log({
-            message: `${this.serviceName}: Sandbox opened`,
-            metadata: {
-                sandbox_id,
-                // sandboxSession,
-            },
-        });
-
         try {
             // Use sandbox.fs directly instead of creating a session
             await sandbox.fs.writeTextFile(path, content, {
                 create: true,
                 overwrite: true,
-            });
-
-            this.logger.log({
-                message: `${this.serviceName}: File written on sandbox`,
-                metadata: {
-                    sandbox_id,
-                    path,
-                },
             });
 
             return {
@@ -330,14 +241,7 @@ export class CodesandboxService {
     async readFileOnSandbox(payload: ReadFileOnSandboxDto) {
         const { sandbox_id, path } = payload;
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
-        this.logger.log({
-            message: `${this.serviceName}: Reading file on sandbox`,
-            metadata: {
-                sandbox_id,
-                path,
-                sandbox,
-            },
-        });
+
         try {
             const content = await sandbox.fs.readTextFile(path);
             await sandbox.hibernate();
@@ -366,14 +270,7 @@ export class CodesandboxService {
     async readFileOnSandboxWithoutHibernate(payload: ReadFileOnSandboxDto) {
         const { sandbox_id, path } = payload;
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
-        this.logger.log({
-            message: `${this.serviceName}: Reading file on sandbox`,
-            metadata: {
-                sandbox_id,
-                path,
-                sandbox,
-            },
-        });
+
         try {
             const content = await sandbox.fs.readTextFile(path);
             return {
@@ -532,13 +429,6 @@ export class CodesandboxService {
 
     async getPortInfoOnSandbox(sandbox_id: string, port: number) {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
-        this.logger.log({
-            message: `${this.serviceName}: Getting port info on sandbox`,
-            metadata: {
-                sandbox_id,
-                port,
-            },
-        });
 
         try {
             // Get all opened ports
@@ -557,16 +447,6 @@ export class CodesandboxService {
             const result = await this.httpService.get(
                 `http://${hostname}:${port}`,
             );
-
-            this.logger.log({
-                message: `${this.serviceName}: Preview URL`,
-                metadata: {
-                    sandbox_id,
-                    port,
-                    openPorts,
-                    result,
-                },
-            });
 
             await sandbox.hibernate();
 
@@ -621,15 +501,6 @@ export class CodesandboxService {
             // Wait for completion and get results
             const result = await shell;
 
-            this.logger.log({
-                message: `${this.serviceName}: Command executed on sandbox`,
-                metadata: {
-                    sandbox_id,
-                    command,
-                    exitCode: result.exitCode,
-                },
-            });
-
             shell.kill();
             await sandbox.hibernate();
 
@@ -679,13 +550,7 @@ export class CodesandboxService {
 
     async runTaskOnSandbox(payload: RunTaskOnSandboxDto) {
         const { sandbox_id, task } = payload;
-        this.logger.log({
-            message: `${this.serviceName}: Attempting to run task on sandbox`,
-            metadata: {
-                sandbox_id,
-                task,
-            },
-        });
+
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             const result = await sandbox.tasks.runTask(task);
@@ -696,13 +561,6 @@ export class CodesandboxService {
                 console.log(`Preview available at: ${port.getPreviewUrl()}`);
             }
 
-            this.logger.log({
-                message: `${this.serviceName}: Task result`,
-                metadata: {
-                    result,
-                    port,
-                },
-            });
             await sandbox.hibernate();
             return result;
         } catch (error) {
@@ -719,13 +577,7 @@ export class CodesandboxService {
 
     async runTaskOnSandboxAsBackgroundProcess(payload: RunTaskOnSandboxDto) {
         const { sandbox_id, task } = payload;
-        this.logger.log({
-            message: `${this.serviceName}: Attempting to run task on sandbox`,
-            metadata: {
-                sandbox_id,
-                task,
-            },
-        });
+
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             const result = await sandbox.tasks.runTask(task);
@@ -800,7 +652,11 @@ export class CodesandboxService {
                 },
             });
             await sandbox.hibernate();
-            throw error;
+            return {
+                sandbox_id,
+                task: "build",
+                output: "Error",
+            };
         }
     }
 
@@ -930,15 +786,6 @@ export class CodesandboxService {
             const sandbox = await this.sdk.sandbox.open(sandbox_id);
             const shells = await sandbox.shells.getShells();
             for (const shell of shells) {
-                this.logger.log({
-                    message: `${this.serviceName}: Killing shell`,
-                    metadata: {
-                        shell_id: shell.id,
-                        sandbox_id,
-                        name: shell.name,
-                        output: shell.getOutput(),
-                    },
-                });
                 await shell.kill();
             }
         } catch (error) {

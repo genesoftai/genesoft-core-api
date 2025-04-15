@@ -21,6 +21,7 @@ import { OrganizationModule } from "../organization/organization.module";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationModule } from "../configuration/app";
 import { Collection } from "../collection/entity/collection.entity";
+import { ConversationModule } from "@/conversation/conversation.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -44,6 +45,7 @@ import { Collection } from "../collection/entity/collection.entity";
         FeatureModule,
         OrganizationModule,
         AppConfigurationModule,
+        ConversationModule,
     ],
     controllers: [DevelopmentController],
     providers: [DevelopmentService, Logger],

@@ -11,7 +11,7 @@ import {
 import { DevelopmentService } from "./development.service";
 import {
     CreateIterationDto,
-    CreatePageIterationDto,
+    CreateProjectIterationsForCollectionDto,
 } from "./dto/create-iteration.dto";
 import { CreateTeamTaskDto } from "./dto/create-team-task.dto";
 import {
@@ -56,6 +56,20 @@ export class DevelopmentController {
         @Param("id") id: string,
     ): Promise<Iteration> {
         return this.developmentService.createWebIterationByCollectionId(id);
+    }
+
+    @Post("iteration/collection/:id/web-and-backend")
+    createProjectIterationsForCollection(
+        @Param("id") id: string,
+        @Body() payload: CreateProjectIterationsForCollectionDto,
+    ): Promise<{
+        webIteration: Iteration;
+        backendIteration: Iteration;
+    }> {
+        return this.developmentService.createProjectIterationsForCollection(
+            id,
+            payload.requirements,
+        );
     }
 
     @Get("iteration/:id")
@@ -248,18 +262,4 @@ export class DevelopmentController {
     ): Promise<object> {
         return this.developmentService.getIterationPastSteps(id, team);
     }
-
-    @Post("page/iteration")
-    createPageIteration(
-        @Body() payload: CreatePageIterationDto,
-    ): Promise<Iteration> {
-        return this.developmentService.createPageIteration(payload);
-    }
-
-    // @Post("feature/iteration")
-    // createFeatureIteration(
-    //     @Body() payload: CreateFeatureIterationDto,
-    // ): Promise<Iteration> {
-    //     return this.developmentService.createFeatureIteration(payload);
-    // }
 }
