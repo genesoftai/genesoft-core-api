@@ -22,7 +22,7 @@ import {
     IterationTaskStatus,
     IterationType,
 } from "@/modules/constants/development";
-import { AiAgentTeam } from "@/modules/constants/agent";
+import { AiAgentId, AiAgentTeam, SystemId } from "@/modules/constants/agent";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent/ai-agent.service";
 import { ProjectTemplateName, ProjectTemplateType } from "../constants/project";
 import { EmailService } from "../email/email.service";
@@ -34,11 +34,7 @@ import {
 import { Project } from "@/modules/project/entity/project.entity";
 import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
-import {
-    CreateFeatureIterationDto,
-    CreateIterationDto,
-    CreatePageIterationDto,
-} from "./dto/create-iteration.dto";
+import { CreateIterationDto } from "./dto/create-iteration.dto";
 import { ProjectService } from "../project/project.service";
 import { RepositoryBuildService } from "../repository-build/repository-build.service";
 import { GithubService } from "../github/github.service";
@@ -49,6 +45,7 @@ import { OrganizationService } from "../organization/organization.service";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationService } from "@/modules/configuration/app/app.service";
 import { Collection } from "../collection/entity/collection.entity";
+import { ConversationService } from "@/conversation/conversation.service";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -87,6 +84,7 @@ export class DevelopmentService {
         private readonly appConfigurationService: AppConfigurationService,
         @InjectRepository(Collection)
         private collectionRepository: Repository<Collection>,
+        private conversationService: ConversationService,
     ) {
         this.freeTierIterationsLimit =
             this.appConfigurationService.freeTierIterationsLimit;
@@ -232,124 +230,159 @@ export class DevelopmentService {
         }
     }
 
-    async createPageIteration(
-        payload: CreatePageIterationDto,
-    ): Promise<Iteration> {
+    async createProjectIterationsForCollection(
+        collectionId: string,
+        requirements: string,
+    ) {
+        this.logger.log({
+            message: `${this.serviceName}.createProjectIterationsForCollection: Create project iterations for collection`,
+            metadata: { collectionId, requirements },
+        });
         try {
-            const conversation = await this.conversationRepository.findOne({
-                where: {
-                    id: payload.conversation_id,
-                },
+            const collection = await this.collectionRepository.findOne({
+                where: { id: collectionId },
             });
-            const page = await this.pageService.getPage(payload.page_id);
-            const iteration = await this.iterationRepository.save({
-                project_id: payload.project_id,
-                page_id: payload.page_id,
-                name: conversation.name,
-                type: IterationType.PageDevelopment,
+            if (!collection) {
+                throw new BadRequestException("Collection not found");
+            }
+            const webProject = await this.projectRepository.findOne({
+                where: { id: collection.web_project_id },
+            });
+            if (!webProject) {
+                throw new BadRequestException("Web project not found");
+            }
+            const backendProject = await this.projectRepository.findOne({
+                where: { id: collection.backend_service_project_ids[0] },
+            });
+            if (!backendProject) {
+                throw new BadRequestException("Backend project not found");
+            }
+
+            const webIteration = await this.iterationRepository.save({
+                project_id: webProject.id,
+                type: IterationType.Project,
             });
 
-            const response = await lastValueFrom(
-                this.httpService
-                    .post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/page`,
-                        {
-                            project_id: payload.project_id,
-                            iteration_id: iteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            input: `Develop the page "${page.name}" in the web application according to the project requirements and conversation between users and Genesoft project manager. Don't start from scratch but plan tasks based on existing code in the frontend github repository.`,
-                            page_id: payload.page_id,
-                            conversation_id: payload.conversation_id,
-                            branch: "dev",
-                        },
-                    )
-                    .pipe(
-                        concatMap((res) => of(res.data)),
-                        retry(2),
-                        catchError((error) => {
-                            this.logger.error({
-                                message: `${this.serviceName}.createPageIteration: Failed to trigger Developer AI agent`,
-                                metadata: { error: error.message },
-                            });
-                            throw error;
-                        }),
-                    ),
+            await lastValueFrom(
+                this.httpService.post(
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
+                    {
+                        project_id: webProject.id,
+                        input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                        iteration_id: webIteration.id,
+                        frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${webProject.id}`,
+                        branch: "dev",
+                        sandbox_id: webProject.sandbox_id || "",
+                        requirements,
+                    },
+                ),
             );
 
-            this.logger.log({
-                message: `${this.serviceName}.createPageIteration: Developer AI agent team triggered successfully for page iteration`,
-                metadata: { response },
+            const webConversation = await this.conversationRepository.save({
+                project_id: webProject.id,
+                name: "Web Project Creation",
+                description: "Conversation about the web project creation",
+                user_id: SystemId.PageChannelSystemId,
+                status: "active",
+                iteration_id: webIteration.id,
             });
 
-            return iteration;
+            await this.conversationService.talkToProjectManager({
+                project_id: webProject.id,
+                conversation_id: webConversation.id,
+                message: {
+                    content: `Please update user with latest information about the project creation of ${webProject.name}`,
+                    sender_type: "system",
+                    message_type: "text",
+                    sender_id: SystemId.GenesoftProjectManager,
+                },
+            });
+
+            const backendIteration = await this.iterationRepository.save({
+                project_id: backendProject.id,
+                type: IterationType.Project,
+            });
+
+            await lastValueFrom(
+                this.httpService.post(
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/project`,
+                    {
+                        project_id: backendProject.id,
+                        input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
+                        iteration_id: backendIteration.id,
+                        backend_repo_name: `${ProjectTemplateName.NestJsApi}_${backendProject.id}`,
+                        branch: "dev",
+                        sandbox_id: backendProject.sandbox_id || "",
+                        requirements,
+                    },
+                ),
+            );
+
+            const backendConversation = await this.conversationRepository.save({
+                project_id: backendProject.id,
+                name: "Backend Project Creation",
+                description: "Conversation about the backend project creation",
+                user_id: SystemId.GenesoftProjectManager,
+                status: "active",
+                iteration_id: backendIteration.id,
+            });
+
+            await this.conversationService.talkToBackendDeveloper({
+                project_id: backendProject.id,
+                conversation_id: backendConversation.id,
+                message: {
+                    content: `Please update user with latest information about the backend project creation of ${backendProject.name}`,
+                    sender_type: "system",
+                    message_type: "text",
+                    sender_id: AiAgentId.GenesoftBackendDeveloper,
+                },
+            });
+
+            return {
+                webIteration,
+                backendIteration,
+            };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.createPageIteration: Failed to create page iteration`,
-                metadata: { payload, error: error.message },
+                message: `${this.serviceName}.createProjectIterationsForCollection: Failed to create project iterations for collection`,
+                metadata: { collectionId, error: error.message },
             });
             throw error;
         }
     }
 
-    async createFeatureIteration(
-        payload: CreateFeatureIterationDto,
-    ): Promise<Iteration> {
-        try {
-            const conversation = await this.conversationRepository.findOne({
-                where: {
-                    id: payload.conversation_id,
-                },
-            });
-            const feature = await this.featureService.getFeature(
-                payload.feature_id,
-            );
-            const iteration = await this.iterationRepository.save({
-                project_id: payload.project_id,
-                feature_id: payload.feature_id,
-                name: conversation.name,
-                type: IterationType.FeatureDevelopment,
-            });
-
-            const response = await lastValueFrom(
-                this.httpService
-                    .post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/feature`,
-                        {
-                            project_id: payload.project_id,
-                            iteration_id: iteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            input: `Develop the feature "${feature.name}" in the web application according to the project requirements and conversation between users and Genesoft project manager. Don't start from scratch but plan tasks based on existing code in the frontend github repository.`,
-                            feature_id: payload.feature_id,
-                            conversation_id: payload.conversation_id,
-                            branch: "dev",
-                        },
-                    )
-                    .pipe(
-                        concatMap((res) => of(res.data)),
-                        retry(2),
-                        catchError((error) => {
-                            this.logger.error({
-                                message: `${this.serviceName}.createFeatureIteration: Failed to trigger Developer AI agent`,
-                                metadata: { error: error.message },
-                            });
-                            throw error;
-                        }),
-                    ),
-            );
-
-            this.logger.log({
-                message: `${this.serviceName}.createFeatureIteration: Developer AI agent team triggered successfully for feature iteration`,
-                metadata: { response },
-            });
-
-            return iteration;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.createFeatureIteration: Failed to create feature iteration`,
-                metadata: { payload, error: error.message },
-            });
-            throw error;
-        }
+    async triggerTechnicalProjectManagerAiAgentToCreateRequirements(
+        collectionId: string,
+        webDescription: string,
+        backendRequirements: string,
+    ) {
+        this.logger.log({
+            message: `${this.serviceName}.triggerTechnicalProjectManagerAiAgentToCreateRequirements: Trigger technical project manager ai agent to create requirements`,
+            metadata: { collectionId, webDescription, backendRequirements },
+        });
+        const response = await lastValueFrom(
+            this.httpService
+                .post(
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/project/technical-requirements`,
+                    {
+                        collection_id: collectionId,
+                        web_description: webDescription,
+                        backend_requirements: backendRequirements,
+                    },
+                )
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.triggerTechnicalProjectManagerAiAgentToCreateRequirements: Failed to trigger technical project manager ai agent to create requirements`,
+                            metadata: { error: error.message },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+        return response.data;
     }
 
     async getIterations(): Promise<Iteration[]> {

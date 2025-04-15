@@ -62,6 +62,11 @@ export class WebApplicationService {
             ? `https://codesandbox.io/p/devbox/nextjs-web-${projectId}-${project?.sandbox_id}`
             : null;
 
+        const port = 3000;
+        const codesandboxPreviewUrl = project?.sandbox_id
+            ? `https://${project?.sandbox_id}-${port}.csb.app`
+            : "";
+
         return {
             url,
             status,
@@ -73,6 +78,7 @@ export class WebApplicationService {
             repositoryBuild,
             codesandboxUrl,
             sandboxId: project?.sandbox_id,
+            codesandboxPreviewUrl,
         };
     }
 }

@@ -42,30 +42,8 @@ export class CreateIterationDto {
     collection_id?: string;
 }
 
-export class CreatePageIterationDto {
+export class CreateProjectIterationsForCollectionDto {
     @IsString()
     @IsNotEmpty()
-    conversation_id: string;
-
-    @IsString()
-    @IsNotEmpty()
-    project_id: string;
-
-    @IsString()
-    @IsNotEmpty()
-    page_id: string;
-}
-
-export class CreateFeatureIterationDto {
-    @IsString()
-    @IsNotEmpty()
-    conversation_id: string;
-
-    @IsString()
-    @IsNotEmpty()
-    project_id: string;
-
-    @IsString()
-    @IsNotEmpty()
-    feature_id: string;
+    requirements: string;
 }
