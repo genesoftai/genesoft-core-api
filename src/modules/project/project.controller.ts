@@ -21,11 +21,15 @@ import {
     FeatureDto,
 } from "./dto/update-project.dto";
 import { AuthGuard } from "../auth/auth.guard";
+import { ProjectDbManagerService } from "./project-db-manager.service";
 
 @Controller("project")
 @UseGuards(AuthGuard)
 export class ProjectController {
-    constructor(private readonly projectService: ProjectService) {}
+    constructor(
+        private readonly projectService: ProjectService,
+        private readonly projectDbManagerService: ProjectDbManagerService,
+    ) {}
 
     @Get()
     async getProjects(@Query("ids") ids: string) {
@@ -159,6 +163,26 @@ export class ProjectController {
     @Get(":id/updated-requirements")
     async getUpdatedRequirements(@Param("id") id: string) {
         return this.projectService.getUpdatedRequirements(id);
+    }
+
+    @Post(":id/database")
+    async createProjectDatabase(@Param("id") id: string) {
+        return this.projectDbManagerService.createProjectDatabase(id);
+    }
+
+    @Get(":id/database/disk-usage")
+    async getProjectDatabaseDiskUsage(@Param("id") id: string) {
+        return this.projectDbManagerService.getDatabaseDiskUsage(id);
+    }
+
+    @Get(":id/database/credentials")
+    async getProjectDatabaseCredentials(@Param("id") id: string) {
+        return this.projectDbManagerService.getProjectDatabaseCredentials(id);
+    }
+
+    @Get(":id/database/info")
+    async getProjectDatabaseInfo(@Param("id") id: string) {
+        return this.projectDbManagerService.getProjectDatabaseInfo(id);
     }
 
     @Post(":id/github-access")

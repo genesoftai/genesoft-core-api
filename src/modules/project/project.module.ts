@@ -29,6 +29,12 @@ import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
+import { ProjectDbManagerService } from "./project-db-manager.service";
+import { ProjectDb } from "./entity/project-db.entity";
+import { ConfigModule } from "@nestjs/config";
+import { ProjectEnv } from "./entity/project-env.entity";
+import { ProjectEnvManagementService } from "./project-env-management.service";
+import { ProjectEnvController } from "./project-env.controller";
 import { Collection } from "../collection/entity/collection.entity";
 import { CollectionModule } from "../collection/collection.module";
 
@@ -49,6 +55,8 @@ import { CollectionModule } from "../collection/collection.module";
             VercelProject,
             KoyebProject,
             Conversation,
+            ProjectDb,
+            ProjectEnv,
             Collection,
         ]),
         AWSConfigurationModule,
@@ -64,10 +72,20 @@ import { CollectionModule } from "../collection/collection.module";
         CodesandboxModule,
         LlmModule,
         HttpModule,
+        ConfigModule,
+    ],
+    providers: [
+        ProjectService,
+        Logger,
+        ProjectDbManagerService,
+        ProjectEnvManagementService,
+    ],
+    controllers: [ProjectController, ProjectEnvController],
+    exports: [
+        ProjectService,
+        ProjectDbManagerService,
+        ProjectEnvManagementService,
         CollectionModule,
     ],
-    providers: [ProjectService, Logger],
-    controllers: [ProjectController],
-    exports: [ProjectService],
 })
 export class ProjectModule {}
