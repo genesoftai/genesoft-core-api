@@ -7,7 +7,7 @@ import {
     OneToOne,
     JoinColumn,
 } from "typeorm";
-import { Project } from "./project.entity";
+import { Project } from "@/modules/project/entity/project.entity";
 
 @Entity("project_db")
 export class ProjectDb {
@@ -41,4 +41,4 @@ export class ProjectDb {
 
     @UpdateDateColumn({ name: "updated_at" })
     updated_at: Date;
-} 
+}

@@ -324,4 +324,11 @@ export class SubscriptionService {
 
         return savedSubscription;
     }
+
+    async getSubscriptionByProjectId(projectId: string) {
+        const subscription = await this.subscriptionRepository.find({
+            where: { project_id: projectId },
+        });
+        return subscription;
+    }
 }

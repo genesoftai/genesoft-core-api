@@ -38,10 +38,9 @@ export class BackendInfraController {
 
     @Post("koyeb/service")
     createNewServiceInKoyeb(@Body() payload: CreateKoyebServiceDto) {
-        return this.backendInfraService.createNewServiceInKoyeb(
-            payload.projectId,
+        return this.backendInfraService.runKoyebInstance(
             payload.appId,
-            payload.apiKey,
+            payload.projectId,
         );
     }
 }

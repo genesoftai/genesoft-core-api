@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { Supabase } from "./entity/supabase.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { HttpService } from "@nestjs/axios";
-import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
+import { async, catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
 import { SupabaseConfigurationService } from "../configuration/supabase";
 import { v4 as uuidv4 } from "uuid";
 import * as postgres from "postgres";
@@ -470,6 +470,13 @@ export class SupabaseService {
             dbStructureString,
             dbStructure: result,
         };
+    }
+
+    async getUserByUid(uId: string) {
+        const { data, error } =
+            await this.supabaseAdmin.auth.admin.getUserById(uId);
+        console.log(data, error);
+        return data;
     }
 
     async getGithubUsername(uId): Promise<string | null> {

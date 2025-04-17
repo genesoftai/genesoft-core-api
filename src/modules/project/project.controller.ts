@@ -21,7 +21,7 @@ import {
     FeatureDto,
 } from "./dto/update-project.dto";
 import { AuthGuard } from "../auth/auth.guard";
-import { ProjectDbManagerService } from "./project-db-manager.service";
+import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 
 @Controller("project")
 @UseGuards(AuthGuard)

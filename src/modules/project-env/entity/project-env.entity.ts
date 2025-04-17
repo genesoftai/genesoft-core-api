@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Project } from "./project.entity";
+import { Project } from "../../project/entity/project.entity";
 
 @Entity("project_envs")
 export class ProjectEnv {

@@ -8,7 +8,7 @@ import {
     Param,
     UseGuards,
 } from "@nestjs/common";
-import { ProjectEnvManagementService } from "./project-env-management.service";
+import { ProjectEnvManagementService } from "../project-env/project-env-management.service";
 import {
     CreateProjectEnvDto,
     UpdateProjectEnvDto,

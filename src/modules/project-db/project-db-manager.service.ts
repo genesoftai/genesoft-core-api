@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ProjectDb } from "./entity/project-db.entity";
-import { Project } from "./entity/project.entity";
+import { Project } from "../project/entity/project.entity";
 import { Client } from "pg";
 import { ConfigService } from "@nestjs/config";
 import * as crypto from "crypto";

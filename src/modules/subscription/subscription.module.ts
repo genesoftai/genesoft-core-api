@@ -9,6 +9,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../user/entity/user.entity";
 import { Subscription } from "./entity/subscription.entity";
 import { Organization } from "../organization/entity/organization.entity";
+import { BackendInfraModule } from "@modules/backend-infra/backend-infra.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([User, Subscription, Organization]),
@@ -16,6 +17,7 @@ import { Organization } from "../organization/entity/organization.entity";
         SupabaseConfigurationModule,
         UserModule,
         AuthModule,
+        BackendInfraModule,
     ],
     controllers: [SubscriptionController],
     providers: [SubscriptionService, Logger],

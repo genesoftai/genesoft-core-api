@@ -6,10 +6,10 @@ import {
     CreateProjectEnvDto,
     UpdateProjectEnvDto,
     ProjectEnvResponseDto,
-} from "./dto/project-env.dto";
+} from "../project/dto/project-env.dto";
 import * as crypto from "crypto";
 import { FrontendInfraService } from "../frontend-infra/frontend-infra.service";
-import { Project } from "./entity/project.entity";
+import { Project } from "../project/entity/project.entity";
 
 @Injectable()
 export class ProjectEnvManagementService {

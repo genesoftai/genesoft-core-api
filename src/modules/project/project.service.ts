@@ -59,7 +59,7 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
-import { ProjectDbManagerService } from "./project-db-manager.service";
+import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 import { GetProjectsDto } from "./dto/get-project.dto";
 import { Collection } from "../collection/entity/collection.entity";
 import { CollectionService } from "../collection/collection.service";

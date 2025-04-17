@@ -6,7 +6,7 @@ import {
     UpdateDateColumn,
     OneToMany,
 } from "typeorm";
-import { ProjectEnv } from "./project-env.entity";
+import { ProjectEnv } from "../../project-env/entity/project-env.entity";
 
 @Entity("project")
 export class Project {

@@ -29,15 +29,17 @@ import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
-import { ProjectDbManagerService } from "./project-db-manager.service";
-import { ProjectDb } from "./entity/project-db.entity";
+import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 import { ConfigModule } from "@nestjs/config";
-import { ProjectEnv } from "./entity/project-env.entity";
-import { ProjectEnvManagementService } from "./project-env-management.service";
+import { ProjectEnv } from "../project-env/entity/project-env.entity";
 import { ProjectEnvController } from "./project-env.controller";
 import { Collection } from "../collection/entity/collection.entity";
 import { CollectionModule } from "../collection/collection.module";
-
+import { ProjectEnvModule } from "@modules/project-env/project-env.module";
+import { StripeModule } from "@modules/stripe/stripe.module";
+import { ProjectSubscribeController } from "./project-subscribe.controller";
+import { SubscriptionModule } from "@modules/subscription/subscription.module";
+import { ProjectDbModule } from "../project-db/project-db.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -55,7 +57,6 @@ import { CollectionModule } from "../collection/collection.module";
             VercelProject,
             KoyebProject,
             Conversation,
-            ProjectDb,
             ProjectEnv,
             Collection,
         ]),
@@ -73,19 +74,18 @@ import { CollectionModule } from "../collection/collection.module";
         LlmModule,
         HttpModule,
         ConfigModule,
-    ],
-    providers: [
-        ProjectService,
-        Logger,
-        ProjectDbManagerService,
-        ProjectEnvManagementService,
-    ],
-    controllers: [ProjectController, ProjectEnvController],
-    exports: [
-        ProjectService,
-        ProjectDbManagerService,
-        ProjectEnvManagementService,
         CollectionModule,
+        ProjectEnvModule,
+        StripeModule,
+        SubscriptionModule,
+        ProjectDbModule,
     ],
+    providers: [ProjectService, Logger],
+    controllers: [
+        ProjectController,
+        ProjectEnvController,
+        ProjectSubscribeController,
+    ],
+    exports: [ProjectService, CollectionModule],
 })
 export class ProjectModule {}
