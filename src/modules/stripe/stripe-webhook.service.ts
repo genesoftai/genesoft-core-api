@@ -111,19 +111,28 @@ export class StripeWebhookService {
                     metadata: { checkoutSession, customer },
                 });
                 const itemId = checkoutSession.line_items?.data[0]?.price?.id;
-                await this.subscriptionService.createSubscriptionByCheckoutSession(
-                    {
-                        sessionId: checkoutSession.id,
-                    },
-                );
 
                 switch (itemId) {
                     case "price_1REoyoHTZsQdR8K0I1AkxcLs":
+                        await this.subscriptionService.createSubscriptionByCheckoutSession(
+                            {
+                                sessionId: checkoutSession.id,
+                                tier: "instance-e1",
+                            },
+                        );
+
                         await this.backendInfraService.createNewProjectInKoyeb(
                             checkoutSession.metadata.projectId,
                         );
                         break;
                     case "price_1REtdMHTZsQdR8K0opFksudX":
+                        await this.subscriptionService.createSubscriptionByCheckoutSession(
+                            {
+                                sessionId: checkoutSession.id,
+                                tier: "db-e1",
+                            },
+                        );
+
                         await this.projectDbManagerService.createProjectDatabase(
                             checkoutSession.metadata.projectId,
                         );

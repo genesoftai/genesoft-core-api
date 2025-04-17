@@ -311,7 +311,7 @@ export class SubscriptionService {
                 ? toDateTime(subscription.trial_end)
                 : null,
             subscription_id: subscriptionId,
-            tier: "startup",
+            tier: payload.tier,
         };
 
         const savedSubscription =

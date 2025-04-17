@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+    BadRequestException,
+    Injectable,
+    Logger,
+    NotFoundException,
+    OnModuleInit,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ProjectDb } from "./entity/project-db.entity";
@@ -8,7 +14,7 @@ import { ConfigService } from "@nestjs/config";
 import * as crypto from "crypto";
 
 @Injectable()
-export class ProjectDbManagerService {
+export class ProjectDbManagerService implements OnModuleInit {
     private readonly defaultDbUser: string;
     private readonly defaultDbPassword: string;
     private readonly defaultDbHost: string;
@@ -33,6 +39,11 @@ export class ProjectDbManagerService {
             this.logger.error("PROJECT_DB_KEY environment variable is not set");
             throw new Error("PROJECT_DB_KEY environment variable is required");
         }
+    }
+
+    async onModuleInit() {
+        this.logger.log("ProjectDbManagerService initialized");
+        // this.createProjectDatabase("54335ace-d877-46d7-b2a4-9f4ce864e391");
     }
 
     private encryptPassword(password: string): string {
@@ -316,6 +327,8 @@ export class ProjectDbManagerService {
         db_name: string;
         db_user: string;
         db_password: string;
+        host: string;
+        port: number;
     }> {
         this.logger.log(
             `Getting database credentials for project: ${projectId}`,
@@ -327,7 +340,7 @@ export class ProjectDbManagerService {
 
         if (!projectDb) {
             this.logger.error(`Database for project ${projectId} not found`);
-            throw new NotFoundException(
+            throw new BadRequestException(
                 `Database for project ${projectId} not found`,
             );
         }
@@ -342,6 +355,8 @@ export class ProjectDbManagerService {
             db_name: projectDb.db_name,
             db_user: projectDb.db_user,
             db_password: decryptedPassword,
+            host: this.defaultDbHost,
+            port: 5432,
         };
     }
 
