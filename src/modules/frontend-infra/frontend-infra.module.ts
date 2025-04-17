@@ -22,7 +22,6 @@ import { BackendInfraModule } from "@/modules/backend-infra/backend-infra.module
         ]),
         HttpModule,
         SupabaseModule,
-        BackendInfraModule,
     ],
     providers: [FrontendInfraService],
     controllers: [FrontendInfraController],

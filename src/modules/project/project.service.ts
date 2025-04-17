@@ -59,6 +59,8 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
+import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
+import { GetProjectsDto } from "./dto/get-project.dto";
 import { Collection } from "../collection/entity/collection.entity";
 import { CollectionService } from "../collection/collection.service";
 
@@ -111,6 +113,7 @@ export class ProjectService implements OnModuleInit {
         private conversationRepository: Repository<Conversation>,
         private codesandboxService: CodesandboxService,
         private llmService: LlmService,
+        private projectDbManagerService: ProjectDbManagerService,
         private collectionService: CollectionService,
     ) {
         this.logger.log({
@@ -238,11 +241,15 @@ export class ProjectService implements OnModuleInit {
             where: { project_id: id },
         });
 
+        // Get database disk usage
+        const dbDiskUsage = await this.projectDbManagerService.getDatabaseDiskUsage(id);
+
         return {
             project,
             supabase,
             vercel,
             koyeb,
+            dbDiskUsage,
         };
     }
 
@@ -951,6 +958,9 @@ export class ProjectService implements OnModuleInit {
         }
 
         await this.projectRepository.delete(id);
+
+        // Delete project database
+        await this.projectDbManagerService.deleteProjectDatabase(id);
 
         this.logger.log({
             message: `${this.serviceName}.deleteProject: Project deleted`,

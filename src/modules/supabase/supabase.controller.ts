@@ -61,4 +61,10 @@ export class SupabaseController {
     getDatabaseStructure(@Param("projectId") projectId: string) {
         return this.supabaseService.getDatabaseStructure(projectId);
     }
+
+
+    @Get("/github-username/:uId")
+    getGithubUsername(@Param("uId") uId: string) {
+        return this.supabaseService.getGithubUsername(uId);
+    }
 }

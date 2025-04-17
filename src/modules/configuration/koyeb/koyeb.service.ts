@@ -8,4 +8,8 @@ export class KoyebConfigurationService {
     get koyebApiKey() {
         return this.configService.get("koyeb.koyebApiKey");
     }
+
+    get koyebAppId() {
+        return this.configService.get("koyeb.koyebAppId");
+    }
 }

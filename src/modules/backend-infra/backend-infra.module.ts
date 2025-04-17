@@ -12,6 +12,7 @@ import { KoyebConfigurationModule } from "@/modules/configuration/koyeb";
 import { AppConfigurationModule } from "@/modules/configuration/app";
 import { Iteration } from "../development/entity/iteration.entity";
 import { Project } from "../project/entity/project.entity";
+import { ProjectEnvModule } from "@modules/project-env/project-env.module";
 
 @Module({
     imports: [
@@ -27,6 +28,7 @@ import { Project } from "../project/entity/project.entity";
         AWSConfigurationModule,
         KoyebConfigurationModule,
         AppConfigurationModule,
+        ProjectEnvModule,
     ],
     providers: [BackendInfraService],
     exports: [BackendInfraService],

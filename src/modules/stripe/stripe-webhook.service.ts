@@ -10,7 +10,8 @@ import { Request } from "express";
 import Stripe from "stripe";
 import { SubscriptionService } from "@/modules/subscription/subscription.service"; // Import the SubscriptionService
 import { StripeConfigurationService } from "../configuration/stripe";
-
+import { BackendInfraService } from "@modules/backend-infra/backend-infra.service";
+import { ProjectDbManagerService } from "@modules/project-db/project-db-manager.service";
 @Injectable()
 export class StripeWebhookService {
     private relevantEvents = new Set([
@@ -25,6 +26,8 @@ export class StripeWebhookService {
     constructor(
         private readonly subscriptionService: SubscriptionService,
         private readonly stripeConfigurationService: StripeConfigurationService,
+        private readonly backendInfraService: BackendInfraService,
+        private readonly projectDbManagerService: ProjectDbManagerService,
     ) {
         this.stripe = new Stripe(
             this.stripeConfigurationService.stripeSecretKey,
@@ -107,6 +110,36 @@ export class StripeWebhookService {
                     message: `Checkout session completed: ${checkoutSession.id}`,
                     metadata: { checkoutSession, customer },
                 });
+                const itemId = checkoutSession.line_items?.data[0]?.price?.id;
+
+                switch (itemId) {
+                    case "price_1REoyoHTZsQdR8K0I1AkxcLs":
+                        await this.subscriptionService.createSubscriptionByCheckoutSession(
+                            {
+                                sessionId: checkoutSession.id,
+                                tier: "instance-e1",
+                            },
+                        );
+
+                        await this.backendInfraService.createNewProjectInKoyeb(
+                            checkoutSession.metadata.projectId,
+                        );
+                        break;
+                    case "price_1REtdMHTZsQdR8K0opFksudX":
+                        await this.subscriptionService.createSubscriptionByCheckoutSession(
+                            {
+                                sessionId: checkoutSession.id,
+                                tier: "db-e1",
+                            },
+                        );
+
+                        await this.projectDbManagerService.createProjectDatabase(
+                            checkoutSession.metadata.projectId,
+                        );
+                        break;
+                    default:
+                        throw new Error("Unhandled relevant event!");
+                }
                 break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
