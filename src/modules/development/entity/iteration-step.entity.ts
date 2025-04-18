@@ -9,8 +9,8 @@ import {
 } from "typeorm";
 import { IterationTask } from "./iteration-task.entity";
 
-@Entity("team_task")
-export class TeamTask {
+@Entity("iteration_step")
+export class IterationStep {
     @PrimaryGeneratedColumn("uuid")
     id: string;
 
@@ -24,11 +24,8 @@ export class TeamTask {
     @Column({ type: "text" })
     name: string;
 
-    @Column({ type: "text", nullable: true })
-    description: string;
-
     @Column({ type: "text" })
-    team: string;
+    description: string;
 
     @Column({ type: "text", default: "todo" })
     status: string;
@@ -36,14 +33,8 @@ export class TeamTask {
     @Column({ type: "text", nullable: true })
     remark: string;
 
-    @Column({ name: "working_time", type: "decimal", default: 0.0 })
-    working_time: number;
-
-    @Column({ name: "tool_usage", type: "jsonb", default: "{}" })
-    tool_usage: Record<string, any>;
-
-    @Column({ name: "llm_usage", type: "jsonb", default: "{}" })
-    llm_usage: Record<string, any>;
+    @Column({ name: "tool" })
+    tool: string;
 
     @CreateDateColumn({ name: "created_at", type: "timestamptz" })
     created_at: Date;

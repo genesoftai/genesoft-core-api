@@ -4,7 +4,6 @@ import { HttpModule } from "@nestjs/axios";
 import { DevelopmentController } from "./development.controller";
 import { DevelopmentService } from "./development.service";
 import { Iteration } from "./entity/iteration.entity";
-import { TeamTask } from "./entity/team-task.entity";
 import { IterationTask } from "./entity/iteration-task.entity";
 import { AiAgentConfigurationModule } from "@/modules/configuration/ai-agent/ai-agent.module";
 import { EmailModule } from "../email/email.module";
@@ -22,11 +21,11 @@ import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationModule } from "../configuration/app";
 import { Collection } from "../collection/entity/collection.entity";
 import { ConversationModule } from "@/conversation/conversation.module";
+import { IterationStep } from "./entity/iteration-step.entity";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
             Iteration,
-            TeamTask,
             IterationTask,
             Project,
             Organization,
@@ -34,6 +33,7 @@ import { ConversationModule } from "@/conversation/conversation.module";
             Conversation,
             Subscription,
             Collection,
+            IterationStep,
         ]),
         HttpModule,
         AiAgentConfigurationModule,
