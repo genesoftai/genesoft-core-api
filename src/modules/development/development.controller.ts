@@ -13,19 +13,15 @@ import {
     CreateIterationDto,
     CreateProjectIterationsForCollectionDto,
 } from "./dto/create-iteration.dto";
-import { CreateTeamTaskDto } from "./dto/create-team-task.dto";
 import {
     CreateIterationTaskDto,
     CreateIterationTasksDto,
 } from "./dto/create-iteration-task.dto";
-import {
-    UpdateIterationTaskResultDto,
-    UpdateIterationTaskStatusDto,
-} from "./dto/update-iteration-task.dto";
+import { UpdateIterationTaskStatusDto } from "./dto/update-iteration-task.dto";
 import { Iteration } from "./entity/iteration.entity";
-import { TeamTask } from "./entity/team-task.entity";
 import { IterationTask } from "./entity/iteration-task.entity";
 import { UpdateIterationStatusDto } from "./dto/update-iteration.dto";
+import { IterationStep } from "./entity/iteration-step.entity";
 
 @Controller("development")
 export class DevelopmentController {
@@ -127,14 +123,44 @@ export class DevelopmentController {
     }
 
     @Post("iteration/:id/iteration-task/bulk")
-    createIterationTasks(
+    async createIterationTasks(
         @Body() createIterationTasksDto: CreateIterationTasksDto,
         @Param("id") id: string,
-    ): Promise<IterationTask[]> {
-        return this.developmentService.createIterationTasks(
+    ): Promise<{ tasks: IterationTask[] }> {
+        const tasks = await this.developmentService.createIterationTasks(
             id,
             createIterationTasksDto,
         );
+        return {
+            tasks,
+        };
+    }
+
+    // Additional endpoints
+    @Get("iteration/:id/tasks")
+    getIterationTasksByIterationId(
+        @Param("id") id: string,
+    ): Promise<IterationTask[]> {
+        return this.developmentService.getIterationTasksByIterationId(id);
+    }
+
+    @Put("iteration/:id/tasks/status")
+    bulkUpdateIterationTaskStatus(
+        @Param("id") id: string,
+        @Body("status") status: string,
+    ): Promise<void> {
+        return this.developmentService.bulkUpdateIterationTaskStatus(
+            id,
+            status,
+        );
+    }
+
+    @Get("iteration/:id/past-steps/:team")
+    getIterationPastSteps(
+        @Param("id") id: string,
+        @Param("team") team: string,
+    ): Promise<object> {
+        return this.developmentService.getIterationPastSteps(id, team);
     }
 
     @Get("iteration-task")
@@ -160,71 +186,6 @@ export class DevelopmentController {
         return this.developmentService.deleteIterationTask(id);
     }
 
-    // Team Task endpoints
-    @Post("team-task")
-    createTeamTask(
-        @Body() createTeamTaskDto: CreateTeamTaskDto,
-    ): Promise<TeamTask> {
-        return this.developmentService.createTeamTask(createTeamTaskDto);
-    }
-
-    @Get("team-task")
-    getTeamTasks(): Promise<TeamTask[]> {
-        return this.developmentService.getTeamTasks();
-    }
-
-    @Get("team-task/:id")
-    getTeamTaskById(@Param("id") id: string): Promise<TeamTask> {
-        return this.developmentService.getTeamTaskById(id);
-    }
-
-    @Put("team-task/:id")
-    updateTeamTask(
-        @Param("id") id: string,
-        @Body() updateData: Partial<TeamTask>,
-    ): Promise<TeamTask> {
-        return this.developmentService.updateTeamTask(id, updateData);
-    }
-
-    @Delete("team-task/:id")
-    deleteTeamTask(@Param("id") id: string): Promise<void> {
-        return this.developmentService.deleteTeamTask(id);
-    }
-
-    // Additional endpoints
-    @Get("iteration/:id/tasks")
-    getIterationTasksByIterationId(
-        @Param("id") id: string,
-    ): Promise<IterationTask[]> {
-        return this.developmentService.getIterationTasksByIterationId(id);
-    }
-
-    @Get("iteration-task/:id/team-tasks")
-    getTeamTasksByIterationTaskId(
-        @Param("id") id: string,
-    ): Promise<TeamTask[]> {
-        return this.developmentService.getTeamTasksByIterationTaskId(id);
-    }
-
-    @Put("iteration/:id/tasks/status")
-    bulkUpdateIterationTaskStatus(
-        @Param("id") id: string,
-        @Body("status") status: string,
-    ): Promise<void> {
-        return this.developmentService.bulkUpdateIterationTaskStatus(
-            id,
-            status,
-        );
-    }
-
-    @Put("iteration-task/:id/team-tasks/status")
-    bulkUpdateTeamTaskStatus(
-        @Param("id") id: string,
-        @Body("status") status: string,
-    ): Promise<void> {
-        return this.developmentService.bulkUpdateTeamTaskStatus(id, status);
-    }
-
     @Put("iteration-task/:id/status")
     updateIterationTaskStatus(
         @Param("id") id: string,
@@ -233,33 +194,36 @@ export class DevelopmentController {
         return this.developmentService.updateIterationTaskStatus(id, payload);
     }
 
-    @Put("iteration-task/:id/result")
-    updateIterationTaskResult(
-        @Param("id") id: string,
-        @Body() payload: UpdateIterationTaskResultDto,
-    ): Promise<IterationTask> {
-        return this.developmentService.updateIterationTaskResult(id, payload);
+    // Iteration Step endpoints
+    @Post("iteration-step")
+    createIterationStep(
+        @Body() data: Partial<IterationStep>,
+    ): Promise<IterationStep> {
+        return this.developmentService.createIterationStep(data);
     }
 
-    @Get("iteration/:id/next-task")
-    getNextIterationTask(
-        @Param("id") id: string,
-    ): Promise<IterationTask | null> {
-        return this.developmentService.getNextIterationTask(id);
+    @Get("iteration-step/task/:taskId")
+    getIterationStepsByTaskId(
+        @Param("taskId") taskId: string,
+    ): Promise<IterationStep[]> {
+        return this.developmentService.getIterationStepsByTaskId(taskId);
     }
 
-    @Post("iteration/:id/next-task")
-    triggerNextIterationTask(
-        @Param("id") id: string,
-    ): Promise<IterationTask | null> {
-        return this.developmentService.triggerNextIterationTask(id);
+    @Get("iteration-step/:id")
+    getIterationStepById(@Param("id") id: string): Promise<IterationStep> {
+        return this.developmentService.getIterationStepById(id);
     }
 
-    @Get("iteration/:id/past-steps/:team")
-    getIterationPastSteps(
+    @Put("iteration-step/:id")
+    updateIterationStep(
         @Param("id") id: string,
-        @Param("team") team: string,
-    ): Promise<object> {
-        return this.developmentService.getIterationPastSteps(id, team);
+        @Body() data: Partial<IterationStep>,
+    ): Promise<IterationStep> {
+        return this.developmentService.updateIterationStep(id, data);
+    }
+
+    @Delete("iteration-step/:id")
+    deleteIterationStep(@Param("id") id: string): Promise<void> {
+        return this.developmentService.deleteIterationStep(id);
     }
 }

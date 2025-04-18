@@ -636,7 +636,6 @@ export class CodesandboxService {
             });
 
             await shell.kill();
-            await sandbox.hibernate();
 
             return {
                 sandbox_id,
@@ -651,11 +650,10 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 task: "build",
-                output: "Error",
+                output: "Can't get build task info",
             };
         }
     }

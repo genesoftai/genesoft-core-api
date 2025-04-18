@@ -10,19 +10,15 @@ import { Between, In, Repository } from "typeorm";
 import { HttpService } from "@nestjs/axios";
 import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
 import { Iteration } from "./entity/iteration.entity";
-import { TeamTask } from "./entity/team-task.entity";
 import { IterationTask } from "./entity/iteration-task.entity";
 import { CreateIterationTasksDto } from "./dto/create-iteration-task.dto";
-import {
-    UpdateIterationTaskResultDto,
-    UpdateIterationTaskStatusDto,
-} from "./dto/update-iteration-task.dto";
+import { UpdateIterationTaskStatusDto } from "./dto/update-iteration-task.dto";
 import {
     IterationStatus,
     IterationTaskStatus,
     IterationType,
 } from "@/modules/constants/development";
-import { AiAgentId, AiAgentTeam, SystemId } from "@/modules/constants/agent";
+import { AiAgentId, SystemId } from "@/modules/constants/agent";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent/ai-agent.service";
 import { ProjectTemplateName, ProjectTemplateType } from "../constants/project";
 import { EmailService } from "../email/email.service";
@@ -46,6 +42,7 @@ import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationService } from "@/modules/configuration/app/app.service";
 import { Collection } from "../collection/entity/collection.entity";
 import { ConversationService } from "@/conversation/conversation.service";
+import { IterationStep } from "./entity/iteration-step.entity";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -56,8 +53,6 @@ export class DevelopmentService {
     constructor(
         @InjectRepository(Iteration)
         private iterationRepository: Repository<Iteration>,
-        @InjectRepository(TeamTask)
-        private teamTaskRepository: Repository<TeamTask>,
         @InjectRepository(IterationTask)
         private iterationTaskRepository: Repository<IterationTask>,
         @InjectRepository(Conversation)
@@ -85,6 +80,8 @@ export class DevelopmentService {
         @InjectRepository(Collection)
         private collectionRepository: Repository<Collection>,
         private conversationService: ConversationService,
+        @InjectRepository(IterationStep)
+        private iterationStepRepository: Repository<IterationStep>,
     ) {
         this.freeTierIterationsLimit =
             this.appConfigurationService.freeTierIterationsLimit;
@@ -804,18 +801,20 @@ export class DevelopmentService {
         payload: CreateIterationTasksDto,
     ): Promise<IterationTask[]> {
         try {
-            const createdTasks: IterationTask[] = [];
-
             for (const taskData of payload.tasks) {
                 const task = this.iterationTaskRepository.create({
                     ...taskData,
                     iteration_id: iterationId,
                 });
-                const savedTask = await this.iterationTaskRepository.save(task);
-                createdTasks.push(savedTask);
+                await this.iterationTaskRepository.save(task);
             }
 
-            return createdTasks;
+            const tasks = await this.iterationTaskRepository.find({
+                where: { iteration_id: iterationId },
+                order: { created_at: "ASC" },
+            });
+
+            return tasks;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createIterationTasks: Failed to create iteration tasks`,
@@ -882,71 +881,73 @@ export class DevelopmentService {
         }
     }
 
-    // Team Task CRUD
-    async createTeamTask(data: Partial<TeamTask>): Promise<TeamTask> {
+    // Iteration Step CRUD
+    async createIterationStep(
+        data: Partial<IterationStep>,
+    ): Promise<IterationStep> {
         try {
-            const teamTask = this.teamTaskRepository.create(data);
-            return this.teamTaskRepository.save(teamTask);
+            return this.iterationStepRepository.save(data);
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.createTeamTask: Failed to create team task`,
+                message: `${this.serviceName}.createIterationStep: Failed to create iteration step`,
                 metadata: { data, error: error.message },
             });
             throw error;
         }
     }
 
-    async getTeamTasks(): Promise<TeamTask[]> {
+    async getIterationStepsByTaskId(taskId: string): Promise<IterationStep[]> {
         try {
-            return this.teamTaskRepository.find({
+            return this.iterationStepRepository.find({
+                where: { iteration_task_id: taskId },
                 relations: ["iteration_task"],
             });
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.getTeamTasks: Failed to get team tasks`,
-                metadata: { error: error.message },
+                message: `${this.serviceName}.getIterationStepsByTaskId: Failed to get iteration steps by task id`,
+                metadata: { taskId, error: error.message },
             });
             throw error;
         }
     }
 
-    async getTeamTaskById(id: string): Promise<TeamTask> {
+    async getIterationStepById(id: string): Promise<IterationStep> {
         try {
-            return this.teamTaskRepository.findOneOrFail({
+            return this.iterationStepRepository.findOneOrFail({
                 where: { id },
                 relations: ["iteration_task"],
             });
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.getTeamTaskById: Failed to get team task`,
+                message: `${this.serviceName}.getIterationStepById: Failed to get iteration step`,
                 metadata: { id, error: error.message },
             });
             throw error;
         }
     }
 
-    async updateTeamTask(
+    async updateIterationStep(
         id: string,
-        data: Partial<TeamTask>,
-    ): Promise<TeamTask> {
+        data: Partial<IterationStep>,
+    ): Promise<IterationStep> {
         try {
-            await this.teamTaskRepository.update(id, data);
-            return this.getTeamTaskById(id);
+            await this.iterationStepRepository.update(id, data);
+            return this.getIterationStepById(id);
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.updateTeamTask: Failed to update team task`,
+                message: `${this.serviceName}.updateIterationStep: Failed to update iteration step`,
                 metadata: { id, data, error: error.message },
             });
             throw error;
         }
     }
 
-    async deleteTeamTask(id: string): Promise<void> {
+    async deleteIterationStep(id: string): Promise<void> {
         try {
-            await this.teamTaskRepository.delete(id);
+            await this.iterationStepRepository.delete(id);
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.deleteTeamTask: Failed to delete team task`,
+                message: `${this.serviceName}.deleteIterationStep: Failed to delete iteration step`,
                 metadata: { id, error: error.message },
             });
             throw error;
@@ -972,23 +973,6 @@ export class DevelopmentService {
         }
     }
 
-    async getTeamTasksByIterationTaskId(
-        iterationTaskId: string,
-    ): Promise<TeamTask[]> {
-        try {
-            return this.teamTaskRepository.find({
-                where: { iteration_task_id: iterationTaskId },
-                relations: ["iteration_task"],
-            });
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.getTeamTasksByIterationTaskId: Failed to get team tasks`,
-                metadata: { iterationTaskId, error: error.message },
-            });
-            throw error;
-        }
-    }
-
     async bulkUpdateIterationTaskStatus(
         iterationId: string,
         status: string,
@@ -1002,24 +986,6 @@ export class DevelopmentService {
             this.logger.error({
                 message: `${this.serviceName}.bulkUpdateIterationTaskStatus: Failed to update iteration tasks status`,
                 metadata: { iterationId, status, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async bulkUpdateTeamTaskStatus(
-        iterationTaskId: string,
-        status: string,
-    ): Promise<void> {
-        try {
-            await this.teamTaskRepository.update(
-                { iteration_task_id: iterationTaskId },
-                { status },
-            );
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.bulkUpdateTeamTaskStatus: Failed to update team tasks status`,
-                metadata: { iterationTaskId, status, error: error.message },
             });
             throw error;
         }
@@ -1098,209 +1064,6 @@ export class DevelopmentService {
             this.logger.error({
                 message: `${this.serviceName}.updateIterationTaskStatus: Failed to update iteration task status`,
                 metadata: { id, status: payload.status, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async updateIterationTaskResult(
-        id: string,
-        payload: UpdateIterationTaskResultDto,
-    ): Promise<IterationTask> {
-        if (!payload.result) {
-            throw new BadRequestException(
-                "Result is required to update iteration task result",
-            );
-        }
-        const result = payload.result;
-
-        try {
-            const updateData: Partial<IterationTask> = {
-                result,
-            };
-
-            this.logger.log({
-                message: `${this.serviceName}.updateIterationTaskResult: update data`,
-                updateData,
-            });
-
-            await this.iterationTaskRepository.update(id, updateData);
-            return this.getIterationTaskById(id);
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.updateIterationTaskResult: Failed to update iteration task result`,
-                metadata: { id, result, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async getNextIterationTask(
-        iterationId: string,
-    ): Promise<IterationTask | null> {
-        try {
-            const tasks = await this.iterationTaskRepository.find({
-                where: { iteration_id: iterationId },
-                order: { created_at: "ASC" },
-            });
-
-            // Find the first task that's not completed
-            const nextTask = tasks.find(
-                (task) => task.status === IterationTaskStatus.Todo,
-            );
-            this.logger.log({
-                message: `${this.serviceName}.getNextIterationTask: Next iteration task`,
-                metadata: { iterationId, nextTask },
-            });
-            return nextTask || null;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.getNextIterationTask: Failed to get next iteration task`,
-                metadata: { iterationId, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async triggerNextIterationTask(
-        iterationId: string,
-    ): Promise<IterationTask | null> {
-        try {
-            const nextTask = await this.getNextIterationTask(iterationId);
-
-            this.logger.log({
-                message: `${this.serviceName}.triggerNextIterationTask: Triggering next iteration task`,
-                metadata: { iterationId, nextTask },
-            });
-
-            if (!nextTask) {
-                // No more tasks to process
-                await this.updateIteration(iterationId, {
-                    status: IterationStatus.Done,
-                });
-
-                const iteration = await this.getIterationById(iterationId);
-                try {
-                    await this.repositoryBuildService.checkRepositoryBuild({
-                        project_id: iteration.project_id,
-                        iteration_id: iteration.id,
-                        template: ProjectTemplateName.NextJsWeb,
-                    });
-                    this.emailService.sendEmail({
-                        from: "Genesoft <support@genesoftai.com>",
-                        to: [GENESOFT_AI_EMAIL],
-                        subject: `Frontend repository build for ${iteration.project_id} checked successfully`,
-                        html: `
-                        <p>Hello,</p>
-                        <p>The frontend repository build for ${iteration.project_id} checked successfully.</p>
-                        <p>Thank you.</p>
-
-                        Project ID: ${iteration.project_id}
-                        Iteration ID: ${iteration.id}
-                        `,
-                    });
-                } catch (error) {
-                    this.logger.error({
-                        message: `${this.serviceName}.triggerNextIterationTask: Failed to check frontend repository build`,
-                        metadata: { iteration, error: error.message },
-                    });
-                    this.emailService.sendEmail({
-                        from: "Genesoft <support@genesoftai.com>",
-                        to: [GENESOFT_AI_EMAIL],
-                        subject: `Failed to check frontend repository build for ${iteration.project_id}`,
-                        html: `
-                        <p>Hello,</p>
-                        <p>We are unable to check the frontend repository build for ${iteration.project_id}.</p>
-                        <p>Please check the repository build status manually.</p>
-                        <p>Thank you.</p>
-
-                        Project ID: ${iteration.project_id}
-                        Iteration ID: ${iteration.id}
-                        `,
-                    });
-                }
-
-                return null;
-            }
-
-            if (nextTask.status === IterationTaskStatus.Todo) {
-                const iteration = await this.getIterationById(iterationId);
-                // Update the task status to in_progress
-                await this.updateIterationTaskStatus(nextTask.id, {
-                    status: IterationTaskStatus.InProgress,
-                });
-
-                // ! Why condition after this not working?
-                // TODO: Make condition after this working when trigger next iteration task
-                try {
-                    this.logger.log({
-                        message: `${this.serviceName}.triggerNextIterationTask: Triggering AI agent`,
-                        metadata: { nextTask },
-                    });
-                    if (nextTask.team === AiAgentTeam.Frontend) {
-                        // Trigger frontend AI agent
-                        const response = await lastValueFrom(
-                            this.httpService.post(
-                                `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/frontend-development/development/requirements`,
-                                {
-                                    project_id: iteration.project_id,
-                                    iteration_id: iteration.id,
-                                    iteration_task_id: nextTask.id,
-                                    frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${iteration.project_id}`,
-                                    backend_repo_name: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                                },
-                            ),
-                        );
-                        this.logger.log({
-                            message: `${this.serviceName}.triggerNextIterationTask: Frontend AI agent triggered successfully`,
-                            metadata: { response: response.data },
-                        });
-                    } else if (nextTask.team === AiAgentTeam.Backend) {
-                        // Trigger backend AI agent
-                        // const response = await lastValueFrom(
-                        //     this.httpService.post(
-                        //         `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/backend-development/development/requirements`,
-                        //         {
-                        //             project_id: iteration.project_id,
-                        //             iteration_id: iteration.id,
-                        //             iteration_task_id: nextTask.id,
-                        //             backend_repo_name: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                        //         },
-                        //     ),
-                        // );
-                        this.logger.log({
-                            message: `${this.serviceName}.triggerNextIterationTask: Backend AI agent Not supported`,
-                            metadata: { nextTask },
-                        });
-                    } else {
-                        this.logger.error({
-                            message: `${this.serviceName}.triggerNextIterationTask: Invalid team for iteration task`,
-                            metadata: { nextTask },
-                        });
-                        throw new BadRequestException(
-                            "Invalid team for iteration task",
-                        );
-                    }
-                } catch (error) {
-                    this.logger.error({
-                        message: `${this.serviceName}.triggerNextIterationTask: Failed to trigger AI agent`,
-                        metadata: { nextTask, error: error.message },
-                    });
-                    // Update task status back to todo since agent trigger failed
-                    await this.updateIterationTaskStatus(nextTask.id, {
-                        status: IterationTaskStatus.Failed,
-                    });
-                    throw error;
-                }
-
-                return this.getIterationTaskById(nextTask.id);
-            }
-
-            return nextTask;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.triggerNextIterationTask: Failed to trigger next iteration task`,
-                metadata: { iterationId, error: error.message },
             });
             throw error;
         }
