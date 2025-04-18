@@ -110,7 +110,8 @@ export class StripeWebhookService {
                     message: `Checkout session completed: ${checkoutSession.id}`,
                     metadata: { checkoutSession, customer },
                 });
-                const lookupKey = checkoutSession.line_items?.data[0]?.price?.lookup_key;
+                const lookupKey =
+                    checkoutSession.line_items?.data[0]?.price?.lookup_key;
 
                 switch (lookupKey) {
                     case "instance-e1":
