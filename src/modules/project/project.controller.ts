@@ -22,13 +22,14 @@ import {
 } from "./dto/update-project.dto";
 import { AuthGuard } from "../auth/auth.guard";
 import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
-
+import { BackendInfraService } from "../backend-infra/backend-infra.service";
 @Controller("project")
 @UseGuards(AuthGuard)
 export class ProjectController {
     constructor(
         private readonly projectService: ProjectService,
         private readonly projectDbManagerService: ProjectDbManagerService,
+        private readonly backendInfraService: BackendInfraService,
     ) {}
 
     @Get()
@@ -196,4 +197,14 @@ export class ProjectController {
             throw new Error(`Failed to decode token: ${error.message}`);
         }
     }
+
+    @Post(":id/services/re-deploy")
+    async reDeployServices(@Param("id") id: string) {
+        try {
+            return this.backendInfraService.reDeployServices(id);
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
+
 }

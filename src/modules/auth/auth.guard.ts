@@ -23,6 +23,7 @@ export class AuthGuard implements CanActivate {
         const request = context.switchToHttp().getRequest();
         // we use a hardcoded string to validate the user for sake of simplicity
         if (request.headers["authorization"]) {
+            console.log(request.headers["authorization"]);
             try {
                 const apiKey = request.headers["authorization"].split(" ")[1];
                 return apiKey === this.appConfigurationService.genesoftApiKey;

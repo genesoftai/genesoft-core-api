@@ -5,6 +5,7 @@ import {
     Logger,
     NotFoundException,
     OnModuleInit,
+    BadRequestException,
 } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { GithubRepository } from "@/modules/github/entity/github-repository.entity";
@@ -86,7 +87,7 @@ export class BackendInfraService implements OnModuleInit {
 
     async createNewProjectInKoyeb(projectId: string) {
         try {
-            const serviceName = await this.runKoyebInstance(
+            const serviceName = await this.runNewKoyebInstance(
                 this.koyebAppId,
                 projectId,
             );
@@ -151,7 +152,84 @@ export class BackendInfraService implements OnModuleInit {
         }
     }
 
-    async runKoyebInstance(appId: string, projectId: string): Promise<string> {
+    async reDeployServices(projectId: string) {
+        const githubRepository = await this.githubRepository.findOne({
+            where: {
+                project_id: projectId,
+            },
+        });
+        const koyebProject = await this.koyebProjectRepository.findOne({
+            where: {
+                project_id: projectId,
+            },
+        });
+
+        if (!koyebProject) {
+            throw new BadRequestException("Koyeb project not found");
+        }
+        const env = await this.projectEnv.findAll(projectId);
+        const serviceName = `api-${projectId}`;
+        const payload = {
+            definition: {
+                type: "WEB",
+                name: serviceName,
+                git: {
+                    repository: `github.com/genesoftai/${githubRepository.name}`,
+                    branch: "main",
+                },
+                regions: ["sin"],
+                instance_types: [{ type: "eco-micro" }],
+                scalings: [{ max: 1, min: 1 }],
+                env: env.map((e) => ({
+                    scope: ["service"],
+                    key: e.key,
+                    value: e.value,
+                })),
+            },
+        };
+
+        try {
+            const response = await lastValueFrom(
+                this.httpService
+                    .put(
+                        `${this.koyebApiUrl}/v1/services/${koyebProject.service_id}`,
+                        payload,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${this.koyebConfigurationService.koyebApiKey}`,
+                            },
+                        },
+                    )
+                    .pipe(
+                        concatMap((res) => of(res.data)),
+                        catchError((error) => {
+                            // this.logger.error({
+                            //     message: `${this.serviceName}.createNewServiceInKoyeb: Error creating new Koyeb service`,
+                            //     metadata: { error, payload },
+                            // });
+                            throw error;
+                        }),
+                    ),
+            );
+
+            this.logger.log({
+                message: `${this.serviceName}.createNewServiceInKoyeb: New Koyeb service created`,
+                metadata: { data: response.data, status: response.status },
+            });
+
+            return serviceName;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createNewServiceInKoyeb: Error creating new Koyeb service`,
+                metadata: { data: error.response.data },
+            });
+        }
+    }
+
+    async runNewKoyebInstance(
+        appId: string,
+        projectId: string,
+    ): Promise<string> {
         const githubRepository = await this.githubRepository.findOne({
             where: {
                 project_id: projectId,
@@ -287,7 +365,17 @@ export class BackendInfraService implements OnModuleInit {
                 ),
         );
 
-        return response?.service;
+        const service = response?.service;
+        let deployStatus = "deployed";
+        if (
+            service.latest_deployment_id != null &&
+            service.active_deployment_id != service.latest_deployment_id
+        ) {
+            deployStatus = "deploying";
+        }
+        service.deploy_status = deployStatus;
+        Logger.log(service);
+        return service;
     }
 
     async deleteKoyebProject(projectId: string) {
