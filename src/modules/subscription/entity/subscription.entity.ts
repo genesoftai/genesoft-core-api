@@ -14,6 +14,9 @@ export class Subscription {
     @Column({ name: "organization_id" })
     organization_id: string;
 
+    @Column({ name: "project_id" })
+    project_id: string;
+
     @Column({ name: "cancel_at", nullable: true })
     cancel_at: Date;
 

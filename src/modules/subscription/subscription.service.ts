@@ -311,7 +311,7 @@ export class SubscriptionService {
                 ? toDateTime(subscription.trial_end)
                 : null,
             subscription_id: subscriptionId,
-            tier: "startup",
+            tier: payload.tier,
         };
 
         const savedSubscription =
@@ -323,5 +323,12 @@ export class SubscriptionService {
         });
 
         return savedSubscription;
+    }
+
+    async getSubscriptionByProjectId(projectId: string) {
+        const subscription = await this.subscriptionRepository.find({
+            where: { project_id: projectId },
+        });
+        return subscription;
     }
 }

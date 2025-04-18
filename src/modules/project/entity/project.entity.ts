@@ -4,7 +4,9 @@ import {
     Column,
     CreateDateColumn,
     UpdateDateColumn,
+    OneToMany,
 } from "typeorm";
+import { ProjectEnv } from "../../project-env/entity/project-env.entity";
 
 @Entity("project")
 export class Project {
@@ -43,4 +45,7 @@ export class Project {
 
     @Column({ name: "backend_requirements", type: "text", nullable: true })
     backend_requirements: string;
+
+    @OneToMany(() => ProjectEnv, (env) => env.project)
+    envs: ProjectEnv[];
 }

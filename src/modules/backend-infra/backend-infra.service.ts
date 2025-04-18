@@ -1,34 +1,33 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+    Injectable,
+    Logger,
+    NotFoundException,
+    OnModuleInit,
+} from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { GithubRepository } from "@/modules/github/entity/github-repository.entity";
 import { Repository } from "typeorm";
-import { ProjectType } from "@/modules/constants/project";
-import { v4 as uuidv4 } from "uuid";
-import { Supabase } from "@/modules/supabase/entity/supabase.entity";
-import { SupabaseService } from "@/modules/supabase/supabase.service";
-import { AWSConfigurationService } from "@/modules/configuration/aws";
 import { KoyebProject } from "./entity/koyeb-project.entity";
 import { KoyebConfigurationService } from "@/modules/configuration/koyeb";
 import { AppConfigurationService } from "@/modules/configuration/app";
 import { Iteration } from "../development/entity/iteration.entity";
 import { Project } from "../project/entity/project.entity";
+import { ProjectEnvManagementService } from "@modules/project-env/project-env-management.service";
 
 @Injectable()
-export class BackendInfraService {
+export class BackendInfraService implements OnModuleInit {
     private readonly serviceName = BackendInfraService.name;
     private readonly logger = new Logger(this.serviceName);
     private readonly koyebApiUrl = "https://app.koyeb.com";
+    private koyebAppId: string = this.koyebConfigurationService.koyebAppId;
 
     constructor(
         private readonly httpService: HttpService,
         @InjectRepository(GithubRepository)
         private readonly githubRepository: Repository<GithubRepository>,
-        @InjectRepository(Supabase)
-        private readonly supabaseRepository: Repository<Supabase>,
-        private readonly supabaseService: SupabaseService,
-        private readonly awsConfigurationService: AWSConfigurationService,
+        private readonly projectEnv: ProjectEnvManagementService,
         @InjectRepository(KoyebProject)
         private readonly koyebProjectRepository: Repository<KoyebProject>,
         private readonly koyebConfigurationService: KoyebConfigurationService,
@@ -39,6 +38,17 @@ export class BackendInfraService {
         private readonly projectRepository: Repository<Project>,
     ) {}
 
+    async onModuleInit() {
+        // await this.createNewAppInKoyeb();
+        // await this.createNewProjectInKoyeb(
+        //     "54335ace-d877-46d7-b2a4-9f4ce864e391",
+        // );
+    }
+
+    /**
+     * @deprecated
+     * @param projectId
+     */
     async getBackendServiceInfo(projectId: string) {
         const project = await this.projectRepository.findOne({
             where: { id: projectId },
@@ -76,22 +86,15 @@ export class BackendInfraService {
 
     async createNewProjectInKoyeb(projectId: string) {
         try {
-            const apiKey = `${uuidv4()}${Math.random().toString(36).slice(2)}!@#$%^&*`;
-            const app = await this.createNewAppInKoyeb(projectId);
-            const service = await this.createNewServiceInKoyeb(
+            const serviceName = await this.runKoyebInstance(
+                this.koyebAppId,
                 projectId,
-                app.id,
-                apiKey,
             );
-
-            const koyebProject = await this.koyebProjectRepository.save({
+            return await this.koyebProjectRepository.save({
                 project_id: projectId,
-                app_id: app?.id,
-                service_id: service?.id,
-                api_key: apiKey,
+                app_id: this.koyebAppId,
+                service_id: serviceName,
             });
-
-            return koyebProject;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createNewProjectInKoyeb: Error creating new Koyeb project`,
@@ -101,12 +104,12 @@ export class BackendInfraService {
         }
     }
 
-    async createNewAppInKoyeb(projectId: string) {
+    async createNewAppInKoyeb() {
         const env =
             this.appConfigurationService.nodeEnv === "production"
                 ? "prod"
                 : "dev";
-        const appName = `${env}-${projectId.split("-")[0]}`;
+        const appName = `${env}-client-services`;
         try {
             const response = await lastValueFrom(
                 this.httpService
@@ -142,135 +145,42 @@ export class BackendInfraService {
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createNewAppInKoyeb: Error creating new Koyeb app`,
-                metadata: { error, projectId },
+                metadata: { error },
             });
             throw error;
         }
     }
 
-    async createNewServiceInKoyeb(
-        projectId: string,
-        appId: string,
-        apiKey: string,
-    ) {
+    async runKoyebInstance(appId: string, projectId: string): Promise<string> {
+        const githubRepository = await this.githubRepository.findOne({
+            where: {
+                project_id: projectId,
+            },
+        });
+
+        const env = await this.projectEnv.findAll(projectId);
+        const serviceName = `api-${projectId}`;
+        const payload = {
+            app_id: appId,
+            definition: {
+                type: "WEB",
+                name: serviceName,
+                git: {
+                    repository: `github.com/genesoftai/${githubRepository.name}`,
+                    branch: "main",
+                },
+                regions: ["sin"],
+                instance_types: [{ type: "eco-micro" }],
+                scalings: [{ max: 1, min: 1 }],
+                env: env.map((e) => ({
+                    scope: ["service"],
+                    key: e.key,
+                    value: e.value,
+                })),
+            },
+        };
+
         try {
-            const githubRepository = await this.githubRepository.findOne({
-                where: {
-                    project_id: projectId,
-                    type: ProjectType.Api,
-                },
-            });
-
-            if (!githubRepository) {
-                this.logger.error({
-                    message: `${this.serviceName}.createNewServiceInKoyeb: Github repository not found`,
-                    metadata: { projectId },
-                });
-                throw new NotFoundException("Github repository not found");
-            }
-
-            const supabase = await this.supabaseRepository.findOne({
-                where: {
-                    project_id: projectId,
-                },
-            });
-
-            if (!supabase) {
-                this.logger.error({
-                    message: `${this.serviceName}.createNewServiceInKoyeb: Supabase not found`,
-                    metadata: { projectId },
-                });
-                throw new NotFoundException("Supabase not found");
-            }
-
-            const databaseUrl =
-                await this.supabaseService.getSupabaseDBUrl(projectId);
-            const anonKey =
-                await this.supabaseService.getKeyInfoFromProjectApiKeys(
-                    projectId,
-                    "anon",
-                );
-            const serviceRoleKey =
-                await this.supabaseService.getKeyInfoFromProjectApiKeys(
-                    projectId,
-                    "service_role",
-                );
-
-            const env = [
-                {
-                    key: "PROJECT_ID",
-                    value: projectId,
-                },
-                {
-                    key: "ENVIRONMENT",
-                    value: "production",
-                },
-                {
-                    key: "PORT",
-                    value: "8000",
-                },
-                {
-                    key: "API_KEY",
-                    value: apiKey,
-                },
-                {
-                    key: "DATABASE_URL",
-                    value: databaseUrl,
-                },
-                {
-                    key: "SUPABASE_URL",
-                    value: supabase.url,
-                },
-                {
-                    key: "SUPABASE_SERVICE_ROLE_KEY",
-                    value: serviceRoleKey.api_key,
-                },
-                {
-                    key: "SUPABASE_ANON_KEY",
-                    value: anonKey.api_key,
-                },
-                {
-                    key: "AWS_ACCESS_KEY",
-                    value: this.awsConfigurationService.awsAccessKey,
-                },
-                {
-                    key: "AWS_SECRET_KEY",
-                    value: this.awsConfigurationService.awsSecretKey,
-                },
-                {
-                    key: "AWS_S3_BUCKET_NAME",
-                    value: this.awsConfigurationService.awsS3CustomerBucketName,
-                },
-                {
-                    key: "AWS_REGION",
-                    value: this.awsConfigurationService.awsRegion,
-                },
-                {
-                    key: "STRIPE_SECRET_KEY",
-                    value: "test_secret_key", // To be filled by user
-                },
-                {
-                    key: "STRIPE_WEBHOOK_SECRET",
-                    value: "test_webhook_secret", // To be filled by user
-                },
-            ];
-
-            const payload = {
-                app_id: appId,
-                definition: {
-                    type: "WEB",
-                    name: `api-${projectId}`,
-                    git: {
-                        repository: `github.com/genesoftai/${githubRepository.name}`,
-                        branch: "main",
-                    },
-                    regions: ["sin"],
-                    instance_types: [{ type: "eco-nano" }],
-                    scalings: [{ max: 1, min: 1 }],
-                    env,
-                },
-            };
-
             const response = await lastValueFrom(
                 this.httpService
                     .post(`${this.koyebApiUrl}/v1/services`, payload, {
@@ -280,12 +190,11 @@ export class BackendInfraService {
                     })
                     .pipe(
                         concatMap((res) => of(res.data)),
-                        retry(2),
                         catchError((error) => {
-                            this.logger.error({
-                                message: `${this.serviceName}.createNewServiceInKoyeb: Error creating new Koyeb service`,
-                                metadata: { error, payload },
-                            });
+                            // this.logger.error({
+                            //     message: `${this.serviceName}.createNewServiceInKoyeb: Error creating new Koyeb service`,
+                            //     metadata: { error, payload },
+                            // });
                             throw error;
                         }),
                     ),
@@ -293,16 +202,20 @@ export class BackendInfraService {
 
             this.logger.log({
                 message: `${this.serviceName}.createNewServiceInKoyeb: New Koyeb service created`,
-                metadata: { response },
+                metadata: { data: response.data, status: response.status },
             });
 
-            return response?.service;
+            await this.koyebProjectRepository.save({
+                project_id: projectId,
+                app_id: appId,
+                service_id: response.data.service.id,
+            });
+            return serviceName;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createNewServiceInKoyeb: Error creating new Koyeb service`,
-                metadata: { error, projectId, appId },
+                metadata: { data: error.response.data },
             });
-            throw error;
         }
     }
 
@@ -350,14 +263,6 @@ export class BackendInfraService {
                 project_id: projectId,
             },
         });
-
-        if (!koyebProject.app_id) {
-            this.logger.error({
-                message: `${this.serviceName}.getKoyebService: Koyeb service not found`,
-                metadata: { projectId },
-            });
-            throw new NotFoundException("Koyeb service not found");
-        }
 
         const response = await lastValueFrom(
             this.httpService
