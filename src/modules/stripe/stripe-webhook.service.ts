@@ -110,10 +110,11 @@ export class StripeWebhookService {
                     message: `Checkout session completed: ${checkoutSession.id}`,
                     metadata: { checkoutSession, customer },
                 });
-                const itemId = checkoutSession.line_items?.data[0]?.price?.id;
+                const lookupKey =
+                    checkoutSession.line_items?.data[0]?.price?.lookup_key;
 
-                switch (itemId) {
-                    case "price_1REoyoHTZsQdR8K0I1AkxcLs":
+                switch (lookupKey) {
+                    case "instance-e1":
                         await this.subscriptionService.createSubscriptionByCheckoutSession(
                             {
                                 sessionId: checkoutSession.id,
@@ -125,7 +126,7 @@ export class StripeWebhookService {
                             checkoutSession.metadata.projectId,
                         );
                         break;
-                    case "price_1REtdMHTZsQdR8K0opFksudX":
+                    case "db-e1":
                         await this.subscriptionService.createSubscriptionByCheckoutSession(
                             {
                                 sessionId: checkoutSession.id,

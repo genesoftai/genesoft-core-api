@@ -1,12 +1,6 @@
-import {
-    Injectable,
-    Logger,
-    UnauthorizedException,
-    ForbiddenException,
-} from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import Stripe from "stripe";
 import { StripeConfigurationService } from "../configuration/stripe";
-import * as admin from "firebase-admin";
 import { AppConfigurationService } from "@modules/configuration/app";
 
 @Injectable()
