@@ -29,6 +29,7 @@ export class LlmService {
     private readonly serviceName = LlmService.name;
     private readonly logger = new Logger(this.serviceName);
     private readonly exa: Exa;
+    private readonly gemini25Flash = "gemini-2.5-flash-preview-04-17";
 
     constructor(
         private readonly thirdPartyConfigurationService: ThirdPartyConfigurationService,
@@ -131,7 +132,7 @@ export class LlmService {
         try {
             const threadId = uuidv4();
             const gemini = new ChatGoogleGenerativeAI({
-                model: payload.model,
+                model: this.gemini25Flash,
                 ...payload.payload,
             });
 
@@ -261,7 +262,7 @@ export class LlmService {
         try {
             const threadId = uuidv4();
             const gemini = new ChatGoogleGenerativeAI({
-                model: payload.model,
+                model: this.gemini25Flash,
                 ...payload.payload,
             });
 
@@ -422,7 +423,7 @@ export class LlmService {
     }: CallGeminiPayload): Promise<any> {
         try {
             const gemini = new ChatGoogleGenerativeAI({
-                model: payload.model,
+                model: this.gemini25Flash,
                 ...payload.payload,
             });
 
@@ -597,7 +598,7 @@ export class LlmService {
 
             // Create a Gemini model
             const gemini = new ChatGoogleGenerativeAI({
-                model: "gemini-2.0-flash",
+                model: this.gemini25Flash,
                 maxOutputTokens: 8192,
             });
 

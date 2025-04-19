@@ -162,6 +162,38 @@ export class CodesandboxService {
         }
     }
 
+    async restartSandbox(id: string) {
+        try {
+            await this.stopSandbox(id);
+            this.logger.log({
+                message: `${this.serviceName}: Sandbox stopped`,
+                metadata: {
+                    id,
+                },
+            });
+            await this.startSandbox(id);
+            this.logger.log({
+                message: `${this.serviceName}: Sandbox started`,
+                metadata: {
+                    id,
+                },
+            });
+            return {
+                id,
+                status: "restarted",
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}: Error restarting sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
     /**
      * Write text content to a file in the sandbox
      */
@@ -176,9 +208,14 @@ export class CodesandboxService {
 
         try {
             // Use sandbox.fs directly instead of creating a session
-            await sandbox.fs.writeTextFile(path, content, {
-                create: true,
-                overwrite: true,
+            await sandbox.fs.writeTextFile(path, content);
+
+            this.logger.log({
+                message: `${this.serviceName}.writeFileOnSandbox: File written on sandbox`,
+                metadata: {
+                    sandbox_id,
+                    path,
+                },
             });
 
             await sandbox.hibernate();
@@ -191,7 +228,7 @@ export class CodesandboxService {
         } catch (error) {
             // await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error writing file on sandbox`,
+                message: `${this.serviceName}.writeFileOnSandbox: Error writing file on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -225,7 +262,7 @@ export class CodesandboxService {
         } catch (error) {
             // await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error writing file on sandbox`,
+                message: `${this.serviceName}.writeFileOnSandboxWithoutHibernate: Error writing file on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -254,7 +291,7 @@ export class CodesandboxService {
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error reading file on sandbox`,
+                message: `${this.serviceName}.readFileOnSandbox: Error reading file on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -281,7 +318,7 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error reading file on sandbox`,
+                message: `${this.serviceName}.readFileOnSandboxWithoutHibernate: Error reading file on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -335,7 +372,7 @@ export class CodesandboxService {
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error listing files on sandbox`,
+                message: `${this.serviceName}.listFilesOnSandbox: Error listing files on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -361,7 +398,7 @@ export class CodesandboxService {
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error uploading file on sandbox`,
+                message: `${this.serviceName}.uploadFileOnSandbox: Error uploading file on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -389,7 +426,7 @@ export class CodesandboxService {
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error downloading file from sandbox`,
+                message: `${this.serviceName}.downloadFileFromSandbox: Error downloading file from sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -417,7 +454,7 @@ export class CodesandboxService {
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error renaming file on sandbox`,
+                message: `${this.serviceName}.renameFileOnSandbox: Error renaming file on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -458,7 +495,7 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error getting port info on sandbox`,
+                message: `${this.serviceName}.getPortInfoOnSandbox: Error getting port info on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -512,7 +549,7 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error running command on sandbox`,
+                message: `${this.serviceName}.runCommandOnSandbox: Error running command on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -537,7 +574,7 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error running command on sandbox`,
+                message: `${this.serviceName}.runCommandOnSandboxWithoutWaiting: Error running command on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -553,25 +590,46 @@ export class CodesandboxService {
 
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
-            const result = await sandbox.tasks.runTask(task);
-            let port = null;
-            // If the task opens a port, you can access it
-            if (result.ports.length > 0) {
-                port = result.ports[0];
-                console.log(`Preview available at: ${port.getPreviewUrl()}`);
-            }
+            // Create a promise that will resolve with the task result or reject after 1 minute
+            const taskPromise = sandbox.tasks.runTask(task);
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(
+                    () =>
+                        reject(
+                            new Error(
+                                "Task execution timed out after 1 minute",
+                            ),
+                        ),
+                    60000,
+                );
+            });
+
+            const result = await Promise.race([taskPromise, timeoutPromise]);
+
+            this.logger.log({
+                message: `${this.serviceName}.runTaskOnSandbox: Task ${task} running on sandbox ${sandbox_id}`,
+                metadata: {
+                    result,
+                },
+            });
 
             await sandbox.hibernate();
             return result;
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error running task on sandbox`,
+                message: `${this.serviceName}.runTaskOnSandbox: Error running task on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
                 },
             });
+            return {
+                sandbox_id,
+                task,
+                status: "task_failed",
+                error: error.message,
+            };
         }
     }
 
@@ -590,7 +648,7 @@ export class CodesandboxService {
         } catch (error) {
             await sandbox.hibernate();
             this.logger.error({
-                message: `${this.serviceName}: Error running task on sandbox`,
+                message: `${this.serviceName}.runTaskOnSandboxAsBackgroundProcess: Error running task on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -635,7 +693,9 @@ export class CodesandboxService {
                 }, 30000); // 30 seconds timeout
             });
 
+            // Kill the shell after we've captured the output
             await shell.kill();
+            await sandbox.hibernate();
 
             return {
                 sandbox_id,
@@ -644,12 +704,13 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error getting run build task info`,
+                message: `${this.serviceName}.runBuildTaskOnSandbox: Error getting run build task info`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
                 },
             });
+            await sandbox.hibernate();
             return {
                 sandbox_id,
                 task: "build",
@@ -708,7 +769,62 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error running dev task on sandbox`,
+                message: `${this.serviceName}.runDevTaskOnSandbox: Error running dev task on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            await sandbox.hibernate();
+            throw error;
+        }
+    }
+
+    async runInstallTaskOnSandbox(sandbox_id: string) {
+        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        try {
+            const task = await sandbox.tasks.getTask("install");
+            if (!task) {
+                throw new Error("Install task not found");
+            }
+            const taskResult = await sandbox.tasks.runTask(task.id);
+            const shell = await sandbox.shells.open(taskResult.shellId);
+
+            let allOutput = "";
+
+            const output = await new Promise((resolve) => {
+                shell.onOutput((output) => {
+                    console.log(output);
+
+                    // Accumulate all output
+                    allOutput += output + "\n";
+
+                    // Check if dev server is ready
+                    if (output.includes("Done in")) {
+                        resolve(allOutput);
+                    }
+                });
+
+                // Set a timeout in case the dev server doesn't report ready
+                setTimeout(() => {
+                    if (allOutput) {
+                        resolve(allOutput);
+                    }
+                }, 60000); // 60 seconds timeout
+            });
+
+            // Kill the shell after we've captured the output
+            await shell.kill();
+            await sandbox.hibernate();
+
+            return {
+                sandbox_id,
+                task,
+                output,
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.runInstallTaskOnSandbox: Error running install task on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -768,7 +884,7 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error running dev task on sandbox`,
+                message: `${this.serviceName}.runPreviewTaskOnSandbox: Error running preview task on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
@@ -786,14 +902,102 @@ export class CodesandboxService {
             for (const shell of shells) {
                 await shell.kill();
             }
+            this.logger.log({
+                message: `${this.serviceName}: Killed all shells`,
+                metadata: {
+                    sandbox_id,
+                },
+            });
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}: Error killing all shells`,
+                message: `${this.serviceName}.killAllShells: Error killing all shells`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
                 },
             });
+        }
+    }
+
+    async setupSandboxForWebProject(sandbox_id: string) {
+        this.logger.log({
+            message: `${this.serviceName}.setupSandboxForWebProject: Setting up sandbox for web project`,
+            metadata: {
+                sandbox_id,
+            },
+        });
+        try {
+            await this.sdk.sandbox.open(sandbox_id);
+            const killShells = await this.killAllShells(sandbox_id);
+            this.logger.log({
+                message: `${this.serviceName}.setupSandboxForWebProject: Killed all shells`,
+                metadata: {
+                    sandbox_id,
+                },
+            });
+            // const installTask = await this.runInstallTaskOnSandbox(sandbox_id);
+            await this.runTaskOnSandboxAsBackgroundProcess({
+                sandbox_id,
+                task: "install",
+            });
+            await this.runTaskOnSandboxAsBackgroundProcess({
+                sandbox_id,
+                task: "dev",
+            });
+            return {
+                sandbox_id,
+                status: "setup_finished",
+                killShells,
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.setupSandboxForWebProject: Error setting up sandbox for web iteration`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            return {
+                sandbox_id,
+                status: "setup_failed",
+            };
+        }
+    }
+
+    async setupSandboxForBackendProject(sandbox_id: string) {
+        this.logger.log({
+            message: `${this.serviceName}.setupSandboxForBackendProject: Setting up sandbox for backend project`,
+            metadata: {
+                sandbox_id,
+            },
+        });
+        await this.sdk.sandbox.open(sandbox_id);
+        try {
+            await this.killAllShells(sandbox_id);
+            await this.runTaskOnSandboxAsBackgroundProcess({
+                sandbox_id,
+                task: "install",
+            });
+            await this.runTaskOnSandboxAsBackgroundProcess({
+                sandbox_id,
+                task: "dev",
+            });
+            return {
+                sandbox_id,
+                status: "setup_finished",
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.setupSandboxForBackendProject: Error setting up sandbox for web iteration`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            return {
+                sandbox_id,
+                status: "setup_failed",
+            };
         }
     }
 }

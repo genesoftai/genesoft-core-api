@@ -222,13 +222,13 @@ export class RepositoryBuildService {
         }
 
         const currentAttempts = repositoryBuild.fix_attempts + 1;
-        await this.triggerFrontendBuilderAgent({
-            project_id,
-            iteration_id,
-            frontend_repo_name: repository.name,
-            attempts: currentAttempts,
-            sandbox_id: project.sandbox_id || "",
-        });
+        // await this.triggerFrontendBuilderAgent({
+        //     project_id,
+        //     iteration_id,
+        //     frontend_repo_name: repository.name,
+        //     attempts: currentAttempts,
+        //     sandbox_id: project.sandbox_id || "",
+        // });
 
         await this.repositoryBuildRepository.update(
             { id: repositoryBuild.id },

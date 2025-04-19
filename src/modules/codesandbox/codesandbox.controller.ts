@@ -8,6 +8,7 @@ import {
     RunDevTaskOnSandboxDto,
     RunPreviewTaskOnSandboxDto,
     RunTaskOnSandboxDto,
+    RunInstallTaskOnSandboxDto,
 } from "./dto/run-sandbox.dto";
 import {
     WriteFileOnSandboxDto,
@@ -43,12 +44,27 @@ export class CodesandboxController {
         return this.codesandboxService.stopSandbox(id);
     }
 
+    @Post(":id/restart")
+    async restartSandbox(@Param("id") id: string) {
+        return this.codesandboxService.restartSandbox(id);
+    }
+
     @Get(":id/port/:port")
     async getPortInfoOnSandbox(
         @Param("id") id: string,
         @Param("port") port: number,
     ) {
         return this.codesandboxService.getPortInfoOnSandbox(id, port);
+    }
+
+    @Post(":id/setup/web")
+    async setupSandboxForWebProject(@Param("id") id: string) {
+        return this.codesandboxService.setupSandboxForWebProject(id);
+    }
+
+    @Post(":id/setup/backend")
+    async setupSandboxForBackendProject(@Param("id") id: string) {
+        return this.codesandboxService.setupSandboxForBackendProject(id);
     }
 
     @Post("files/write")
@@ -134,6 +150,13 @@ export class CodesandboxController {
     @Post("task/run/dev")
     async runDevTask(@Body() payload: RunDevTaskOnSandboxDto) {
         return this.codesandboxService.runDevTaskOnSandbox(payload.sandbox_id);
+    }
+
+    @Post("task/run/install")
+    async runInstallTask(@Body() payload: RunInstallTaskOnSandboxDto) {
+        return this.codesandboxService.runInstallTaskOnSandbox(
+            payload.sandbox_id,
+        );
     }
 
     @Post("task/run/preview")

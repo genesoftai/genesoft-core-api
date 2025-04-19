@@ -42,3 +42,9 @@ export class KillAllShellsDto {
     @IsString()
     sandbox_id: string;
 }
+
+export class RunInstallTaskOnSandboxDto {
+    @IsNotEmpty()
+    @IsString()
+    sandbox_id: string;
+}
