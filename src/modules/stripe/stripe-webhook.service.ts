@@ -134,9 +134,14 @@ export class StripeWebhookService {
                             },
                         );
 
-                        await this.projectDbManagerService.createProjectDatabase(
-                            checkoutSession.metadata.projectId,
-                        );
+                        await Promise.all([
+                            this.backendInfraService.createNewProjectInKoyeb(
+                                checkoutSession.metadata.projectId,
+                            ),
+                            this.projectDbManagerService.createProjectDatabase(
+                                checkoutSession.metadata.projectId,
+                            ),
+                        ]);
                         break;
                     default:
                         throw new Error("Unhandled relevant event!");

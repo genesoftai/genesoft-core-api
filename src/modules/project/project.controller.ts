@@ -8,6 +8,7 @@ import {
     Post,
     Query,
     UseGuards,
+    BadRequestException,
 } from "@nestjs/common";
 import { ProjectService } from "./project.service";
 import {
@@ -23,6 +24,7 @@ import {
 import { AuthGuard } from "../auth/auth.guard";
 import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 import { BackendInfraService } from "../backend-infra/backend-infra.service";
+import { SubscriptionService } from "../subscription/subscription.service";
 @Controller("project")
 @UseGuards(AuthGuard)
 export class ProjectController {
@@ -30,6 +32,7 @@ export class ProjectController {
         private readonly projectService: ProjectService,
         private readonly projectDbManagerService: ProjectDbManagerService,
         private readonly backendInfraService: BackendInfraService,
+        private readonly subscriptionService: SubscriptionService,
     ) {}
 
     @Get()
@@ -200,11 +203,28 @@ export class ProjectController {
 
     @Post(":id/services/re-deploy")
     async reDeployServices(@Param("id") id: string) {
-        try {
-            return this.backendInfraService.reDeployServices(id);
-        } catch (error) {
-            throw new Error(`Failed to decode token: ${error.message}`);
+        const subscriptions =
+            await this.subscriptionService.getSubscriptionByProjectId(id);
+        if (subscriptions.length === 0) {
+            throw new BadRequestException(
+                "Project is not a valid subscription",
+            );
         }
+        let validSubscription = false;
+        for (const subscription of subscriptions) {
+            if (
+                (subscription.tier == "db-e1" ||
+                    subscription.tier == "instance-e1") &&
+                subscription.status == "active"
+            ) {
+                validSubscription = true;
+            }
+        }
+        if (!validSubscription) {
+            throw new BadRequestException(
+                "Project is not a valid subscription",
+            );
+        }
+        return this.backendInfraService.reDeployServices(id);
     }
-
 }
