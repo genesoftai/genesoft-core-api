@@ -710,7 +710,6 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 task: "build",
@@ -775,8 +774,11 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
-            throw error;
+            return {
+                sandbox_id,
+                task: "dev",
+                output: "Can't get dev task info",
+            };
         }
     }
 
@@ -830,17 +832,20 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
-            throw error;
+            return {
+                sandbox_id,
+                task: "install",
+                output: "Can't get install task info",
+            };
         }
     }
 
-    async runPreviewTaskOnSandbox(sandbox_id: string) {
+    async runStartTaskOnSandbox(sandbox_id: string) {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
-            const task = await sandbox.tasks.getTask("preview");
+            const task = await sandbox.tasks.getTask("start");
             if (!task) {
-                throw new Error("Preview task not found");
+                throw new Error("Start task not found");
             }
             const taskResult = await sandbox.tasks.runTask(task.id);
             const shell = await sandbox.shells.open(taskResult.shellId);
@@ -856,10 +861,8 @@ export class CodesandboxService {
 
                     // Check if dev server is ready
                     if (
-                        output.includes("ready in") ||
-                        output.includes("Local:") ||
-                        output.includes("localhost:") ||
-                        output.includes("started server on")
+                        output.includes("✓ Ready in") ||
+                        output.includes("Nest application successfully started")
                     ) {
                         resolve(allOutput);
                     }
@@ -884,14 +887,17 @@ export class CodesandboxService {
             };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.runPreviewTaskOnSandbox: Error running preview task on sandbox`,
+                message: `${this.serviceName}.runStartTaskOnSandbox: Error running start task on sandbox`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
-            throw error;
+            return {
+                sandbox_id,
+                task: "start",
+                output: "Can't get start task info",
+            };
         }
     }
 
