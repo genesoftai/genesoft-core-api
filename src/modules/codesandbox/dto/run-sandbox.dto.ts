@@ -31,7 +31,7 @@ export class RunBuildTaskOnSandboxDto {
     sandbox_id: string;
 }
 
-export class RunPreviewTaskOnSandboxDto {
+export class RunStartTaskOnSandboxDto {
     @IsNotEmpty()
     @IsString()
     sandbox_id: string;
