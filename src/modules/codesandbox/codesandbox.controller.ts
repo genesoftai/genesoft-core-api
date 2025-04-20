@@ -6,9 +6,9 @@ import {
     RunBuildTaskOnSandboxDto,
     RunCommandOnSandboxDto,
     RunDevTaskOnSandboxDto,
-    RunPreviewTaskOnSandboxDto,
     RunTaskOnSandboxDto,
     RunInstallTaskOnSandboxDto,
+    RunStartTaskOnSandboxDto,
 } from "./dto/run-sandbox.dto";
 import {
     WriteFileOnSandboxDto,
@@ -159,9 +159,9 @@ export class CodesandboxController {
         );
     }
 
-    @Post("task/run/preview")
-    async runPreviewTask(@Body() payload: RunPreviewTaskOnSandboxDto) {
-        return this.codesandboxService.runPreviewTaskOnSandbox(
+    @Post("task/run/start")
+    async runStartTask(@Body() payload: RunStartTaskOnSandboxDto) {
+        return this.codesandboxService.runStartTaskOnSandbox(
             payload.sandbox_id,
         );
     }
@@ -171,15 +171,3 @@ export class CodesandboxController {
         return this.codesandboxService.killAllShells(payload.sandbox_id);
     }
 }
-
-// TODO: list about tools for ai agent
-// - list all files in the sandbox
-// - read a file
-// - write a file
-// - delete a file
-// - rename a file
-// - run a command
-// - run a task
-// - run a build task
-// - run a dev task
-// - run a preview task

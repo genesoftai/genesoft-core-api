@@ -810,7 +810,10 @@ export class DevelopmentService {
             }
 
             const tasks = await this.iterationTaskRepository.find({
-                where: { iteration_id: iterationId },
+                where: {
+                    iteration_id: iterationId,
+                    status: IterationTaskStatus.Todo,
+                },
                 order: { created_at: "ASC" },
             });
 

@@ -10,6 +10,7 @@ import {
 import * as crypto from "crypto";
 import { FrontendInfraService } from "../frontend-infra/frontend-infra.service";
 import { Project } from "../project/entity/project.entity";
+import { CodesandboxService } from "../codesandbox/codesandbox.service";
 
 @Injectable()
 export class ProjectEnvManagementService {
@@ -25,6 +26,7 @@ export class ProjectEnvManagementService {
         private frontendInfraService: FrontendInfraService,
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
+        private readonly codesandboxService: CodesandboxService,
     ) {}
 
     private encrypt(text: string): string {
@@ -91,6 +93,18 @@ export class ProjectEnvManagementService {
             );
         }
 
+        const allEnvs = await this.findAll(projectId);
+        const envs = allEnvs.map((env) => `${env.key}=${env.value}`).join("\n");
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        this.codesandboxService.writeFileOnSandbox({
+            sandbox_id: project.sandbox_id,
+            path: ".env",
+            content: envs,
+        });
+
         return {
             ...savedEnv,
             value: dto.value,
@@ -136,6 +150,19 @@ export class ProjectEnvManagementService {
                 },
             );
         }
+
+        // TODO: update .env file on codesandbox with new set of values
+        const allEnvs = await this.findAll(projectId);
+        const envs = allEnvs.map((env) => `${env.key}=${env.value}`).join("\n");
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        this.codesandboxService.writeFileOnSandbox({
+            sandbox_id: project.sandbox_id,
+            path: ".env",
+            content: envs,
+        });
 
         return {
             ...savedEnv,
