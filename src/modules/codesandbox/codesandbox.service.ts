@@ -509,43 +509,35 @@ export class CodesandboxService {
         const { sandbox_id, command } = payload;
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
-            // Run the command
-            const shell = sandbox.shells.run(command);
-
-            let allOutput = "";
-
-            const output = await new Promise((resolve) => {
-                shell.onOutput((output) => {
-                    console.log(output);
-
-                    // Accumulate all output
-                    allOutput += output + "\n";
-                });
-
-                // Set a timeout in case the command doesn't complete normally
-                setTimeout(() => {
-                    if (allOutput) {
-                        resolve(allOutput);
-                    }
-                }, 30000); // 30 seconds timeout
-
-                // When command completes
-                shell.then(() => {
-                    resolve(allOutput);
-                });
+            // Run the command with a timeout of 180 seconds
+            const shellPromise = sandbox.shells.run(command);
+            const timeoutPromise: Promise<{
+                sandbox_id: string;
+                command: string;
+                output: string;
+                exitCode: number;
+            }> = new Promise((resolve) => {
+                setTimeout(
+                    () =>
+                        resolve({
+                            sandbox_id,
+                            command,
+                            output: "Command execution timed out after 180 seconds",
+                            exitCode: 1,
+                        }),
+                    180000,
+                );
             });
 
-            // Wait for completion and get results
-            const result = await shell;
+            const shell = await Promise.race([shellPromise, timeoutPromise]);
 
-            shell.kill();
             await sandbox.hibernate();
 
             return {
                 sandbox_id,
                 command,
-                output,
-                exitCode: result.exitCode,
+                output: shell?.output,
+                exitCode: shell?.exitCode,
             };
         } catch (error) {
             this.logger.error({
@@ -671,15 +663,21 @@ export class CodesandboxService {
 
             const output = await new Promise((resolve) => {
                 shell.onOutput((output) => {
-                    console.log(output);
-
                     // Accumulate all output
                     allOutput += output + "\n";
+
+                    if (shell.exitCode) {
+                        resolve(allOutput);
+                    }
 
                     // Check if build is complete
                     if (
                         output.includes("✓ built in") ||
-                        output.includes("Build failed")
+                        output.includes("Build failed") ||
+                        output.includes("Command failed with exit code") ||
+                        output.includes(
+                            "npm ERR! A complete log of this run can be found in",
+                        )
                     ) {
                         resolve(allOutput);
                     }
@@ -690,7 +688,7 @@ export class CodesandboxService {
                     if (allOutput) {
                         resolve(allOutput);
                     }
-                }, 30000); // 30 seconds timeout
+                }, 180000); // 180 seconds timeout
             });
 
             // Kill the shell after we've captured the output
@@ -732,8 +730,6 @@ export class CodesandboxService {
 
             const output = await new Promise((resolve) => {
                 shell.onOutput((output) => {
-                    console.log(output);
-
                     // Accumulate all output
                     allOutput += output + "\n";
 
@@ -743,7 +739,14 @@ export class CodesandboxService {
                         output.includes("Local:") ||
                         output.includes("localhost:") ||
                         output.includes("started server on") ||
-                        output.includes("Nest application successfully started")
+                        output.includes(
+                            "Nest application successfully started",
+                        ) ||
+                        output.includes("Command failed with exit code") ||
+                        output.includes("erros. Watching for file changes") ||
+                        output.includes(
+                            "npm ERR! A complete log of this run can be found in",
+                        )
                     ) {
                         resolve(allOutput);
                     }
@@ -754,7 +757,7 @@ export class CodesandboxService {
                     if (allOutput) {
                         resolve(allOutput);
                     }
-                }, 30000); // 30 seconds timeout
+                }, 120000); // 120 seconds timeout
             });
 
             // Kill the shell after we've captured the output
@@ -796,13 +799,17 @@ export class CodesandboxService {
 
             const output = await new Promise((resolve) => {
                 shell.onOutput((output) => {
-                    console.log(output);
-
                     // Accumulate all output
                     allOutput += output + "\n";
 
                     // Check if dev server is ready
-                    if (output.includes("Done in")) {
+                    if (
+                        output.includes("Done in") ||
+                        output.includes("Command failed with exit code") ||
+                        output.includes(
+                            "npm ERR! A complete log of this run can be found in",
+                        )
+                    ) {
                         resolve(allOutput);
                     }
                 });
@@ -812,7 +819,7 @@ export class CodesandboxService {
                     if (allOutput) {
                         resolve(allOutput);
                     }
-                }, 60000); // 60 seconds timeout
+                }, 180000); // 180 seconds timeout
             });
 
             // Kill the shell after we've captured the output
@@ -854,15 +861,16 @@ export class CodesandboxService {
 
             const output = await new Promise((resolve) => {
                 shell.onOutput((output) => {
-                    console.log(output);
-
                     // Accumulate all output
                     allOutput += output + "\n";
 
                     // Check if dev server is ready
                     if (
                         output.includes("✓ Ready in") ||
-                        output.includes("Nest application successfully started")
+                        output.includes(
+                            "Nest application successfully started",
+                        ) ||
+                        output.includes("Command failed with exit code")
                     ) {
                         resolve(allOutput);
                     }
@@ -935,12 +943,6 @@ export class CodesandboxService {
         try {
             await this.sdk.sandbox.open(sandbox_id);
             const killShells = await this.killAllShells(sandbox_id);
-            this.logger.log({
-                message: `${this.serviceName}.setupSandboxForWebProject: Killed all shells`,
-                metadata: {
-                    sandbox_id,
-                },
-            });
             // const installTask = await this.runInstallTaskOnSandbox(sandbox_id);
             await this.runTaskOnSandboxAsBackgroundProcess({
                 sandbox_id,
@@ -949,6 +951,12 @@ export class CodesandboxService {
             await this.runTaskOnSandboxAsBackgroundProcess({
                 sandbox_id,
                 task: "dev",
+            });
+            this.logger.log({
+                message: `${this.serviceName}.setupSandboxForWebProject: Setup sandbox for web project finished`,
+                metadata: {
+                    sandbox_id,
+                },
             });
             return {
                 sandbox_id,
@@ -987,6 +995,12 @@ export class CodesandboxService {
             await this.runTaskOnSandboxAsBackgroundProcess({
                 sandbox_id,
                 task: "dev",
+            });
+            this.logger.log({
+                message: `${this.serviceName}.setupSandboxForBackendProject: Setup sandbox for backend project finished`,
+                metadata: {
+                    sandbox_id,
+                },
             });
             return {
                 sandbox_id,

@@ -60,9 +60,8 @@ import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
 import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
-import { GetProjectsDto } from "./dto/get-project.dto";
-import { Collection } from "../collection/entity/collection.entity";
 import { CollectionService } from "../collection/collection.service";
+import { CodebaseService } from "../codebase/codebase.service";
 
 @Injectable()
 export class ProjectService implements OnModuleInit {
@@ -115,6 +114,7 @@ export class ProjectService implements OnModuleInit {
         private llmService: LlmService,
         private projectDbManagerService: ProjectDbManagerService,
         private collectionService: CollectionService,
+        private codebaseService: CodebaseService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -242,7 +242,8 @@ export class ProjectService implements OnModuleInit {
         });
 
         // Get database disk usage
-        const dbDiskUsage = await this.projectDbManagerService.getDatabaseDiskUsage(id);
+        const dbDiskUsage =
+            await this.projectDbManagerService.getDatabaseDiskUsage(id);
 
         return {
             project,
@@ -366,6 +367,7 @@ export class ProjectService implements OnModuleInit {
         });
 
         const project = await this.projectRepository.save(newProject);
+        await this.codebaseService.createCodebaseForNextjsProject(project.id);
 
         const sandboxName = `nextjs-web_${project.id}`;
         const sandbox = await this.codesandboxService.createSandbox({
@@ -458,6 +460,7 @@ export class ProjectService implements OnModuleInit {
         });
 
         const project = await this.projectRepository.save(newProject);
+        await this.codebaseService.createCodebaseForNestjsProject(project.id);
 
         const sandboxName = `nestjs-api_${project.id}`;
         const sandbox = await this.codesandboxService.createSandbox({
