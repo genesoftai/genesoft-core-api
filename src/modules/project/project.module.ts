@@ -29,7 +29,6 @@ import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
-import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 import { ConfigModule } from "@nestjs/config";
 import { ProjectEnv } from "../project-env/entity/project-env.entity";
 import { ProjectEnvController } from "./project-env.controller";
@@ -40,6 +39,7 @@ import { StripeModule } from "@modules/stripe/stripe.module";
 import { ProjectSubscribeController } from "./project-subscribe.controller";
 import { SubscriptionModule } from "@modules/subscription/subscription.module";
 import { ProjectDbModule } from "../project-db/project-db.module";
+import { CodebaseModule } from "../codebase/codebase.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -79,6 +79,7 @@ import { ProjectDbModule } from "../project-db/project-db.module";
         StripeModule,
         SubscriptionModule,
         ProjectDbModule,
+        CodebaseModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [

@@ -34,7 +34,7 @@ import { CodesandboxModule } from "./modules/codesandbox/codesandbox.module";
 import { FirebaseModule } from "./modules/firebase/firebase.module";
 import { IntegrationModule } from "./modules/integration/integration.module";
 import { CollectionModule } from "./modules/collection/collection.module";
-import { ProjectEnvModule } from "@modules/project-env/project-env.module";
+import { CodebaseModule } from "./modules/codebase/codebase.module";
 
 @Module({
     imports: [
@@ -89,6 +89,7 @@ import { ProjectEnvModule } from "@modules/project-env/project-env.module";
         FirebaseModule,
         IntegrationModule,
         CollectionModule,
+        CodebaseModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

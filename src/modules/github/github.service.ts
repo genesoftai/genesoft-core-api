@@ -546,7 +546,7 @@ export class GithubService {
 
         return data;
     }
-    
+
     async getPullRequest(payload: { repository: string; pull_number: number }) {
         const { repository, pull_number } = payload;
         const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/pulls/${pull_number}`;
