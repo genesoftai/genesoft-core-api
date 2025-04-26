@@ -67,7 +67,7 @@ export class ProjectSubscribeController {
         try {
             const user = await this.supabaseService.getUserByUid(data.uid);
             const session = await this.stripeService.createSubscription({
-                priceId: "price_1REtdMHTZsQdR8K0opFksudX",
+                priceId: process.env.STRIPE_PRICE_ID_DATABASE_E1,
                 returnUrl: data.returnUrl,
                 projectId: projectId,
                 uid: data.uid,
