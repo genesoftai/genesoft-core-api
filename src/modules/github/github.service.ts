@@ -231,7 +231,12 @@ export class GithubService {
                     catchError((error: AxiosError) => {
                         this.logger.error({
                             message: `${this.serviceName}.getRepositoryContent: Error get repository content`,
-                            metadata: { error: error.response.data },
+                            metadata: {
+                                error: error.response.data,
+                                path,
+                                repository,
+                                ref,
+                            },
                         });
                         throw error;
                     }),
@@ -361,7 +366,12 @@ export class GithubService {
                 if (error?.status !== 404) {
                     this.logger.error({
                         message: `${this.serviceName}.updateRepositoryContent: Failed to get content from Github Repository`,
-                        metadata: { error },
+                        metadata: {
+                            path,
+                            repository,
+                            ref: payload.ref,
+                            error,
+                        },
                     });
                 }
             }
@@ -381,32 +391,36 @@ export class GithubService {
             metadata: { url, body },
         });
 
-        const { data } = await lastValueFrom(
-            this.httpService
-                .put(url, body, {
-                    headers,
-                })
-                .pipe(
-                    catchError((error: AxiosError) => {
-                        this.logger.error({
-                            message: `${this.serviceName}.updateRepositoryContent: Error update repository content`,
-                            metadata: { error: error.response.data },
-                        });
-                        throw error;
-                    }),
-                ),
-        );
+        try {
+            const { data } = await lastValueFrom(
+                this.httpService
+                    .put(url, body, {
+                        headers,
+                    })
+                    .pipe(
+                        catchError((error: AxiosError) => {
+                            throw error;
+                        }),
+                    ),
+            );
 
-        this.logger.log({
-            message: `${this.serviceName}.updateRepositoryContent: Success update repository content`,
-            metadata: {
-                ...payload,
-                data,
-                // content: atob(data.content),
-            },
-        });
+            this.logger.log({
+                message: `${this.serviceName}.updateRepositoryContent: Success update repository content`,
+                metadata: {
+                    ...payload,
+                    data,
+                    // content: atob(data.content),
+                },
+            });
 
-        return data;
+            return data;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.updateRepositoryContent: Error update repository content`,
+                metadata: { error },
+            });
+            throw error;
+        }
     }
 
     async mergeBranch(payload: MergeGithubBrachDto) {
@@ -546,7 +560,7 @@ export class GithubService {
 
         return data;
     }
-    
+
     async getPullRequest(payload: { repository: string; pull_number: number }) {
         const { repository, pull_number } = payload;
         const url = `${this.githubApiBaseEndpoint}/repos/${this.githubOwner}/${repository}/pulls/${pull_number}`;

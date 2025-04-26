@@ -325,37 +325,33 @@ export class LlmService {
                 },
             );
 
-            const askBackendAiAgentForBackendIntegration = tool(
-                async ({
-                    query,
-                    task,
-                }: {
-                    query: string;
-                    task: string;
-                }): Promise<string> => {
-                    const { content } =
-                        await this.askBackendAiAgentForBackendIntegration({
-                            query,
-                            task,
-                            repository,
-                            branch,
-                            projectDocumentation,
-                            latestRepoTree,
-                        });
-                    return content;
-                },
-                {
-                    name: "askBackendAiAgentForBackendIntegration",
-                    description: "Ask backend AI agent for backend integration",
-                },
-            );
+            // TODO: Fix bug for this tool
+            // const askBackendAiAgentForBackendIntegration = tool(
+            //     async ({
+            //         query,
+            //         task,
+            //     }: {
+            //         query: string;
+            //         task: string;
+            //     }): Promise<string> => {
+            //         const { content } =
+            //             await this.askBackendAiAgentForBackendIntegration({
+            //                 query,
+            //                 task,
+            //                 repository,
+            //                 branch,
+            //                 projectDocumentation,
+            //                 latestRepoTree,
+            //             });
+            //         return content;
+            //     },
+            //     {
+            //         name: "askBackendAiAgentForBackendIntegration",
+            //         description: "Ask backend AI agent for backend integration",
+            //     },
+            // );
 
-            const tools = [
-                exa,
-                readGithubFile,
-                researchContentWithPerplexity,
-                askBackendAiAgentForBackendIntegration,
-            ];
+            const tools = [exa, readGithubFile, researchContentWithPerplexity];
             const agentCheckpointer = new MemorySaver();
 
             const agent = await createReactAgent({
