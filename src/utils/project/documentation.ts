@@ -12,8 +12,12 @@ Description: ${info.description}
 Purpose: ${info.purpose}
 Target Audience: ${info.target_audience}
 ----------------
-Backend Requirements:
-${info.backend_requirements}
+
+${
+    info.backend_requirements &&
+    `Backend Requirements:
+${info.backend_requirements}`
+}
 `;
 }
 

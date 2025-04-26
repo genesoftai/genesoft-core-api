@@ -1023,13 +1023,9 @@ export class ProjectService implements OnModuleInit {
 
     async getOverallProjectDocumentation(id: string): Promise<string> {
         const info = await this.getProjectInfo(id);
-        const features = await this.getProjectFeatures(id);
-        const pages = await this.getProjectPages(id);
         const branding = await this.getProjectBranding(id);
 
         const formattedInfo = formatBasicInfo(info as Project);
-        const formattedFeatures = formatFeatures(features);
-        const formattedPages = formatPages(pages);
         const formattedBranding = formatBranding(branding as Branding);
 
         const documentation = `
@@ -1038,10 +1034,6 @@ Overview of the project follow customer requirements that need to be implemented
 ====================
 
 ${formattedInfo}
-
-${formattedFeatures}
-
-${formattedPages}
 
 ${formattedBranding}
 `;
