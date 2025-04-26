@@ -9,16 +9,28 @@ export class ProjectEnv {
     @Column()
     key: string;
 
-    @Column({ type: "text" })
+    @Column({
+        name: "encrypted_value",
+        type: "text",
+    })
     encryptedValue: string;
 
-    @Column({ default: false })
+    @Column({
+        name: "is_secret",
+        default: false,
+    })
     isSecret: boolean;
 
-    @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+    @Column({
+        name: "created_at",
+        type: "timestamp",
+        default: () => "CURRENT_TIMESTAMP",
+    })
     createdAt: Date;
 
     @Column({
+        nullable: true,
+        name: "updated_at",
         type: "timestamp",
         default: () => "CURRENT_TIMESTAMP",
         onUpdate: "CURRENT_TIMESTAMP",
@@ -28,6 +40,6 @@ export class ProjectEnv {
     @ManyToOne(() => Project, (project) => project.envs)
     project: Project;
 
-    @Column()
+    @Column({ name: "project_id" })
     projectId: string;
 }
