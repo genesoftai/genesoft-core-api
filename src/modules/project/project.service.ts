@@ -242,7 +242,8 @@ export class ProjectService implements OnModuleInit {
         });
 
         // Get database disk usage
-        const dbDiskUsage = await this.projectDbManagerService.getDatabaseDiskUsage(id);
+        const dbDiskUsage =
+            await this.projectDbManagerService.getDatabaseDiskUsage(id);
 
         return {
             project,

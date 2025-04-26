@@ -7,6 +7,7 @@ import {
     OneToMany,
 } from "typeorm";
 import { ProjectEnv } from "../../project-env/entity/project-env.entity";
+import { Collection } from "../../collection/entity/collection.entity";
 
 @Entity("project")
 export class Project {
@@ -48,4 +49,13 @@ export class Project {
 
     @OneToMany(() => ProjectEnv, (env) => env.project)
     envs: ProjectEnv[];
+
+    @OneToMany(() => Collection, (collection) => collection.webProject)
+    collections: Collection[];
+
+    @OneToMany(
+        () => Collection,
+        (collection) => collection.backendServiceProjects,
+    )
+    backendServiceCollections: Collection[];
 }

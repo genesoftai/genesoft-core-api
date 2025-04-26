@@ -4,7 +4,10 @@ import {
     Entity,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
+    ManyToOne,
+    JoinColumn,
 } from "typeorm";
+import { Project } from "../../project/entity/project.entity";
 
 @Entity("collection")
 export class Collection {
@@ -36,6 +39,14 @@ export class Collection {
 
     @CreateDateColumn({ name: "created_at", type: "timestamp" })
     created_at: Date;
+
+    @ManyToOne(() => Project)
+    @JoinColumn({ name: "web_project_id" })
+    webProject: Project;
+
+    @ManyToOne(() => Project)
+    @JoinColumn({ name: "backend_service_project_ids" })
+    backendServiceProjects: Project[];
 
     @UpdateDateColumn({ name: "updated_at", type: "timestamp" })
     updated_at: Date;
