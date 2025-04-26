@@ -1,10 +1,12 @@
 import {
+    BadRequestException,
     forwardRef,
     Inject,
     Injectable,
     Logger,
     LoggerService,
     NotFoundException,
+    OnModuleInit,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
@@ -31,7 +33,7 @@ import { getS3FileUrl } from "@/utils/aws/s3";
 import { FileWithUrl } from "./type/file";
 import { AWSConfigurationService } from "../configuration/aws";
 import { GithubRepository } from "../github/entity/github-repository.entity";
-import { ProjectTemplateName } from "../constants/project";
+import { ProjectTemplateName, ProjectTemplateType } from "../constants/project";
 import { GithubService } from "../github/github.service";
 import {
     formatBasicInfo,
@@ -57,9 +59,13 @@ import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
 import { IterationType } from "../constants/development";
+import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
+import { CollectionService } from "../collection/collection.service";
+import { CodebaseService } from "../codebase/codebase.service";
+import { ProjectEnvManagementService } from "../project-env/project-env-management.service";
 
 @Injectable()
-export class ProjectService {
+export class ProjectService implements OnModuleInit {
     private readonly serviceName = "ProjectService";
 
     constructor(
@@ -81,7 +87,6 @@ export class ProjectService {
         private feedbackRepository: Repository<Feedback>,
         @InjectRepository(File)
         private fileRepository: Repository<File>,
-
         @InjectRepository(ReferenceLink)
         private referenceLinkRepository: Repository<ReferenceLink>,
         private awsConfigurationService: AWSConfigurationService,
@@ -108,11 +113,26 @@ export class ProjectService {
         private conversationRepository: Repository<Conversation>,
         private codesandboxService: CodesandboxService,
         private llmService: LlmService,
+        private projectDbManagerService: ProjectDbManagerService,
+        private collectionService: CollectionService,
+        private codebaseService: CodebaseService,
+        private projectEnvManagementService: ProjectEnvManagementService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
             metadata: { timestamp: new Date() },
         });
+    }
+
+    async onModuleInit() {
+        this.logger.log({
+            message: `${this.serviceName}.onModuleInit: Service initialized`,
+        });
+
+        // this.requestGithubAccess(
+        //     "5858afc6-ebe9-4cb5-8e52-59b3d0e51bb6",
+        //     "6fa8fb9c-86c6-4bf0-8f4e-7a2e40c4c788",
+        // );
     }
 
     async getAllProjects(): Promise<Project[]> {
@@ -223,11 +243,16 @@ export class ProjectService {
             where: { project_id: id },
         });
 
+        // Get database disk usage
+        const dbDiskUsage =
+            await this.projectDbManagerService.getDatabaseDiskUsage(id);
+
         return {
             project,
             supabase,
             vercel,
             koyeb,
+            dbDiskUsage,
         };
     }
 
@@ -242,6 +267,8 @@ export class ProjectService {
                 "target_audience",
                 "created_at",
                 "updated_at",
+                "project_template_type",
+                "backend_requirements",
             ],
         });
         const pages = await this.getProjectPages(id);
@@ -277,28 +304,60 @@ export class ProjectService {
         return features;
     }
 
-    async getProjectBranding(id: string): Promise<Branding> {
+    async getProjectBranding(id: string): Promise<Branding | object> {
         const branding = await this.brandingRepository.findOne({
             where: { projectId: id },
         });
 
         if (!branding) {
-            this.logger.warn({
-                message: `${this.serviceName}.getProjectBranding: Branding not found`,
-                metadata: { id, timestamp: new Date() },
-            });
-            throw new NotFoundException(`Branding for project ${id} not found`);
+            return {};
         }
 
         return branding;
     }
 
-    async createProject(payload: CreateProjectDto): Promise<Project> {
+    async getProjectsByIds(query: string): Promise<Project[]> {
+        if (query) {
+            const ids = query.split(",");
+            try {
+                return await this.projectRepository.find({
+                    where: { id: In(ids) },
+                    order: { created_at: "ASC" },
+                });
+            } catch (error) {
+                this.logger.error("Failed to get projects by ids", error.stack);
+                throw error;
+            }
+        } else {
+            return [];
+        }
+    }
+
+    async createProject(
+        payload: CreateProjectDto,
+    ): Promise<Project | { webProject: Project; backendProject: Project }> {
         this.logger.log({
             message: `${this.serviceName}.createProject: Creating new project`,
             metadata: { payload, timestamp: new Date() },
         });
 
+        if (payload.project_type === ProjectTemplateType.Web) {
+            // Create web only project
+            return this.createWebProject(payload);
+        } else if (payload.project_type === ProjectTemplateType.WebAndBackend) {
+            // Create web and backend project
+            return this.createWebAndBackendProject(payload);
+        } else if (payload.project_type === ProjectTemplateType.Backend) {
+            // Create backend only project
+            return this.createBackendProject(payload);
+        } else {
+            throw new BadRequestException(
+                `Invalid project type: ${payload.project_type}`,
+            );
+        }
+    }
+
+    async createWebProject(payload: CreateProjectDto): Promise<Project> {
         // Create project with base fields
         const newProject = this.projectRepository.create({
             organization_id: payload.organization_id,
@@ -306,9 +365,11 @@ export class ProjectService {
             description: payload.description,
             purpose: payload.purpose,
             target_audience: payload.target_audience,
+            project_template_type: "web_nextjs",
         });
 
         const project = await this.projectRepository.save(newProject);
+        await this.codebaseService.createCodebaseForNextjsProject(project.id);
 
         const sandboxName = `nextjs-web_${project.id}`;
         const sandbox = await this.codesandboxService.createSandbox({
@@ -336,50 +397,6 @@ export class ProjectService {
             });
         }
 
-        // Create and associate pages if provided
-        if (payload.pages) {
-            for (const pageDto of payload.pages) {
-                const pageEntity = new Page();
-                pageEntity.name = pageDto.name;
-                pageEntity.description = pageDto.description;
-                pageEntity.file_ids = pageDto.file_ids;
-                pageEntity.reference_link_ids = pageDto.reference_link_ids;
-                pageEntity.project_id = project.id;
-                const page = await this.pageRepository.save(pageEntity);
-                this.logger.log({
-                    message: `${this.serviceName}.createProject: Page created`,
-                    metadata: {
-                        pageId: pageEntity.id,
-                        timestamp: new Date(),
-                        page,
-                    },
-                });
-            }
-        }
-
-        // Create and associate features if provided
-        if (payload.features) {
-            for (const featureDto of payload.features) {
-                const featureEntity = new Feature();
-                featureEntity.name = featureDto.name;
-                featureEntity.description = featureDto.description;
-                featureEntity.file_ids = featureDto.file_ids;
-                featureEntity.reference_link_ids =
-                    featureDto.reference_link_ids;
-                featureEntity.project_id = project.id;
-                const feature =
-                    await this.featureRepository.save(featureEntity);
-                this.logger.log({
-                    message: `${this.serviceName}.createProject: Feature created`,
-                    metadata: {
-                        featureId: featureEntity.id,
-                        timestamp: new Date(),
-                        feature,
-                    },
-                });
-            }
-        }
-
         const githubRepository =
             await this.githubService.createRepositoryFromTemplate({
                 projectTemplateName: ProjectTemplateName.NextJsWeb,
@@ -388,7 +405,7 @@ export class ProjectService {
             });
 
         this.logger.log({
-            message: `${this.serviceName}.createProject: Project created`,
+            message: `${this.serviceName}.createWebProject: Project created`,
             metadata: {
                 projectId: project.id,
                 timestamp: new Date(),
@@ -400,7 +417,7 @@ export class ProjectService {
                 project_id: project.id,
             });
         this.logger.log({
-            message: `${this.serviceName}.createProject: Vercel project created`,
+            message: `${this.serviceName}.createWebProject: Vercel project created`,
             metadata: { projectId: project.id, vercelProject },
         });
 
@@ -408,7 +425,7 @@ export class ProjectService {
         await this.githubService.updateRepositoryContent({
             repository: githubRepository.name,
             path: "api_doc.md",
-            content: "#API documentation for the project",
+            content: "# API documentation for the project",
             message: "Add api_doc.md to github repo",
             ref: "dev",
             branch: "dev",
@@ -418,17 +435,102 @@ export class ProjectService {
             },
         });
 
-        await this.developmentService.createIteration({
-            project_id: project.id,
-            type: IterationType.Project,
+        if (payload.is_create_iteration) {
+            await this.developmentService.createIteration({
+                project_id: project.id,
+                type: IterationType.Project,
+                sandbox_id: sandbox.id,
+                project_template_type: ProjectTemplateType.Web,
+            });
+        }
+
+        return project;
+    }
+
+    async createBackendProject(payload: CreateProjectDto): Promise<Project> {
+        this.logger.log({
+            message: `${this.serviceName}.createBackendProject: Creating new project`,
+            metadata: { payload, timestamp: new Date() },
+        });
+        // Create web and backend project
+        const newProject = this.projectRepository.create({
+            organization_id: payload.organization_id,
+            name: payload.name,
+            description: payload.description,
+            backend_requirements: payload.backend_requirements,
+            project_template_type: "backend_nestjs",
+        });
+
+        const project = await this.projectRepository.save(newProject);
+        await this.codebaseService.createCodebaseForNestjsProject(project.id);
+
+        const sandboxName = `nestjs-api_${project.id}`;
+        const sandbox = await this.codesandboxService.createSandbox({
+            template: CodesandboxTemplateId.NewNestJsApi,
+            title: sandboxName,
+            description: `Nest.js API project for ${sandboxName}`,
+        });
+
+        await this.projectRepository.update(project.id, {
             sandbox_id: sandbox.id,
         });
 
-        return this.getProjectById(project.id);
+        const githubRepository =
+            await this.githubService.createRepositoryFromTemplate({
+                projectTemplateName: ProjectTemplateName.NestJsApi,
+                description: `Nest.js API project for ${project.name}`,
+                projectId: project.id,
+            });
+
+        this.logger.log({
+            message: `${this.serviceName}.createBackendProject: Project created`,
+            metadata: {
+                projectId: project.id,
+                timestamp: new Date(),
+                githubRepository,
+            },
+        });
+
+        if (payload.is_create_iteration) {
+            await this.developmentService.createIteration({
+                project_id: project.id,
+                type: IterationType.Project,
+                sandbox_id: sandbox.id,
+                project_template_type: ProjectTemplateType.Backend,
+            });
+        }
+
+        return project;
+    }
+
+    async createWebAndBackendProject(
+        payload: CreateProjectDto,
+    ): Promise<{ webProject: Project; backendProject: Project }> {
+        const [webProject, backendProject] = await Promise.all([
+            this.createWebProject({
+                ...payload,
+                is_create_iteration: false,
+            }),
+            this.createBackendProject({
+                ...payload,
+                is_create_iteration: false,
+            }),
+        ]);
+
+        await this.projectEnvManagementService.create(webProject.id, {
+            key: "CORE_API_SERVICE_URL",
+            value: `https://${backendProject?.sandbox_id}-8000.csb.app`,
+        });
+
+        return { webProject, backendProject };
     }
 
     async createProjectFromOnboarding(payload: CreateProjectFromOnboardingDto) {
         try {
+            this.logger.log({
+                message: `${this.serviceName}.createProjectFromOnboarding: Creating project from onboarding`,
+                metadata: { payload, timestamp: new Date() },
+            });
             const user = await this.userService.getUserById(payload.user_id);
             const existingOrganization =
                 await this.organizationService.getOrganizationsForUser(user.id);
@@ -448,42 +550,117 @@ export class ProjectService {
                     role: OrganizationRole.Owner,
                 });
             }
+
             const projectName = await this.llmService.generateProjectName(
                 payload.project_description,
+                payload.backend_requirements,
             );
-            const project = await this.createProject({
-                name: projectName,
-                description: payload.project_description,
-                organization_id: organization.id,
-                branding: {
-                    logo_url: payload.branding.logo_url,
-                    color: payload.branding.color,
-                },
-            });
-            const iteration = await this.iterationRepository.findOne({
-                where: { project_id: project.id },
-            });
 
-            const conversation = await this.conversationRepository.save({
-                project_id: project.id,
-                name: "Project Creation",
-                description: "Conversation about the project creation",
-                user_id: SystemId.PageChannelSystemId,
-                status: "active",
-                iteration_id: iteration.id,
-            });
+            if (payload.project_type === ProjectTemplateType.Web) {
+                const project = await this.createWebProject({
+                    name: projectName,
+                    description: payload.project_description,
+                    organization_id: organization.id,
+                    project_type: payload.project_type,
+                    branding: {
+                        logo_url: payload.branding.logo_url,
+                        color: payload.branding.color,
+                    },
+                    is_create_iteration: true,
+                });
+                const iteration = await this.iterationRepository.findOne({
+                    where: { project_id: project.id },
+                });
 
-            await this.conversationService.talkToProjectManager({
-                project_id: project.id,
-                conversation_id: conversation.id,
-                message: {
-                    content: `Please update user with latest information about the project creation of ${project.name}`,
-                    sender_type: "system",
-                    message_type: "text",
-                    sender_id: SystemId.PageChannelSystemId,
-                },
-            });
-            return { project };
+                const conversation = await this.conversationRepository.save({
+                    project_id: project.id,
+                    name: "Web Project Creation",
+                    description: "Conversation about the web project creation",
+                    user_id: SystemId.PageChannelSystemId,
+                    status: "active",
+                    iteration_id: iteration.id,
+                });
+
+                await this.conversationService.talkToProjectManager({
+                    project_id: project.id,
+                    conversation_id: conversation.id,
+                    message: {
+                        content: `Please update user with latest information about the project creation of ${project.name}`,
+                        sender_type: "system",
+                        message_type: "text",
+                        sender_id: SystemId.GenesoftProjectManager,
+                    },
+                });
+                return { project };
+            } else if (payload.project_type === ProjectTemplateType.Backend) {
+                const project = await this.createBackendProject({
+                    name: projectName,
+                    description: payload.project_description,
+                    organization_id: organization.id,
+                    project_type: payload.project_type,
+                    backend_requirements: payload.backend_requirements,
+                    is_create_iteration: true,
+                });
+                const iteration = await this.iterationRepository.findOne({
+                    where: { project_id: project.id },
+                });
+
+                const conversation = await this.conversationRepository.save({
+                    project_id: project.id,
+                    name: "Backend Project Creation",
+                    description:
+                        "Conversation about the backend project creation",
+                    user_id: SystemId.GenesoftProjectManager,
+                    status: "active",
+                    iteration_id: iteration.id,
+                });
+
+                await this.conversationService.talkToBackendDeveloper({
+                    project_id: project.id,
+                    conversation_id: conversation.id,
+                    message: {
+                        content: `Please update user with latest information about the project creation of ${project.name}`,
+                        sender_type: "system",
+                        message_type: "text",
+                        sender_id: SystemId.GenesoftProjectManager,
+                    },
+                });
+                return { project };
+            } else if (
+                payload.project_type === ProjectTemplateType.WebAndBackend
+            ) {
+                const { webProject, backendProject } =
+                    await this.createWebAndBackendProject({
+                        name: projectName,
+                        description: payload.project_description,
+                        organization_id: organization.id,
+                        project_type: payload.project_type,
+                        branding: {
+                            logo_url: payload.branding.logo_url,
+                            color: payload.branding.color,
+                        },
+                        backend_requirements: payload.backend_requirements,
+                    });
+                const collection =
+                    await this.collectionService.createCollection({
+                        name: `${webProject.name} web integrated with ${backendProject.name} backend service`,
+                        description: `Collection for ${webProject.name} web project and ${backendProject.name} backend service project`,
+                        web_project_id: webProject.id,
+                        backend_service_project_ids: [backendProject.id],
+                        organization_id: organization.id,
+                    });
+                await this.developmentService.triggerTechnicalProjectManagerAiAgentToCreateRequirements(
+                    collection.id,
+                    webProject.description,
+                    backendProject.backend_requirements,
+                );
+
+                return { webProject, backendProject, collection };
+            } else {
+                throw new BadRequestException(
+                    `Invalid project type: ${payload.project_type}`,
+                );
+            }
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createProjectFromOnboarding: Error creating project from onboarding`,
@@ -549,6 +726,7 @@ export class ProjectService {
             description: payload.description,
             purpose: payload.purpose,
             target_audience: payload.target_audience,
+            backend_requirements: payload.backend_requirements,
         });
 
         const updated = await this.getProjectById(id);
@@ -791,6 +969,9 @@ export class ProjectService {
 
         await this.projectRepository.delete(id);
 
+        // Delete project database
+        await this.projectDbManagerService.deleteProjectDatabase(id);
+
         this.logger.log({
             message: `${this.serviceName}.deleteProject: Project deleted`,
             metadata: { id, timestamp: new Date() },
@@ -849,14 +1030,10 @@ export class ProjectService {
 
     async getOverallProjectDocumentation(id: string): Promise<string> {
         const info = await this.getProjectInfo(id);
-        const features = await this.getProjectFeatures(id);
-        const pages = await this.getProjectPages(id);
         const branding = await this.getProjectBranding(id);
 
         const formattedInfo = formatBasicInfo(info as Project);
-        const formattedFeatures = formatFeatures(features);
-        const formattedPages = formatPages(pages);
-        const formattedBranding = formatBranding(branding);
+        const formattedBranding = formatBranding(branding as Branding);
 
         const documentation = `
 Project Documentation
@@ -864,10 +1041,6 @@ Overview of the project follow customer requirements that need to be implemented
 ====================
 
 ${formattedInfo}
-
-${formattedFeatures}
-
-${formattedPages}
 
 ${formattedBranding}
 `;
@@ -975,5 +1148,78 @@ ${formattedBranding}
         }
 
         return formattedUpdatedRequirements;
+    }
+
+    async requestGithubAccess(projectId: string, uId: string) {
+        this.logger.log({
+            message: `${this.serviceName}.requestGithubAccess: Requesting GitHub access`,
+            metadata: { projectId },
+        });
+
+        // Get the project to verify it exists
+        const project = await this.getProjectById(projectId);
+        if (!project) {
+            throw new NotFoundException(
+                `Project with id ${projectId} not found`,
+            );
+        }
+
+        // Get GitHub username from Supabase
+        const githubUsername =
+            await this.supabaseService.getGithubUsername(uId);
+        if (!githubUsername) {
+            throw new BadRequestException(
+                "GitHub username not found in Supabase",
+            );
+        }
+
+        // Get all repositories for this project
+        const repositories = await this.githubRepoRepository.find({
+            where: { project_id: projectId },
+        });
+
+        if (!repositories || repositories.length === 0) {
+            throw new NotFoundException(
+                `No GitHub repositories found for project ${projectId}`,
+            );
+        }
+
+        // Execute GitHub CLI command to add collaborator for each repository
+        const results = [];
+
+        for (const repo of repositories) {
+            // const command = `gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/genesoftai/${repo.name}/collaborators/${githubUsername} -f permission=triage`;
+            try {
+                const response = await this.githubService.addUserToCollaborator(
+                    repo.name,
+                    githubUsername,
+                );
+                this.logger.log({
+                    message: `${this.serviceName}.requestGithubAccess: Response`,
+                    metadata: { response: response.status },
+                });
+                results.push({
+                    repository: repo.name,
+                    success: true,
+                    data: response.data,
+                });
+            } catch (error) {
+                this.logger.error({
+                    message: `${this.serviceName}.requestGithubAccess: Error adding user to collaborator`,
+                    metadata: { error },
+                });
+                results.push({
+                    repository: repo.name,
+                    success: false,
+                    error: error.message,
+                });
+            }
+        }
+
+        return {
+            success: true,
+            message: "GitHub access request processed for all repositories",
+            results,
+        };
     }
 }

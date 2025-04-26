@@ -24,4 +24,8 @@ export class SupabaseConfigurationService {
     get supabaseApiAccessToken() {
         return this.configService.get("supabase.supabaseApiAccessToken");
     }
+
+    get supabaseProjectUrl() {
+        return this.configService.get("supabase.supabaseProjectUrl");
+    }
 }

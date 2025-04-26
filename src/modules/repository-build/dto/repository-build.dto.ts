@@ -1,4 +1,10 @@
-import { IsString, IsEnum, IsNotEmpty, IsNumber } from "class-validator";
+import {
+    IsString,
+    IsEnum,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+} from "class-validator";
 import { ProjectTemplateName } from "@/modules/constants/project";
 
 export class CheckRepositoryBuildDto {
@@ -75,6 +81,10 @@ export class TriggerFrontendBuilderAgentDto {
     @IsNumber()
     @IsNotEmpty()
     attempts: number;
+
+    @IsString()
+    @IsOptional()
+    sandbox_id: string;
 }
 
 export class RecheckFrontendBuildDto {

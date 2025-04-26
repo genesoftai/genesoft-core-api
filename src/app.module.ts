@@ -33,6 +33,8 @@ import { SubscriptionModule } from "./modules/subscription/subscription.module";
 import { CodesandboxModule } from "./modules/codesandbox/codesandbox.module";
 import { FirebaseModule } from "./modules/firebase/firebase.module";
 import { IntegrationModule } from "./modules/integration/integration.module";
+import { CollectionModule } from "./modules/collection/collection.module";
+import { CodebaseModule } from "./modules/codebase/codebase.module";
 
 @Module({
     imports: [
@@ -86,6 +88,8 @@ import { IntegrationModule } from "./modules/integration/integration.module";
         CodesandboxModule,
         FirebaseModule,
         IntegrationModule,
+        CollectionModule,
+        CodebaseModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

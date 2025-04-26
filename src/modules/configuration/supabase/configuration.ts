@@ -6,4 +6,5 @@ export default registerAs("supabase", () => ({
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_SECRET,
     supabaseOrganizationId: process.env.SUPABASE_ORGANIZATION_ID,
     supabaseApiAccessToken: process.env.SUPABASE_API_ACCESS_TOKEN,
+    supabaseProjectUrl: process.env.SUPABASE_PROJECT_URL,
 }));

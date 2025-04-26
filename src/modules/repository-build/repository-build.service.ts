@@ -115,7 +115,7 @@ export class RepositoryBuildService {
             to: [...emails, GENESOFT_AI_EMAIL],
             subject: `${project.name} web application is ready for review`,
             html: `
-                <p>Hello, ${emails.join(", ")},</p>
+                <p>Hello</p>
                 <p>Your ${type === "frontend" ? "web application" : "backend service"} development for ${project.name} has been completed successfully.</p>
                 <p>Your web application is now ready for your review.</p>
                 <p>Please review the changes and provide your feedback.</p>
@@ -174,6 +174,10 @@ export class RepositoryBuildService {
             throw new BadRequestException("Invalid payload");
         }
 
+        const project = await this.projectRepository.findOne({
+            where: { id: project_id },
+        });
+
         const repositoryBuildExisting =
             await this.repositoryBuildRepository.findOne({
                 where: { project_id, iteration_id, type: ProjectType.Web },
@@ -218,12 +222,13 @@ export class RepositoryBuildService {
         }
 
         const currentAttempts = repositoryBuild.fix_attempts + 1;
-        await this.triggerFrontendBuilderAgent({
-            project_id,
-            iteration_id,
-            frontend_repo_name: repository.name,
-            attempts: currentAttempts,
-        });
+        // await this.triggerFrontendBuilderAgent({
+        //     project_id,
+        //     iteration_id,
+        //     frontend_repo_name: repository.name,
+        //     attempts: currentAttempts,
+        //     sandbox_id: project.sandbox_id || "",
+        // });
 
         await this.repositoryBuildRepository.update(
             { id: repositoryBuild.id },
@@ -312,8 +317,13 @@ export class RepositoryBuildService {
     }
 
     async triggerFrontendBuilderAgent(payload: TriggerFrontendBuilderAgentDto) {
-        const { project_id, iteration_id, frontend_repo_name, attempts } =
-            payload;
+        const {
+            project_id,
+            iteration_id,
+            frontend_repo_name,
+            attempts,
+            sandbox_id,
+        } = payload;
         const response = await lastValueFrom(
             this.httpService
                 .post(
@@ -323,6 +333,7 @@ export class RepositoryBuildService {
                         iteration_id,
                         frontend_repo_name,
                         attempts,
+                        sandbox_id: sandbox_id || "",
                     },
                 )
                 .pipe(

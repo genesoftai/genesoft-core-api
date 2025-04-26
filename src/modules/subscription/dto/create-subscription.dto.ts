@@ -6,4 +6,8 @@ export class CreateSubscriptionByCheckoutSessionDto {
     @IsNotEmpty()
     @IsString()
     sessionId: string;
+
+    @IsNotEmpty()
+    @IsString()
+    tier: string;
 }

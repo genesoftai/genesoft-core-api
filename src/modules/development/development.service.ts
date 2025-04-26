@@ -10,21 +10,17 @@ import { Between, In, Repository } from "typeorm";
 import { HttpService } from "@nestjs/axios";
 import { catchError, concatMap, lastValueFrom, of, retry } from "rxjs";
 import { Iteration } from "./entity/iteration.entity";
-import { TeamTask } from "./entity/team-task.entity";
 import { IterationTask } from "./entity/iteration-task.entity";
 import { CreateIterationTasksDto } from "./dto/create-iteration-task.dto";
-import {
-    UpdateIterationTaskResultDto,
-    UpdateIterationTaskStatusDto,
-} from "./dto/update-iteration-task.dto";
+import { UpdateIterationTaskStatusDto } from "./dto/update-iteration-task.dto";
 import {
     IterationStatus,
     IterationTaskStatus,
     IterationType,
 } from "@/modules/constants/development";
-import { AiAgentTeam } from "@/modules/constants/agent";
+import { AiAgentId, SystemId } from "@/modules/constants/agent";
 import { AiAgentConfigurationService } from "@/modules/configuration/ai-agent/ai-agent.service";
-import { ProjectTemplateName } from "../constants/project";
+import { ProjectTemplateName, ProjectTemplateType } from "../constants/project";
 import { EmailService } from "../email/email.service";
 import {
     GENESOFT_AI_EMAIL,
@@ -34,11 +30,7 @@ import {
 import { Project } from "@/modules/project/entity/project.entity";
 import { Organization } from "../organization/entity/organization.entity";
 import { User } from "../user/entity/user.entity";
-import {
-    CreateFeatureIterationDto,
-    CreateIterationDto,
-    CreatePageIterationDto,
-} from "./dto/create-iteration.dto";
+import { CreateIterationDto } from "./dto/create-iteration.dto";
 import { ProjectService } from "../project/project.service";
 import { RepositoryBuildService } from "../repository-build/repository-build.service";
 import { GithubService } from "../github/github.service";
@@ -48,6 +40,9 @@ import { Conversation } from "@/conversation/entity/conversation.entity";
 import { OrganizationService } from "../organization/organization.service";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationService } from "@/modules/configuration/app/app.service";
+import { Collection } from "../collection/entity/collection.entity";
+import { ConversationService } from "@/conversation/conversation.service";
+import { IterationStep } from "./entity/iteration-step.entity";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -58,8 +53,6 @@ export class DevelopmentService {
     constructor(
         @InjectRepository(Iteration)
         private iterationRepository: Repository<Iteration>,
-        @InjectRepository(TeamTask)
-        private teamTaskRepository: Repository<TeamTask>,
         @InjectRepository(IterationTask)
         private iterationTaskRepository: Repository<IterationTask>,
         @InjectRepository(Conversation)
@@ -84,6 +77,11 @@ export class DevelopmentService {
         @InjectRepository(Subscription)
         private subscriptionRepository: Repository<Subscription>,
         private readonly appConfigurationService: AppConfigurationService,
+        @InjectRepository(Collection)
+        private collectionRepository: Repository<Collection>,
+        private conversationService: ConversationService,
+        @InjectRepository(IterationStep)
+        private iterationStepRepository: Repository<IterationStep>,
     ) {
         this.freeTierIterationsLimit =
             this.appConfigurationService.freeTierIterationsLimit;
@@ -102,52 +100,123 @@ export class DevelopmentService {
             const iteration = this.iterationRepository.create(payload);
             const savedIteration =
                 await this.iterationRepository.save(iteration);
-            if (payload.type === IterationType.Project) {
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Create Project iteration`,
-                });
-                const response = await lastValueFrom(
-                    this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            branch: "dev",
-                            sandbox_id: payload.sandbox_id || "",
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
-                    metadata: { response: response.data },
-                });
-            } else if (payload.type === IterationType.CoreDevelopment) {
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Create Core Development iteration`,
-                });
-                const response = await lastValueFrom(
-                    this.httpService.post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
-                        {
-                            project_id: payload.project_id,
-                            input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
-                            iteration_id: savedIteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            branch: "dev",
-                            is_supabase_integration:
-                                payload.is_supabase_integration || false,
-                            conversation_id: payload.conversation_id,
-                            sandbox_id: payload.sandbox_id || "",
-                        },
-                    ),
-                );
-                this.logger.log({
-                    message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
-                    metadata: { response: response.data },
-                });
+
+            // Use a combination of type and template for the switch case
+            const iterationType = payload.type;
+            const templateType = payload.project_template_type || "";
+            const caseKey = `${iterationType}_${templateType}`;
+
+            switch (caseKey) {
+                case `${IterationType.Project}_${ProjectTemplateType.Web}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Project iteration`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                                iteration_id: savedIteration.id,
+                                frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                                branch: "dev",
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Project Management AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                case `${IterationType.CoreDevelopment}_${ProjectTemplateType.Web}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Core Development iteration`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                                iteration_id: savedIteration.id,
+                                frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
+                                branch: "dev",
+                                conversation_id: payload.conversation_id,
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                case `${IterationType.Project}_${ProjectTemplateType.Backend}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Project iteration for backend project`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/project`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
+                                iteration_id: savedIteration.id,
+                                backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                                branch: "dev",
+                                conversation_id: payload.conversation_id,
+                                sandbox_id: payload.sandbox_id || "",
+                                is_create_web_project:
+                                    payload.is_create_web_project,
+                                collection_id: payload.collection_id,
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                case `${IterationType.CoreDevelopment}_${ProjectTemplateType.Backend}`: {
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Create Core Development iteration for backend project`,
+                    });
+                    const response = await lastValueFrom(
+                        this.httpService.post(
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/core`,
+                            {
+                                project_id: payload.project_id,
+                                input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
+                                iteration_id: savedIteration.id,
+                                backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
+                                branch: "dev",
+                                conversation_id: payload.conversation_id,
+                                sandbox_id: payload.sandbox_id || "",
+                            },
+                        ),
+                    );
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: Core Development AI agent team triggered successfully for update requirements iteration`,
+                        metadata: { response: response.data },
+                    });
+                    break;
+                }
+
+                default: {
+                    // No specific action needed for other iteration types
+                    this.logger.log({
+                        message: `${this.serviceName}.createIteration: No specific action for iteration type ${iterationType} with template ${templateType}`,
+                    });
+                }
             }
+
             return savedIteration;
         } catch (error) {
             this.logger.error({
@@ -158,124 +227,159 @@ export class DevelopmentService {
         }
     }
 
-    async createPageIteration(
-        payload: CreatePageIterationDto,
-    ): Promise<Iteration> {
+    async createProjectIterationsForCollection(
+        collectionId: string,
+        requirements: string,
+    ) {
+        this.logger.log({
+            message: `${this.serviceName}.createProjectIterationsForCollection: Create project iterations for collection`,
+            metadata: { collectionId, requirements },
+        });
         try {
-            const conversation = await this.conversationRepository.findOne({
-                where: {
-                    id: payload.conversation_id,
-                },
+            const collection = await this.collectionRepository.findOne({
+                where: { id: collectionId },
             });
-            const page = await this.pageService.getPage(payload.page_id);
-            const iteration = await this.iterationRepository.save({
-                project_id: payload.project_id,
-                page_id: payload.page_id,
-                name: conversation.name,
-                type: IterationType.PageDevelopment,
+            if (!collection) {
+                throw new BadRequestException("Collection not found");
+            }
+            const webProject = await this.projectRepository.findOne({
+                where: { id: collection.web_project_id },
+            });
+            if (!webProject) {
+                throw new BadRequestException("Web project not found");
+            }
+            const backendProject = await this.projectRepository.findOne({
+                where: { id: collection.backend_service_project_ids[0] },
+            });
+            if (!backendProject) {
+                throw new BadRequestException("Backend project not found");
+            }
+
+            const webIteration = await this.iterationRepository.save({
+                project_id: webProject.id,
+                type: IterationType.Project,
             });
 
-            const response = await lastValueFrom(
-                this.httpService
-                    .post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/page`,
-                        {
-                            project_id: payload.project_id,
-                            iteration_id: iteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            input: `Develop the page "${page.name}" in the web application according to the project requirements and conversation between users and Genesoft project manager. Don't start from scratch but plan tasks based on existing code in the frontend github repository.`,
-                            page_id: payload.page_id,
-                            conversation_id: payload.conversation_id,
-                            branch: "dev",
-                        },
-                    )
-                    .pipe(
-                        concatMap((res) => of(res.data)),
-                        retry(2),
-                        catchError((error) => {
-                            this.logger.error({
-                                message: `${this.serviceName}.createPageIteration: Failed to trigger Developer AI agent`,
-                                metadata: { error: error.message },
-                            });
-                            throw error;
-                        }),
-                    ),
+            await lastValueFrom(
+                this.httpService.post(
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
+                    {
+                        project_id: webProject.id,
+                        input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
+                        iteration_id: webIteration.id,
+                        frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${webProject.id}`,
+                        branch: "dev",
+                        sandbox_id: webProject.sandbox_id || "",
+                        requirements,
+                    },
+                ),
             );
 
-            this.logger.log({
-                message: `${this.serviceName}.createPageIteration: Developer AI agent team triggered successfully for page iteration`,
-                metadata: { response },
+            const webConversation = await this.conversationRepository.save({
+                project_id: webProject.id,
+                name: "Web Project Creation",
+                description: "Conversation about the web project creation",
+                user_id: SystemId.PageChannelSystemId,
+                status: "active",
+                iteration_id: webIteration.id,
             });
 
-            return iteration;
+            await this.conversationService.talkToProjectManager({
+                project_id: webProject.id,
+                conversation_id: webConversation.id,
+                message: {
+                    content: `Please update user with latest information about the project creation of ${webProject.name}`,
+                    sender_type: "system",
+                    message_type: "text",
+                    sender_id: SystemId.GenesoftProjectManager,
+                },
+            });
+
+            const backendIteration = await this.iterationRepository.save({
+                project_id: backendProject.id,
+                type: IterationType.Project,
+            });
+
+            await lastValueFrom(
+                this.httpService.post(
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/project`,
+                    {
+                        project_id: backendProject.id,
+                        input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
+                        iteration_id: backendIteration.id,
+                        backend_repo_name: `${ProjectTemplateName.NestJsApi}_${backendProject.id}`,
+                        branch: "dev",
+                        sandbox_id: backendProject.sandbox_id || "",
+                        requirements,
+                    },
+                ),
+            );
+
+            const backendConversation = await this.conversationRepository.save({
+                project_id: backendProject.id,
+                name: "Backend Project Creation",
+                description: "Conversation about the backend project creation",
+                user_id: SystemId.GenesoftProjectManager,
+                status: "active",
+                iteration_id: backendIteration.id,
+            });
+
+            await this.conversationService.talkToBackendDeveloper({
+                project_id: backendProject.id,
+                conversation_id: backendConversation.id,
+                message: {
+                    content: `Please update user with latest information about the backend project creation of ${backendProject.name}`,
+                    sender_type: "system",
+                    message_type: "text",
+                    sender_id: AiAgentId.GenesoftBackendDeveloper,
+                },
+            });
+
+            return {
+                webIteration,
+                backendIteration,
+            };
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.createPageIteration: Failed to create page iteration`,
-                metadata: { payload, error: error.message },
+                message: `${this.serviceName}.createProjectIterationsForCollection: Failed to create project iterations for collection`,
+                metadata: { collectionId, error: error.message },
             });
             throw error;
         }
     }
 
-    async createFeatureIteration(
-        payload: CreateFeatureIterationDto,
-    ): Promise<Iteration> {
-        try {
-            const conversation = await this.conversationRepository.findOne({
-                where: {
-                    id: payload.conversation_id,
-                },
-            });
-            const feature = await this.featureService.getFeature(
-                payload.feature_id,
-            );
-            const iteration = await this.iterationRepository.save({
-                project_id: payload.project_id,
-                feature_id: payload.feature_id,
-                name: conversation.name,
-                type: IterationType.FeatureDevelopment,
-            });
-
-            const response = await lastValueFrom(
-                this.httpService
-                    .post(
-                        `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/feature`,
-                        {
-                            project_id: payload.project_id,
-                            iteration_id: iteration.id,
-                            frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                            input: `Develop the feature "${feature.name}" in the web application according to the project requirements and conversation between users and Genesoft project manager. Don't start from scratch but plan tasks based on existing code in the frontend github repository.`,
-                            feature_id: payload.feature_id,
-                            conversation_id: payload.conversation_id,
-                            branch: "dev",
-                        },
-                    )
-                    .pipe(
-                        concatMap((res) => of(res.data)),
-                        retry(2),
-                        catchError((error) => {
-                            this.logger.error({
-                                message: `${this.serviceName}.createFeatureIteration: Failed to trigger Developer AI agent`,
-                                metadata: { error: error.message },
-                            });
-                            throw error;
-                        }),
-                    ),
-            );
-
-            this.logger.log({
-                message: `${this.serviceName}.createFeatureIteration: Developer AI agent team triggered successfully for feature iteration`,
-                metadata: { response },
-            });
-
-            return iteration;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.createFeatureIteration: Failed to create feature iteration`,
-                metadata: { payload, error: error.message },
-            });
-            throw error;
-        }
+    async triggerTechnicalProjectManagerAiAgentToCreateRequirements(
+        collectionId: string,
+        webDescription: string,
+        backendRequirements: string,
+    ) {
+        this.logger.log({
+            message: `${this.serviceName}.triggerTechnicalProjectManagerAiAgentToCreateRequirements: Trigger technical project manager ai agent to create requirements`,
+            metadata: { collectionId, webDescription, backendRequirements },
+        });
+        const response = await lastValueFrom(
+            this.httpService
+                .post(
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/project-management/development/project/technical-requirements`,
+                    {
+                        collection_id: collectionId,
+                        web_description: webDescription,
+                        backend_requirements: backendRequirements,
+                    },
+                )
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.triggerTechnicalProjectManagerAiAgentToCreateRequirements: Failed to trigger technical project manager ai agent to create requirements`,
+                            metadata: { error: error.message },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+        return response.data;
     }
 
     async getIterations(): Promise<Iteration[]> {
@@ -347,6 +451,7 @@ export class DevelopmentService {
             }
             const iterationTasks = await this.iterationTaskRepository.find({
                 where: { iteration_id: iteration.id },
+                order: { created_at: "ASC" },
             });
             return {
                 ...iteration,
@@ -413,7 +518,9 @@ export class DevelopmentService {
 
             if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.CoreDevelopment
+                updatedIteration.type === IterationType.CoreDevelopment &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Web}_nextjs`
             ) {
                 await this.emailService.sendEmail({
                     to: [...userEmails, GENESOFT_AI_EMAIL],
@@ -451,11 +558,10 @@ export class DevelopmentService {
                 });
             } else if (
                 status === IterationStatus.Done &&
-                updatedIteration.type === IterationType.Project
+                updatedIteration.type === IterationType.Project &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Web}_nextjs`
             ) {
-                const project = await this.projectService.getProjectById(
-                    updatedIteration.project_id,
-                );
                 await this.emailService.sendEmail({
                     to: [...userEmails, GENESOFT_AI_EMAIL],
                     subject: `Project initialization completed successfully for ${project?.name}`,
@@ -478,7 +584,7 @@ export class DevelopmentService {
                                 You can now access your project dashboard to start working with your newly initialized project.
                             </p>
                             <div style="text-align: center; margin: 25px 0;">
-                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Project</a>
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View</a>
                             </div>
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
                                 <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
@@ -493,12 +599,125 @@ export class DevelopmentService {
                 await this.repositoryBuildService.checkRepositoryBuildOverview({
                     project_id: updatedIteration.project_id,
                 });
+            } else if (
+                status === IterationStatus.Done &&
+                updatedIteration.type === IterationType.CoreDevelopment &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Backend}_nestjs`
+            ) {
+                await this.emailService.sendEmail({
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
+                    subject: `Backend service development completed successfully for ${project?.name}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                            </div>
+                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Backend Service Has Been Successfully Developed</h2>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                We're pleased to inform you that the core development of your backend service has been successfully completed and is ready for use.
+                            </p>
+                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 15px;">
+                                    <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
+                                    <strong>Backend Requirements:</strong> ${project?.backend_requirements || "No backend requirements provided"}
+                                </p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                You can now access your project dashboard to review your backend service and its API endpoints.
+                            </p>
+                            <div style="text-align: center; margin: 25px 0;">
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View</a>
+                            </div>
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
+                                <strong>Important:</strong> Your backend service is now ready for integration! The API endpoints have been developed according to your specifications. You can now connect your frontend applications to these endpoints or use them with API testing tools. If you need any assistance with integration or have questions about the API functionality, our support team is ready to help.
+                            </p>
+                        </div>
+                    `,
+                    from: GENESOFT_SUPPORT_EMAIL_FROM,
+                });
+            } else if (
+                status === IterationStatus.Done &&
+                updatedIteration.type === IterationType.Project &&
+                project.project_template_type ===
+                    `${ProjectTemplateType.Backend}_nestjs`
+            ) {
+                await this.emailService.sendEmail({
+                    to: [...userEmails, GENESOFT_AI_EMAIL],
+                    subject: `Backend service project initialization completed successfully for ${project?.name}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <img src="https://genesoftai.com/assets/genesoft-logo-blue.png" alt="Genesoft Logo" style="max-width: 150px;">
+                            </div>
+                            <h2 style="color: #4a86e8; margin-bottom: 20px;">Good News! Your Backend Service Project Has Been Successfully Initialized</h2>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                We're pleased to inform you that your backend service project has been successfully initialized and is ready for development.
+                            </p>
+                            <div style="background-color: #f5f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 15px;">
+                                    <strong>Project:</strong> ${project?.name || "No project name provided"}<br>
+                                    <strong>Backend Requirements:</strong> ${project?.backend_requirements || "No backend requirements provided"}
+                                </p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333;">
+                                You can now access your project dashboard to monitor the development progress of your backend service.
+                            </p>
+                            <div style="text-align: center; margin: 25px 0;">
+                                <a href="${GENESOFT_BASE_URL}/dashboard/project/manage/${updatedIteration.project_id}" style="background-color: #4a86e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">View</a>
+                            </div>
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 14px; color: #777;">
+                                <p>If you have any questions, please contact our support team at <a href="mailto:support@genesoftai.com" style="color: #4a86e8;">support@genesoftai.com</a>.</p>
+                            </div>
+                            <p style="font-size: 16px; line-height: 1.5; color: #333; background-color: #fffde7; padding: 15px; border-left: 4px solid #ffd600; margin: 20px 0; border-radius: 4px;">
+                                <strong>Important:</strong> Your backend service project is now being set up! Our system is currently configuring the API architecture, database models, and authentication systems based on your specifications. The core development phase will begin shortly, during which we'll implement all the requested endpoints and business logic. You'll receive another notification when your backend service is fully developed and ready for integration with your frontend applications.
+                            </p>
+                        </div>
+                    `,
+                    from: GENESOFT_SUPPORT_EMAIL_FROM,
+                });
             }
             return updatedIteration;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.updateIterationStatus: Failed to update iteration status`,
                 metadata: { id, status, error: error.message },
+            });
+            throw error;
+        }
+    }
+
+    async createWebIterationByCollectionId(
+        collectionId: string,
+    ): Promise<Iteration> {
+        try {
+            const collection = await this.collectionRepository.findOne({
+                where: { id: collectionId },
+            });
+            if (!collection) {
+                throw new Error("Collection not found");
+            }
+            const project = await this.projectRepository.findOne({
+                where: { id: collection.web_project_id },
+            });
+            if (!project) {
+                throw new Error("Project not found");
+            }
+            const iteration = await this.createIteration({
+                type: IterationType.Project,
+                project_template_type: ProjectTemplateType.Web,
+                project_id: project.id,
+                sandbox_id: project.sandbox_id,
+            });
+
+            return iteration;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createWebIterationByCollectionId: Failed to create web iteration by collection id`,
+                metadata: { collectionId, error: error.message },
             });
             throw error;
         }
@@ -582,18 +801,23 @@ export class DevelopmentService {
         payload: CreateIterationTasksDto,
     ): Promise<IterationTask[]> {
         try {
-            const createdTasks: IterationTask[] = [];
-
             for (const taskData of payload.tasks) {
                 const task = this.iterationTaskRepository.create({
                     ...taskData,
                     iteration_id: iterationId,
                 });
-                const savedTask = await this.iterationTaskRepository.save(task);
-                createdTasks.push(savedTask);
+                await this.iterationTaskRepository.save(task);
             }
 
-            return createdTasks;
+            const tasks = await this.iterationTaskRepository.find({
+                where: {
+                    iteration_id: iterationId,
+                    status: IterationTaskStatus.Todo,
+                },
+                order: { created_at: "ASC" },
+            });
+
+            return tasks;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.createIterationTasks: Failed to create iteration tasks`,
@@ -660,71 +884,73 @@ export class DevelopmentService {
         }
     }
 
-    // Team Task CRUD
-    async createTeamTask(data: Partial<TeamTask>): Promise<TeamTask> {
+    // Iteration Step CRUD
+    async createIterationStep(
+        data: Partial<IterationStep>,
+    ): Promise<IterationStep> {
         try {
-            const teamTask = this.teamTaskRepository.create(data);
-            return this.teamTaskRepository.save(teamTask);
+            return this.iterationStepRepository.save(data);
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.createTeamTask: Failed to create team task`,
+                message: `${this.serviceName}.createIterationStep: Failed to create iteration step`,
                 metadata: { data, error: error.message },
             });
             throw error;
         }
     }
 
-    async getTeamTasks(): Promise<TeamTask[]> {
+    async getIterationStepsByTaskId(taskId: string): Promise<IterationStep[]> {
         try {
-            return this.teamTaskRepository.find({
+            return this.iterationStepRepository.find({
+                where: { iteration_task_id: taskId },
                 relations: ["iteration_task"],
             });
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.getTeamTasks: Failed to get team tasks`,
-                metadata: { error: error.message },
+                message: `${this.serviceName}.getIterationStepsByTaskId: Failed to get iteration steps by task id`,
+                metadata: { taskId, error: error.message },
             });
             throw error;
         }
     }
 
-    async getTeamTaskById(id: string): Promise<TeamTask> {
+    async getIterationStepById(id: string): Promise<IterationStep> {
         try {
-            return this.teamTaskRepository.findOneOrFail({
+            return this.iterationStepRepository.findOneOrFail({
                 where: { id },
                 relations: ["iteration_task"],
             });
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.getTeamTaskById: Failed to get team task`,
+                message: `${this.serviceName}.getIterationStepById: Failed to get iteration step`,
                 metadata: { id, error: error.message },
             });
             throw error;
         }
     }
 
-    async updateTeamTask(
+    async updateIterationStep(
         id: string,
-        data: Partial<TeamTask>,
-    ): Promise<TeamTask> {
+        data: Partial<IterationStep>,
+    ): Promise<IterationStep> {
         try {
-            await this.teamTaskRepository.update(id, data);
-            return this.getTeamTaskById(id);
+            await this.iterationStepRepository.update(id, data);
+            return this.getIterationStepById(id);
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.updateTeamTask: Failed to update team task`,
+                message: `${this.serviceName}.updateIterationStep: Failed to update iteration step`,
                 metadata: { id, data, error: error.message },
             });
             throw error;
         }
     }
 
-    async deleteTeamTask(id: string): Promise<void> {
+    async deleteIterationStep(id: string): Promise<void> {
         try {
-            await this.teamTaskRepository.delete(id);
+            await this.iterationStepRepository.delete(id);
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.deleteTeamTask: Failed to delete team task`,
+                message: `${this.serviceName}.deleteIterationStep: Failed to delete iteration step`,
                 metadata: { id, error: error.message },
             });
             throw error;
@@ -750,23 +976,6 @@ export class DevelopmentService {
         }
     }
 
-    async getTeamTasksByIterationTaskId(
-        iterationTaskId: string,
-    ): Promise<TeamTask[]> {
-        try {
-            return this.teamTaskRepository.find({
-                where: { iteration_task_id: iterationTaskId },
-                relations: ["iteration_task"],
-            });
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.getTeamTasksByIterationTaskId: Failed to get team tasks`,
-                metadata: { iterationTaskId, error: error.message },
-            });
-            throw error;
-        }
-    }
-
     async bulkUpdateIterationTaskStatus(
         iterationId: string,
         status: string,
@@ -780,24 +989,6 @@ export class DevelopmentService {
             this.logger.error({
                 message: `${this.serviceName}.bulkUpdateIterationTaskStatus: Failed to update iteration tasks status`,
                 metadata: { iterationId, status, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async bulkUpdateTeamTaskStatus(
-        iterationTaskId: string,
-        status: string,
-    ): Promise<void> {
-        try {
-            await this.teamTaskRepository.update(
-                { iteration_task_id: iterationTaskId },
-                { status },
-            );
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.bulkUpdateTeamTaskStatus: Failed to update team tasks status`,
-                metadata: { iterationTaskId, status, error: error.message },
             });
             throw error;
         }
@@ -879,223 +1070,6 @@ export class DevelopmentService {
             });
             throw error;
         }
-    }
-
-    async updateIterationTaskResult(
-        id: string,
-        payload: UpdateIterationTaskResultDto,
-    ): Promise<IterationTask> {
-        if (!payload.result) {
-            throw new BadRequestException(
-                "Result is required to update iteration task result",
-            );
-        }
-        const result = payload.result;
-
-        try {
-            const updateData: Partial<IterationTask> = {
-                result,
-            };
-
-            this.logger.log({
-                message: `${this.serviceName}.updateIterationTaskResult: update data`,
-                updateData,
-            });
-
-            await this.iterationTaskRepository.update(id, updateData);
-            return this.getIterationTaskById(id);
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.updateIterationTaskResult: Failed to update iteration task result`,
-                metadata: { id, result, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async getNextIterationTask(
-        iterationId: string,
-    ): Promise<IterationTask | null> {
-        try {
-            const tasks = await this.iterationTaskRepository.find({
-                where: { iteration_id: iterationId },
-                order: { created_at: "ASC" },
-            });
-
-            // Find the first task that's not completed
-            const nextTask = tasks.find(
-                (task) => task.status === IterationTaskStatus.Todo,
-            );
-            this.logger.log({
-                message: `${this.serviceName}.getNextIterationTask: Next iteration task`,
-                metadata: { iterationId, nextTask },
-            });
-            return nextTask || null;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.getNextIterationTask: Failed to get next iteration task`,
-                metadata: { iterationId, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async triggerNextIterationTask(
-        iterationId: string,
-    ): Promise<IterationTask | null> {
-        try {
-            const nextTask = await this.getNextIterationTask(iterationId);
-
-            this.logger.log({
-                message: `${this.serviceName}.triggerNextIterationTask: Triggering next iteration task`,
-                metadata: { iterationId, nextTask },
-            });
-
-            if (!nextTask) {
-                // No more tasks to process
-                await this.updateIteration(iterationId, {
-                    status: IterationStatus.Done,
-                });
-
-                const iteration = await this.getIterationById(iterationId);
-                try {
-                    await this.repositoryBuildService.checkRepositoryBuild({
-                        project_id: iteration.project_id,
-                        iteration_id: iteration.id,
-                        template: ProjectTemplateName.NextJsWeb,
-                    });
-                    this.emailService.sendEmail({
-                        from: "Genesoft <support@genesoftai.com>",
-                        to: [GENESOFT_AI_EMAIL],
-                        subject: `Frontend repository build for ${iteration.project_id} checked successfully`,
-                        html: `
-                        <p>Hello,</p>
-                        <p>The frontend repository build for ${iteration.project_id} checked successfully.</p>
-                        <p>Thank you.</p>
-
-                        Project ID: ${iteration.project_id}
-                        Iteration ID: ${iteration.id}
-                        `,
-                    });
-                } catch (error) {
-                    this.logger.error({
-                        message: `${this.serviceName}.triggerNextIterationTask: Failed to check frontend repository build`,
-                        metadata: { iteration, error: error.message },
-                    });
-                    this.emailService.sendEmail({
-                        from: "Genesoft <support@genesoftai.com>",
-                        to: [GENESOFT_AI_EMAIL],
-                        subject: `Failed to check frontend repository build for ${iteration.project_id}`,
-                        html: `
-                        <p>Hello,</p>
-                        <p>We are unable to check the frontend repository build for ${iteration.project_id}.</p>
-                        <p>Please check the repository build status manually.</p>
-                        <p>Thank you.</p>
-
-                        Project ID: ${iteration.project_id}
-                        Iteration ID: ${iteration.id}
-                        `,
-                    });
-                }
-
-                return null;
-            }
-
-            if (nextTask.status === IterationTaskStatus.Todo) {
-                const iteration = await this.getIterationById(iterationId);
-                // Update the task status to in_progress
-                await this.updateIterationTaskStatus(nextTask.id, {
-                    status: IterationTaskStatus.InProgress,
-                });
-
-                // ! Why condition after this not working?
-                // TODO: Make condition after this working when trigger next iteration task
-                try {
-                    this.logger.log({
-                        message: `${this.serviceName}.triggerNextIterationTask: Triggering AI agent`,
-                        metadata: { nextTask },
-                    });
-                    if (nextTask.team === AiAgentTeam.Frontend) {
-                        // Trigger frontend AI agent
-                        const response = await lastValueFrom(
-                            this.httpService.post(
-                                `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/frontend-development/development/requirements`,
-                                {
-                                    project_id: iteration.project_id,
-                                    iteration_id: iteration.id,
-                                    iteration_task_id: nextTask.id,
-                                    frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${iteration.project_id}`,
-                                    backend_repo_name: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                                },
-                            ),
-                        );
-                        this.logger.log({
-                            message: `${this.serviceName}.triggerNextIterationTask: Frontend AI agent triggered successfully`,
-                            metadata: { response: response.data },
-                        });
-                    } else if (nextTask.team === AiAgentTeam.Backend) {
-                        // Trigger backend AI agent
-                        // const response = await lastValueFrom(
-                        //     this.httpService.post(
-                        //         `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/backend-development/development/requirements`,
-                        //         {
-                        //             project_id: iteration.project_id,
-                        //             iteration_id: iteration.id,
-                        //             iteration_task_id: nextTask.id,
-                        //             backend_repo_name: `${ProjectTemplateName.NestJsApi}_${iteration.project_id}`,
-                        //         },
-                        //     ),
-                        // );
-                        this.logger.log({
-                            message: `${this.serviceName}.triggerNextIterationTask: Backend AI agent Not supported`,
-                            metadata: { nextTask },
-                        });
-                    } else {
-                        this.logger.error({
-                            message: `${this.serviceName}.triggerNextIterationTask: Invalid team for iteration task`,
-                            metadata: { nextTask },
-                        });
-                        throw new BadRequestException(
-                            "Invalid team for iteration task",
-                        );
-                    }
-                } catch (error) {
-                    this.logger.error({
-                        message: `${this.serviceName}.triggerNextIterationTask: Failed to trigger AI agent`,
-                        metadata: { nextTask, error: error.message },
-                    });
-                    // Update task status back to todo since agent trigger failed
-                    await this.updateIterationTaskStatus(nextTask.id, {
-                        status: IterationTaskStatus.Failed,
-                    });
-                    throw error;
-                }
-
-                return this.getIterationTaskById(nextTask.id);
-            }
-
-            return nextTask;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.triggerNextIterationTask: Failed to trigger next iteration task`,
-                metadata: { iterationId, error: error.message },
-            });
-            throw error;
-        }
-    }
-
-    async triggerAiAgentToUpdateRequirements(projectId: string) {
-        const project = await this.projectRepository.findOne({
-            where: { id: projectId },
-        });
-
-        const iteration = await this.createIteration({
-            project_id: project.id,
-            type: IterationType.Requirements,
-            is_updated_requirements: true,
-        });
-
-        return iteration;
     }
 
     async getMonthlyIterationsOfOrganization(organizationId: string) {

@@ -5,16 +5,6 @@ import { FirebaseService } from "./firebase.service";
 export class FirebaseController {
     constructor(private readonly firebaseService: FirebaseService) {}
 
-    @Get("projects")
-    async getProjects() {
-        return this.firebaseService.listProjects();
-    }
-
-    @Get("projects/:project_id")
-    async getProject(@Param("project_id") project_id: string) {
-        return this.firebaseService.getGoogleCloudProject(project_id);
-    }
-
     @Post("projects")
     async createProject(@Body() body: { project_id: string }) {
         return this.firebaseService.createGoogleCloudProject(body.project_id);

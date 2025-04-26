@@ -9,6 +9,11 @@ import {
 export class BackendInfraController {
     constructor(private readonly backendInfraService: BackendInfraService) {}
 
+    @Get("project/:projectId")
+    getBackendServiceInfo(@Param("projectId") projectId: string) {
+        return this.backendInfraService.getBackendServiceInfo(projectId);
+    }
+
     @Post("koyeb/project")
     createNewProjectInKoyeb(@Body() payload: CreateKoyebProjectDto) {
         return this.backendInfraService.createNewProjectInKoyeb(
@@ -33,10 +38,9 @@ export class BackendInfraController {
 
     @Post("koyeb/service")
     createNewServiceInKoyeb(@Body() payload: CreateKoyebServiceDto) {
-        return this.backendInfraService.createNewServiceInKoyeb(
-            payload.projectId,
+        return this.backendInfraService.runNewKoyebInstance(
             payload.appId,
-            payload.apiKey,
+            payload.projectId,
         );
     }
 }

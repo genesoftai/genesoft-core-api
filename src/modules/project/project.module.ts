@@ -1,4 +1,5 @@
 import { forwardRef, Logger, Module } from "@nestjs/common";
+import { HttpModule } from "@nestjs/axios";
 import { ProjectService } from "./project.service";
 import { ProjectController } from "./project.controller";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -28,7 +29,17 @@ import { ConversationModule } from "@/conversation/conversation.module";
 import { Conversation } from "@/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
-
+import { ConfigModule } from "@nestjs/config";
+import { ProjectEnv } from "../project-env/entity/project-env.entity";
+import { ProjectEnvController } from "./project-env.controller";
+import { Collection } from "../collection/entity/collection.entity";
+import { CollectionModule } from "../collection/collection.module";
+import { ProjectEnvModule } from "@modules/project-env/project-env.module";
+import { StripeModule } from "@modules/stripe/stripe.module";
+import { ProjectSubscribeController } from "./project-subscribe.controller";
+import { SubscriptionModule } from "@modules/subscription/subscription.module";
+import { ProjectDbModule } from "../project-db/project-db.module";
+import { CodebaseModule } from "../codebase/codebase.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -46,6 +57,8 @@ import { LlmModule } from "../llm/llm.module";
             VercelProject,
             KoyebProject,
             Conversation,
+            ProjectEnv,
+            Collection,
         ]),
         AWSConfigurationModule,
         AuthModule,
@@ -59,9 +72,21 @@ import { LlmModule } from "../llm/llm.module";
         forwardRef(() => ConversationModule),
         CodesandboxModule,
         LlmModule,
+        HttpModule,
+        ConfigModule,
+        CollectionModule,
+        ProjectEnvModule,
+        StripeModule,
+        SubscriptionModule,
+        ProjectDbModule,
+        CodebaseModule,
     ],
     providers: [ProjectService, Logger],
-    controllers: [ProjectController],
-    exports: [ProjectService],
+    controllers: [
+        ProjectController,
+        ProjectEnvController,
+        ProjectSubscribeController,
+    ],
+    exports: [ProjectService, CollectionModule],
 })
 export class ProjectModule {}

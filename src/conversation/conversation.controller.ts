@@ -13,7 +13,11 @@ import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { ConversationMessage } from "./entity/message.entity";
-import { TalkToProjectManagerDto } from "./dto/talk-to-project-manger.dto";
+import {
+    TalkToBackendDeveloperDto,
+    TalkToProjectManagerDto,
+    TalkToWebAiAgentsDto,
+} from "./dto/talk-to-project-manger.dto";
 import { SubmitConversationDto } from "./dto/submit-conversation.dto";
 
 @Controller("conversation")
@@ -136,9 +140,19 @@ export class ConversationController {
         );
     }
 
+    @Post("talk/web-ai-agents")
+    talkToWebAiAgents(@Body() payload: TalkToWebAiAgentsDto) {
+        return this.conversationService.talkToWebAiAgents(payload);
+    }
+
     @Post("talk/project-manager")
     talkToProjectManager(@Body() payload: TalkToProjectManagerDto) {
         return this.conversationService.talkToProjectManager(payload);
+    }
+
+    @Post("talk/backend-developer")
+    talkToBackendDeveloper(@Body() payload: TalkToBackendDeveloperDto) {
+        return this.conversationService.talkToBackendDeveloper(payload);
     }
 
     @Post("submit")
