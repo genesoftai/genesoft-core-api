@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Project } from "../../project/entity/project.entity";
 
 @Entity("project_envs")
@@ -38,6 +38,7 @@ export class ProjectEnv {
     updatedAt: Date;
 
     @ManyToOne(() => Project, (project) => project.envs)
+    @JoinColumn({ name: "project_id" })
     project: Project;
 
     @Column({ name: "project_id" })
