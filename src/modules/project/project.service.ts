@@ -500,7 +500,11 @@ export class ProjectService implements OnModuleInit {
             });
         }
 
-        return project;
+        const backendProject = await this.projectRepository.findOne({
+            where: { id: project.id },
+        });
+
+        return backendProject;
     }
 
     async createWebAndBackendProject(
