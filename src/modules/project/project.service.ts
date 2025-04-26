@@ -62,6 +62,7 @@ import { IterationType } from "../constants/development";
 import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 import { CollectionService } from "../collection/collection.service";
 import { CodebaseService } from "../codebase/codebase.service";
+import { ProjectEnvManagementService } from "../project-env/project-env-management.service";
 
 @Injectable()
 export class ProjectService implements OnModuleInit {
@@ -115,6 +116,7 @@ export class ProjectService implements OnModuleInit {
         private projectDbManagerService: ProjectDbManagerService,
         private collectionService: CollectionService,
         private codebaseService: CodebaseService,
+        private projectEnvManagementService: ProjectEnvManagementService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -514,6 +516,11 @@ export class ProjectService implements OnModuleInit {
                 is_create_iteration: false,
             }),
         ]);
+
+        await this.projectEnvManagementService.create(webProject.id, {
+            key: "CORE_API_SERVICE_URL",
+            value: `https://${backendProject?.sandbox_id}-8000.csb.app`,
+        });
 
         return { webProject, backendProject };
     }
@@ -1023,13 +1030,9 @@ export class ProjectService implements OnModuleInit {
 
     async getOverallProjectDocumentation(id: string): Promise<string> {
         const info = await this.getProjectInfo(id);
-        const features = await this.getProjectFeatures(id);
-        const pages = await this.getProjectPages(id);
         const branding = await this.getProjectBranding(id);
 
         const formattedInfo = formatBasicInfo(info as Project);
-        const formattedFeatures = formatFeatures(features);
-        const formattedPages = formatPages(pages);
         const formattedBranding = formatBranding(branding as Branding);
 
         const documentation = `
@@ -1038,10 +1041,6 @@ Overview of the project follow customer requirements that need to be implemented
 ====================
 
 ${formattedInfo}
-
-${formattedFeatures}
-
-${formattedPages}
 
 ${formattedBranding}
 `;

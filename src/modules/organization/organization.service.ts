@@ -109,6 +109,7 @@ export class OrganizationService {
         try {
             return await this.collectionRepository.find({
                 where: { organization_id: organizationId },
+                order: { created_at: "DESC" },
             });
         } catch (error) {
             this.logger.error(
