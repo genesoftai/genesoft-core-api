@@ -48,4 +48,11 @@ export class Project {
 
     @OneToMany(() => ProjectEnv, (env) => env.project)
     envs: ProjectEnv[];
+
+    @Column({
+        name: "onboarding_conversation_id",
+        type: "text",
+        nullable: true,
+    })
+    onboarding_conversation_id: string;
 }

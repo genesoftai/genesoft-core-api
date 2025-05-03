@@ -25,8 +25,8 @@ import { VercelProject } from "@/modules/frontend-infra/entity/vercel-project.en
 import { DevelopmentModule } from "../development/development.module";
 import { UserModule } from "../user/user.module";
 import { OrganizationModule } from "../organization/organization.module";
-import { ConversationModule } from "@/conversation/conversation.module";
-import { Conversation } from "@/conversation/entity/conversation.entity";
+import { ConversationModule } from "@/modules/conversation/conversation.module";
+import { Conversation } from "@/modules/conversation/entity/conversation.entity";
 import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { LlmModule } from "../llm/llm.module";
 import { ConfigModule } from "@nestjs/config";

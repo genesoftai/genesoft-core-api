@@ -25,16 +25,16 @@ import { FeedbackModule } from "@/modules/feedback/feedback.module";
 import { SupabaseModule } from "./modules/supabase/supabase.module";
 import { WebApplicationModule } from "./modules/web-application/web-application.module";
 import { StripeModule } from "./modules/stripe/stripe.module";
-import { BusinessLogicModule } from "./business-logic/business-logic.module";
-import { PageModule } from "./page/page.module";
-import { FeatureModule } from "./feature/feature.module";
-import { ConversationModule } from "./conversation/conversation.module";
+import { PageModule } from "./modules/page/page.module";
+import { FeatureModule } from "./modules/feature/feature.module";
+import { ConversationModule } from "./modules/conversation/conversation.module";
 import { SubscriptionModule } from "./modules/subscription/subscription.module";
 import { CodesandboxModule } from "./modules/codesandbox/codesandbox.module";
 import { FirebaseModule } from "./modules/firebase/firebase.module";
 import { IntegrationModule } from "./modules/integration/integration.module";
 import { CollectionModule } from "./modules/collection/collection.module";
 import { CodebaseModule } from "./modules/codebase/codebase.module";
+import { OnboardingConversationModule } from "./modules/onboarding-conversation/onboarding-conversation.module";
 
 @Module({
     imports: [
@@ -80,7 +80,6 @@ import { CodebaseModule } from "./modules/codebase/codebase.module";
         SupabaseModule,
         WebApplicationModule,
         StripeModule,
-        BusinessLogicModule,
         PageModule,
         FeatureModule,
         ConversationModule,
@@ -90,6 +89,7 @@ import { CodebaseModule } from "./modules/codebase/codebase.module";
         IntegrationModule,
         CollectionModule,
         CodebaseModule,
+        OnboardingConversationModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

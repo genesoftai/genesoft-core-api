@@ -9,7 +9,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Feature } from "@/modules/project/entity/feature.entity";
 import { CreateFeatureDto } from "./dto/create-feature.dto";
-import { ConversationService } from "@/conversation/conversation.service";
+import { ConversationService } from "@/modules/conversation/conversation.service";
 
 @Injectable()
 export class FeatureService {

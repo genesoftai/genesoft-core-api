@@ -34,14 +34,14 @@ import { CreateIterationDto } from "./dto/create-iteration.dto";
 import { ProjectService } from "../project/project.service";
 import { RepositoryBuildService } from "../repository-build/repository-build.service";
 import { GithubService } from "../github/github.service";
-import { PageService } from "@/page/page.service";
-import { FeatureService } from "@/feature/feature.service";
-import { Conversation } from "@/conversation/entity/conversation.entity";
+import { PageService } from "@/modules/page/page.service";
+import { FeatureService } from "@/modules/feature/feature.service";
+import { Conversation } from "@/modules/conversation/entity/conversation.entity";
 import { OrganizationService } from "../organization/organization.service";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationService } from "@/modules/configuration/app/app.service";
 import { Collection } from "../collection/entity/collection.entity";
-import { ConversationService } from "@/conversation/conversation.service";
+import { ConversationService } from "@/modules/conversation/conversation.service";
 import { IterationStep } from "./entity/iteration-step.entity";
 @Injectable()
 export class DevelopmentService {

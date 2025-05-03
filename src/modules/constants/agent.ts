@@ -8,10 +8,16 @@ export enum AiAgentId {
     GenesoftProjectManager = "50ca1ff7-c23e-49b9-9d60-d40030cc0ad9",
     GenesoftBackendDeveloper = "205d57c2-6297-4b9d-83c7-2fb230804023",
     GenesoftFrontendDeveloper = "9e83c7fe-e5d0-4bb9-b499-a53022641d64",
+    GenesoftUxUiDesigner = "e3b37839-9c7c-48f3-8655-24b6c346bbde",
+    GenesoftSoftwareArchitect = "3a9dcc39-f641-43be-9a54-0bd3797f15f2",
 }
 
 export enum AiAgentName {
-    GenesoftProjectManager = "Genesoft Project Manager",
+    GenesoftProjectManager = "Project Manager",
+    GenesoftBackendDeveloper = "Backend Developer",
+    GenesoftFrontendDeveloper = "Frontend Developer",
+    GenesoftUxUiDesigner = "UX/UI Designer",
+    GenesoftSoftwareArchitect = "Software Architect",
 }
 
 export enum SystemId {

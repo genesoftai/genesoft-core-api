@@ -11,8 +11,7 @@ import { CallGeminiPayload } from "../types/llm/gemini";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import Exa from "exa-js";
 import { ThirdPartyConfigurationService } from "../configuration/third-party/third-party.service";
-import { ExaSearchResults } from "@langchain/exa";
-import { ConversationMessage } from "@/conversation/entity/message.entity";
+import { ConversationMessage } from "@/modules/conversation/entity/message.entity";
 import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 import { GithubService } from "../github/github.service";
@@ -23,6 +22,10 @@ import { v4 as uuidv4 } from "uuid";
 import { catchError, lastValueFrom, map } from "rxjs";
 import { HttpService } from "@nestjs/axios";
 import { CallFrontendDeveloperAgent } from "../types/llm/frontend-agent";
+import {
+    AI_AGENT_SELECTION_PROMPT,
+    ONBOARDING_CONVERSATION_PROMPT,
+} from "../constants/onboarding-conversation";
 
 @Injectable()
 export class LlmService {
@@ -136,14 +139,6 @@ export class LlmService {
                 ...payload.payload,
             });
 
-            const exa = new ExaSearchResults({
-                client: this.exa,
-                searchArgs: {
-                    numResults: 3,
-                    type: "auto",
-                },
-            });
-
             const readGithubFile = tool(
                 async ({ path }: { path: string }): Promise<string> => {
                     /**
@@ -195,7 +190,7 @@ export class LlmService {
                 },
             );
 
-            const tools = [exa, readGithubFile, researchContentWithPerplexity];
+            const tools = [readGithubFile, researchContentWithPerplexity];
             const agentCheckpointer = new MemorySaver();
 
             const agent = await createReactAgent({
@@ -264,14 +259,6 @@ export class LlmService {
             const gemini = new ChatGoogleGenerativeAI({
                 model: this.gemini25Flash,
                 ...payload.payload,
-            });
-
-            const exa = new ExaSearchResults({
-                client: this.exa,
-                searchArgs: {
-                    numResults: 3,
-                    type: "auto",
-                },
             });
 
             const readGithubFile = tool(
@@ -351,7 +338,7 @@ export class LlmService {
             //     },
             // );
 
-            const tools = [exa, readGithubFile, researchContentWithPerplexity];
+            const tools = [readGithubFile, researchContentWithPerplexity];
             const agentCheckpointer = new MemorySaver();
 
             const agent = await createReactAgent({
@@ -423,15 +410,36 @@ export class LlmService {
                 ...payload.payload,
             });
 
-            const exa = new ExaSearchResults({
-                client: this.exa,
-                searchArgs: {
-                    numResults: 3,
-                    type: "auto",
+            const researchContentWithPerplexity = tool(
+                async ({
+                    query,
+                }: {
+                    query: string;
+                }): Promise<{ content: string; citations: string[] }> => {
+                    const { content, citations: citationsFromPerplexity } =
+                        await this.researchContentWithPerplexity(
+                            query,
+                            "sonar-pro",
+                        );
+                    return { content, citations: citationsFromPerplexity };
                 },
-            });
+                {
+                    name: "researchContentWithPerplexity",
+                    description:
+                        "Research content with perplexity to help discuss and answer user's messages (ex. API documentation, code examples, best practices, security practices, UX/UI design, reference web or information given by user, etc.).",
+                    schema: z.object({
+                        query: z
+                            .string()
+                            .describe(
+                                "The query to research content with perplexity",
+                            ),
+                    }),
+                },
+            );
 
-            const geminiWithTools = gemini.bindTools([exa]);
+            const geminiWithTools = gemini.bindTools([
+                researchContentWithPerplexity,
+            ]);
 
             const geminiWrapper = wrapSDK(geminiWithTools, {
                 name: payload.nodeName,
@@ -774,21 +782,52 @@ export class LlmService {
                     "The name of the AI Agent to talk to between `frontend_developer` and `project_manager`",
                 ),
         });
-        const chatOpenAI = new ChatOpenAI({
-            model: "gpt-4o-mini",
+        const gemini25Flash = new ChatGoogleGenerativeAI({
+            model: this.gemini25Flash,
         }).withStructuredOutput(AiAgentFormatter);
 
-        const chatOpenAIWrapper = wrapSDK(chatOpenAI, {
+        const gemini25FlashWrapper = wrapSDK(gemini25Flash, {
             name: "determineAiAgentForWebConversation",
             run_type: "llm",
         });
-        const result = await chatOpenAIWrapper.invoke([
+        const result = await gemini25FlashWrapper.invoke([
             new SystemMessage(
                 "You are a great message identifier that can identify the AI Agent to talk to between `frontend_developer` and `project_manager` based on the user's message. If it is technical question, you should talk to `frontend_developer`. If it is about the project and relate to non-technical question, you should talk to `project_manager`.",
             ),
             new HumanMessage({
                 content: userMessage,
             }),
+        ]);
+
+        return result.ai_agent;
+    }
+
+    // ! ONBOARDING CONVERSATION
+
+    async determineAiAgentForOnboardingConversation(
+        messagesContext: string,
+    ): Promise<string> {
+        const AiAgentFormatter = z.object({
+            ai_agent: z
+                .string()
+                .describe(
+                    "The name of the AI Agent to respond to the latest user's message from these options: `project_manager`, `technical_project_manager`, `uxui_designer`, `frontend_developer`, `software_architect`, `backend_developer`",
+                ),
+        });
+        const gemini25Flash = new ChatGoogleGenerativeAI({
+            model: this.gemini25Flash,
+        }).withStructuredOutput(AiAgentFormatter);
+
+        const gemini25FlashWrapper = wrapSDK(gemini25Flash, {
+            name: "determineAiAgentForOnboardingConversation",
+            run_type: "llm",
+        });
+        const result = await gemini25FlashWrapper.invoke([
+            new SystemMessage(AI_AGENT_SELECTION_PROMPT),
+            new HumanMessage({
+                content: messagesContext,
+            }),
+            new HumanMessage(ONBOARDING_CONVERSATION_PROMPT),
         ]);
 
         return result.ai_agent;

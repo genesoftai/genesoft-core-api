@@ -110,6 +110,10 @@ export class CreateProjectDto {
     @IsOptional()
     @IsBoolean()
     is_create_iteration?: boolean;
+
+    @IsOptional()
+    @IsString()
+    onboarding_conversation_id?: string;
 }
 
 export class CreateProjectFromOnboardingDto {
@@ -137,4 +141,8 @@ export class CreateProjectFromOnboardingDto {
     @ValidateNested()
     @Type(() => BrandingDto)
     branding?: BrandingDto;
+
+    @IsOptional()
+    @IsString()
+    onboarding_conversation_id?: string;
 }

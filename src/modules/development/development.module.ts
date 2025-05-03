@@ -13,14 +13,14 @@ import { User } from "../user/entity/user.entity";
 import { ProjectModule } from "../project/project.module";
 import { RepositoryBuildModule } from "../repository-build/repository-build.module";
 import { GithubModule } from "../github/github.module";
-import { PageModule } from "@/page/page.module";
-import { FeatureModule } from "@/feature/feature.module";
-import { Conversation } from "@/conversation/entity/conversation.entity";
+import { PageModule } from "@/modules/page/page.module";
+import { FeatureModule } from "@/modules/feature/feature.module";
+import { Conversation } from "@/modules/conversation/entity/conversation.entity";
 import { OrganizationModule } from "../organization/organization.module";
 import { Subscription } from "../subscription/entity/subscription.entity";
 import { AppConfigurationModule } from "../configuration/app";
 import { Collection } from "../collection/entity/collection.entity";
-import { ConversationModule } from "@/conversation/conversation.module";
+import { ConversationModule } from "@/modules/conversation/conversation.module";
 import { IterationStep } from "./entity/iteration-step.entity";
 @Module({
     imports: [
