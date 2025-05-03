@@ -3,7 +3,7 @@ import { PageController } from "./page.controller";
 import { PageService } from "./page.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Page } from "@/modules/project/entity/page.entity";
-import { ConversationModule } from "@/conversation/conversation.module";
+import { ConversationModule } from "@/modules/conversation/conversation.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([Page]),
