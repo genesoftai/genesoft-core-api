@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CreatePageDto } from "./dto/create-page.dto";
-import { ConversationService } from "@/conversation/conversation.service";
+import { ConversationService } from "@/modules/conversation/conversation.service";
 
 @Injectable()
 export class PageService {

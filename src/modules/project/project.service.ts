@@ -53,8 +53,8 @@ import { UserService } from "../user/user.service";
 import { OrganizationService } from "../organization/organization.service";
 import { OrganizationRole } from "../constants/organization";
 import { SystemId } from "../constants/agent";
-import { ConversationService } from "@/conversation/conversation.service";
-import { Conversation } from "@/conversation/entity/conversation.entity";
+import { ConversationService } from "@/modules/conversation/conversation.service";
+import { Conversation } from "@/modules/conversation/entity/conversation.entity";
 import { CodesandboxService } from "../codesandbox/codesandbox.service";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { LlmService } from "../llm/llm.service";
@@ -366,6 +366,7 @@ export class ProjectService implements OnModuleInit {
             purpose: payload.purpose,
             target_audience: payload.target_audience,
             project_template_type: "web_nextjs",
+            onboarding_conversation_id: payload.onboarding_conversation_id,
         });
 
         const project = await this.projectRepository.save(newProject);
@@ -459,6 +460,7 @@ export class ProjectService implements OnModuleInit {
             description: payload.description,
             backend_requirements: payload.backend_requirements,
             project_template_type: "backend_nestjs",
+            onboarding_conversation_id: payload.onboarding_conversation_id,
         });
 
         const project = await this.projectRepository.save(newProject);
@@ -571,6 +573,8 @@ export class ProjectService implements OnModuleInit {
                         color: payload.branding.color,
                     },
                     is_create_iteration: true,
+                    onboarding_conversation_id:
+                        payload.onboarding_conversation_id,
                 });
                 const iteration = await this.iterationRepository.findOne({
                     where: { project_id: project.id },
@@ -604,6 +608,8 @@ export class ProjectService implements OnModuleInit {
                     project_type: payload.project_type,
                     backend_requirements: payload.backend_requirements,
                     is_create_iteration: true,
+                    onboarding_conversation_id:
+                        payload.onboarding_conversation_id,
                 });
                 const iteration = await this.iterationRepository.findOne({
                     where: { project_id: project.id },
@@ -644,6 +650,8 @@ export class ProjectService implements OnModuleInit {
                             color: payload.branding.color,
                         },
                         backend_requirements: payload.backend_requirements,
+                        onboarding_conversation_id:
+                            payload.onboarding_conversation_id,
                     });
                 const collection =
                     await this.collectionService.createCollection({

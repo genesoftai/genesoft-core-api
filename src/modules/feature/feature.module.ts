@@ -3,7 +3,7 @@ import { FeatureController } from "./feature.controller";
 import { FeatureService } from "./feature.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Feature } from "@/modules/project/entity/feature.entity";
-import { ConversationModule } from "@/conversation/conversation.module";
+import { ConversationModule } from "@/modules/conversation/conversation.module";
 
 @Module({
     imports: [
