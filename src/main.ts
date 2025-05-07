@@ -3,11 +3,13 @@ import { AppModule } from "./app.module";
 import { RequestMethod, ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as bodyParser from "body-parser";
-
+import { CloudWatchLogger } from "./modules/cloudwatch-logger.service"; 
 const port = parseInt(process.env.PORT, 10) || 8000;
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+        logger: new CloudWatchLogger(),
+    });
     app.enableCors();
     app.useGlobalPipes(new ValidationPipe());
 
