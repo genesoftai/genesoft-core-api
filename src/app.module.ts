@@ -35,6 +35,7 @@ import { IntegrationModule } from "./modules/integration/integration.module";
 import { CollectionModule } from "./modules/collection/collection.module";
 import { CodebaseModule } from "./modules/codebase/codebase.module";
 import { OnboardingConversationModule } from "./modules/onboarding-conversation/onboarding-conversation.module";
+import { FigmaModule } from "./modules/figma/figma.module";
 
 @Module({
     imports: [
@@ -90,6 +91,7 @@ import { OnboardingConversationModule } from "./modules/onboarding-conversation/
         CollectionModule,
         CodebaseModule,
         OnboardingConversationModule,
+        FigmaModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

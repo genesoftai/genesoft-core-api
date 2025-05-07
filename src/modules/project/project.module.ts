@@ -40,6 +40,7 @@ import { ProjectSubscribeController } from "./project-subscribe.controller";
 import { SubscriptionModule } from "@modules/subscription/subscription.module";
 import { ProjectDbModule } from "../project-db/project-db.module";
 import { CodebaseModule } from "../codebase/codebase.module";
+import { FigmaModule } from "../figma/figma.module";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -80,6 +81,7 @@ import { CodebaseModule } from "../codebase/codebase.module";
         SubscriptionModule,
         ProjectDbModule,
         CodebaseModule,
+        FigmaModule,
     ],
     providers: [ProjectService, Logger],
     controllers: [
