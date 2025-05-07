@@ -63,6 +63,7 @@ import { ProjectDbManagerService } from "../project-db/project-db-manager.servic
 import { CollectionService } from "../collection/collection.service";
 import { CodebaseService } from "../codebase/codebase.service";
 import { ProjectEnvManagementService } from "../project-env/project-env-management.service";
+import { FigmaService } from "../figma/figma.service";
 
 @Injectable()
 export class ProjectService implements OnModuleInit {
@@ -117,6 +118,7 @@ export class ProjectService implements OnModuleInit {
         private collectionService: CollectionService,
         private codebaseService: CodebaseService,
         private projectEnvManagementService: ProjectEnvManagementService,
+        private figmaService: FigmaService,
     ) {
         this.logger.log({
             message: `${this.serviceName}.constructor: Service initialized`,
@@ -368,9 +370,24 @@ export class ProjectService implements OnModuleInit {
             project_template_type: "web_nextjs",
             onboarding_conversation_id: payload.onboarding_conversation_id,
         });
+        this.logger.log({
+            message: `${this.serviceName}.createWebProject: Creating new web project`,
+            metadata: { payload, timestamp: new Date() },
+        });
 
         const project = await this.projectRepository.save(newProject);
         await this.codebaseService.createCodebaseForNextjsProject(project.id);
+
+        if (payload.figma_file_key) {
+            const figmaFile = await this.figmaService.saveFigmaFile({
+                fileKey: payload.figma_file_key,
+                projectId: project.id,
+            });
+
+            await this.projectRepository.update(newProject.id, {
+                figma_file_id: figmaFile.id,
+            });
+        }
 
         const sandboxName = `nextjs-web_${project.id}`;
         const sandbox = await this.codesandboxService.createSandbox({
@@ -575,6 +592,7 @@ export class ProjectService implements OnModuleInit {
                     is_create_iteration: true,
                     onboarding_conversation_id:
                         payload.onboarding_conversation_id,
+                    figma_file_key: payload.figma_file_key,
                 });
                 const iteration = await this.iterationRepository.findOne({
                     where: { project_id: project.id },
@@ -610,6 +628,7 @@ export class ProjectService implements OnModuleInit {
                     is_create_iteration: true,
                     onboarding_conversation_id:
                         payload.onboarding_conversation_id,
+                    figma_file_key: payload.figma_file_key,
                 });
                 const iteration = await this.iterationRepository.findOne({
                     where: { project_id: project.id },
@@ -652,6 +671,7 @@ export class ProjectService implements OnModuleInit {
                         backend_requirements: payload.backend_requirements,
                         onboarding_conversation_id:
                             payload.onboarding_conversation_id,
+                        figma_file_key: payload.figma_file_key,
                     });
                 const collection =
                     await this.collectionService.createCollection({

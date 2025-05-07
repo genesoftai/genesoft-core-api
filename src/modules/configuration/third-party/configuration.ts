@@ -9,4 +9,5 @@ export default registerAs("thirdParty", () => ({
     gcpApiKey: process.env.GCP_API_KEY || "",
     gcpOrganizationId: process.env.GCP_ORGANIZATION_ID || "",
     perplexityApiKey: process.env.PERPLEXITY_API_KEY || "",
+    figmaAccessToken: process.env.FIGMA_ACCESS_TOKEN || "",
 }));
