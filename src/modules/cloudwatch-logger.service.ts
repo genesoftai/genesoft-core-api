@@ -7,6 +7,7 @@ import {
   DescribeLogStreamsCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 
+
 export class CloudWatchLogger extends ConsoleLogger {
   private client = new CloudWatchLogsClient({ 
     region: 'ap-southeast-1',
@@ -30,7 +31,11 @@ export class CloudWatchLogger extends ConsoleLogger {
  private isReady = false;
   constructor() {
     super();
-    this.setup();
+    if (process.env.NODE_ENV === 'production') {
+        this.setup();
+    }else {
+        this.isReady = true;
+    }
   }
 
   private async setup() {
