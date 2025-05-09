@@ -55,4 +55,7 @@ export class Project {
         nullable: true,
     })
     onboarding_conversation_id: string;
+
+    @Column({ name: "figma_file_id", type: "text", nullable: true })
+    figma_file_id: string;
 }

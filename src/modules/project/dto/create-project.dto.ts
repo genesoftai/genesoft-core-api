@@ -114,6 +114,10 @@ export class CreateProjectDto {
     @IsOptional()
     @IsString()
     onboarding_conversation_id?: string;
+
+    @IsOptional()
+    @IsString()
+    figma_file_key?: string;
 }
 
 export class CreateProjectFromOnboardingDto {
@@ -145,4 +149,8 @@ export class CreateProjectFromOnboardingDto {
     @IsOptional()
     @IsString()
     onboarding_conversation_id?: string;
+
+    @IsOptional()
+    @IsString()
+    figma_file_key?: string;
 }

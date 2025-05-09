@@ -34,4 +34,8 @@ export class ThirdPartyConfigurationService {
     get perplexityApiKey() {
         return this.configService.get("thirdParty.perplexityApiKey");
     }
+
+    get figmaAccessToken() {
+        return this.configService.get("thirdParty.figmaAccessToken");
+    }
 }
