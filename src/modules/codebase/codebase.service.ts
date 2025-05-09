@@ -8,7 +8,6 @@ import { GithubService } from "../github/github.service";
 import { Project } from "../project/entity/project.entity";
 import { GithubRepository } from "../github/entity/github-repository.entity";
 import { CodesandboxService } from "../codesandbox/codesandbox.service";
-import { GetFileDto } from "./dto/get-file.dto";
 import { UpdateFileDto } from "./dto/update-file.dto";
 
 @Injectable()
@@ -149,6 +148,17 @@ export class CodebaseService {
         }
     }
 
+    async getFileTreeFromProject(projectId: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+        if (!project.sandbox_id) {
+            throw new Error("Sandbox not found");
+        }
+        const fileTree = await this.codesandboxService.getFileTreeFromSandbox(project.sandbox_id);
+        return fileTree;
+    }
+
     async getFileContentFromProject(projectId: string, path: string) {
         this.logger.log({
             message: `${this.serviceName}.getFileContentFromProject: Getting file content from project`,
@@ -193,17 +203,9 @@ export class CodebaseService {
 
     async updateRepositoryFile(payload: UpdateFileDto) {
         const { projectId, path, content, message } = payload;
-        const committer = {
-            name: "khemmapichpanyana",
-            email: "khemmapich@gmail.com",
-        };
         const project = await this.projectRepository.findOne({
             where: { id: projectId },
         });
-        const githubRepository = await this.githubRepositoryRepository.findOne({
-            where: { project_id: projectId },
-        });
-        // TODO: also update on codesandbox, if not successful, throw error
         try {
             let updatedFileOnSandbox;
             if (project.sandbox_id) {
@@ -214,28 +216,11 @@ export class CodebaseService {
                         content,
                     });
             }
-            // TODO: update on github
-            let updatedFileOnGithub;
-            if (githubRepository.name) {
-                updatedFileOnGithub =
-                    await this.githubService.updateRepositoryContent({
-                        repository: githubRepository.name,
-                        branch: "dev",
-                        path,
-                        content,
-                        message:
-                            message ||
-                            `Updated ${path} for ${projectId} by user`,
-                        committer,
-                        ref: "dev",
-                    });
-            }
 
             return {
                 status: "success",
                 message: "File updated",
                 updatedFileOnSandbox,
-                updatedFileOnGithub,
             };
         } catch (error) {
             this.logger.error({
