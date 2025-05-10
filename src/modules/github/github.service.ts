@@ -979,4 +979,15 @@ export class GithubService {
             // Don't throw the error to prevent blocking repository creation
         }
     }
+    
+    async getRepoAccessTokenUrl(repoId: string) {
+        const repo = await this.githubRepositoryRepository.findOne({
+            where: {
+                id: repoId,
+            },
+        });
+        // todo get intallationId and generate temporary token
+        // from github app api
+        return `https://github.com/${repo.owner}/${repo.name}`;
+    }
 }

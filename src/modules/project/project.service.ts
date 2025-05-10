@@ -422,6 +422,7 @@ export class ProjectService implements OnModuleInit {
                 projectId: project.id,
             });
 
+      
         this.logger.log({
             message: `${this.serviceName}.createWebProject: Project created`,
             metadata: {
@@ -451,6 +452,13 @@ export class ProjectService implements OnModuleInit {
                 name: "khemmapichpanyana",
                 email: "khemmapich@gmail.com",
             },
+        });
+
+        const repoUrl = await this.githubService.getRepoAccessTokenUrl(githubRepository.id);
+        await this.codesandboxService.cloneRepository({
+            sandbox_id: sandbox.id,
+            repository_url: repoUrl,
+            branch: "dev",
         });
 
         if (payload.is_create_iteration) {
