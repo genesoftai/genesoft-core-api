@@ -91,43 +91,49 @@ export class CloudWatchLogger extends ConsoleLogger {
 
     async log(message: any, ...optionalParams: any[]) {
         super.log(message);
+        const logMessage = this.tryParse(message);
         await this.sendToCloudWatch(
-            `[LOG] ${message} ${JSON.stringify(optionalParams) ?? ""}`,
+            `[LOG] ${logMessage} ${JSON.stringify(optionalParams) ?? ""}`,
         );
     }
 
     async error(message: any, ...optionalParams: any[]) {
         super.error(message);
+        const logMessage = this.tryParse(message);
         await this.sendToCloudWatch(
-            `[ERROR] ${message} ${JSON.stringify(optionalParams) ?? ""}`,
+            `[ERROR] ${logMessage} ${JSON.stringify(optionalParams) ?? ""}`,
         );
     }
 
     async warn(message: any, ...optionalParams: any[]) {
         super.warn(message, optionalParams);
-        await this.sendToCloudWatch(`[WARN] ${message}`);
+        const logMessage = this.tryParse(message);
+        await this.sendToCloudWatch(
+            `[WARN] ${logMessage} ${JSON.stringify(optionalParams) ?? ""}`,
+        );
     }
 
     async debug(message: any, ...optionalParams: any[]) {
         super.debug(message, optionalParams);
-        await this.sendToCloudWatch(`[DEBUG] ${message}`);
+        const logMessage = this.tryParse(message);
+        await this.sendToCloudWatch(
+            `[DEBUG] ${logMessage} ${JSON.stringify(optionalParams) ?? ""}`,
+        );
     }
 
     async verbose(message: any, ...optionalParams: any[]) {
         super.verbose(message, optionalParams);
-        await this.sendToCloudWatch(`[VERBOSE] ${message}`);
+        const logMessage = this.tryParse(message);
+        await this.sendToCloudWatch(
+            `[VERBOSE] ${logMessage} ${JSON.stringify(optionalParams) ?? ""}`,
+        );
     }
 
     tryParse(message: any) {
-        // if message is a string, return i
-        // if json Json.stringify
-        if (typeof message === "string") {
-            return message;
-        }
         try {
             return JSON.stringify(message);
-        } catch (e) {
-            return String(message);
+        } catch (error) {
+            return message;
         }
     }
 }
