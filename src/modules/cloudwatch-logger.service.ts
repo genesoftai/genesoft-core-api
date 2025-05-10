@@ -25,7 +25,7 @@ export class CloudWatchLogger extends ConsoleLogger {
 
     constructor() {
         super();
-        if (process.env.NODE_ENV === "production") {
+        if (process.env.NODE_ENV === "production" || process.env.CLOUDWATCH_LOG == "1") {
             this.client = new CloudWatchLogsClient({
                 region: "ap-southeast-1",
                 credentials: {
