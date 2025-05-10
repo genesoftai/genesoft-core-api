@@ -17,8 +17,8 @@ export class CloudWatchLogger extends ConsoleLogger {
 
     private logStreamName =
         process.env.NODE_ENV === "production"
-            ? "prod-nestjs-log-stream"
-            : "nestjs-log-stream";
+            ? "prod-nestjs-log-stream" + "-" + Date.now()
+            : "nestjs-log-stream" + "-" + Date.now();
 
     private sequenceToken: string | undefined;
     private isReady = false;
