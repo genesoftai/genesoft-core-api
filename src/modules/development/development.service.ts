@@ -113,7 +113,7 @@ export class DevelopmentService {
                     });
                     const response = await lastValueFrom(
                         this.httpService.post(
-                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/frontend-team-ai-agents/create-project`,
                             {
                                 project_id: payload.project_id,
                                 input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
@@ -137,7 +137,8 @@ export class DevelopmentService {
                     });
                     const response = await lastValueFrom(
                         this.httpService.post(
-                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
+                            // `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/frontend-team-ai-agents/conversation`,
                             {
                                 project_id: payload.project_id,
                                 input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
