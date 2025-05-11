@@ -8,13 +8,7 @@ import {
 } from "@aws-sdk/client-cloudwatch-logs";
 
 export class CloudWatchLogger extends ConsoleLogger {
-    private client = new CloudWatchLogsClient({
-        region: "ap-southeast-1",
-        credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-    });
+    private client: CloudWatchLogsClient;
 
     private logGroupName =
         process.env.NODE_ENV === "production"
@@ -23,14 +17,25 @@ export class CloudWatchLogger extends ConsoleLogger {
 
     private logStreamName =
         process.env.NODE_ENV === "production"
-            ? "prod-nestjs-log-stream"
-            : "nestjs-log-stream";
+            ? "prod-nestjs-log-stream" + "-" + Date.now()
+            : "nestjs-log-stream" + "-" + Date.now();
 
     private sequenceToken: string | undefined;
     private isReady = false;
+
     constructor() {
         super();
-        if (process.env.NODE_ENV === "production") {
+        if (
+            process.env.NODE_ENV === "production" ||
+            process.env.CLOUDWATCH_LOG == "1"
+        ) {
+            this.client = new CloudWatchLogsClient({
+                region: "ap-southeast-1",
+                credentials: {
+                    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                },
+            });
             this.setup();
         } else {
             this.isReady = true;
@@ -69,7 +74,7 @@ export class CloudWatchLogger extends ConsoleLogger {
     }
 
     private async sendToCloudWatch(message: string) {
-        if (!this.isReady) {
+        if (!this.isReady || this.client == null) {
             return;
         }
         const now = Date.now();
