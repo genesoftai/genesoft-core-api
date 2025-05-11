@@ -37,4 +37,13 @@ export class GithubRepository {
 
     @UpdateDateColumn({ name: "updated_at" })
     updated_at: Date;
+
+    @Column({ name: "managed_by", type: "text", nullable: true })
+    managed_by: string;
+
+    @Column({ name: "development_branch", type: "text", nullable: true })
+    development_branch: string;
+
+    @Column({ name: "production_branch", type: "text", nullable: true })
+    production_branch: string;
 }

@@ -82,13 +82,11 @@ export class CodesandboxService {
 
             const ports = sandbox.ports.getOpenedPorts();
 
-            await sandbox.hibernate();
             return {
                 setup,
                 ports,
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}ใ: Error getting sandbox`,
                 metadata: {
@@ -218,15 +216,12 @@ export class CodesandboxService {
                 },
             });
 
-            await sandbox.hibernate();
-
             return {
                 sandbox_id,
                 path,
                 status: "file_written",
             };
         } catch (error) {
-            // await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.writeFileOnSandbox: Error writing file on sandbox`,
                 metadata: {
@@ -260,7 +255,6 @@ export class CodesandboxService {
                 status: "file_written",
             };
         } catch (error) {
-            // await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.writeFileOnSandboxWithoutHibernate: Error writing file on sandbox`,
                 metadata: {
@@ -281,7 +275,6 @@ export class CodesandboxService {
 
         try {
             const content = await sandbox.fs.readTextFile(path);
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 path,
@@ -289,7 +282,6 @@ export class CodesandboxService {
                 content,
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.readFileOnSandbox: Error reading file on sandbox`,
                 metadata: {
@@ -336,14 +328,12 @@ export class CodesandboxService {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             await sandbox.fs.remove(path);
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 path,
                 status: "file_deleted",
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}: Error deleting file on sandbox`,
                 metadata: {
@@ -363,14 +353,12 @@ export class CodesandboxService {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             const files = await sandbox.fs.readdir(path);
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 path,
                 files,
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.listFilesOnSandbox: Error listing files on sandbox`,
                 metadata: {
@@ -389,14 +377,12 @@ export class CodesandboxService {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             await sandbox.fs.writeFile(path, content);
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 path,
                 status: "file_uploaded",
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.uploadFileOnSandbox: Error uploading file on sandbox`,
                 metadata: {
@@ -417,14 +403,12 @@ export class CodesandboxService {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             const { downloadUrl } = await sandbox.fs.download(path);
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 path,
                 downloadUrl,
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.downloadFileFromSandbox: Error downloading file from sandbox`,
                 metadata: {
@@ -444,7 +428,6 @@ export class CodesandboxService {
         const sandbox = await this.sdk.sandbox.open(sandbox_id);
         try {
             await sandbox.fs.rename(old_path, new_path);
-            await sandbox.hibernate();
             return {
                 sandbox_id,
                 old_path,
@@ -452,7 +435,6 @@ export class CodesandboxService {
                 status: "file_renamed",
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.renameFileOnSandbox: Error renaming file on sandbox`,
                 metadata: {
@@ -484,8 +466,6 @@ export class CodesandboxService {
             const result = await this.httpService.get(
                 `http://${hostname}:${port}`,
             );
-
-            await sandbox.hibernate();
 
             return {
                 sandbox_id,
@@ -531,8 +511,6 @@ export class CodesandboxService {
 
             const shell = await Promise.race([shellPromise, timeoutPromise]);
 
-            await sandbox.hibernate();
-
             return {
                 sandbox_id,
                 command,
@@ -547,7 +525,6 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
             throw error;
         }
     }
@@ -572,7 +549,6 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            await sandbox.hibernate();
             throw error;
         }
     }
@@ -605,10 +581,8 @@ export class CodesandboxService {
                 },
             });
 
-            await sandbox.hibernate();
             return result;
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.runTaskOnSandbox: Error running task on sandbox`,
                 metadata: {
@@ -638,7 +612,6 @@ export class CodesandboxService {
                 result,
             };
         } catch (error) {
-            await sandbox.hibernate();
             this.logger.error({
                 message: `${this.serviceName}.runTaskOnSandboxAsBackgroundProcess: Error running task on sandbox`,
                 metadata: {
@@ -693,7 +666,6 @@ export class CodesandboxService {
 
             // Kill the shell after we've captured the output
             await shell.kill();
-            await sandbox.hibernate();
 
             return {
                 sandbox_id,
@@ -762,7 +734,6 @@ export class CodesandboxService {
 
             // Kill the shell after we've captured the output
             await shell.kill();
-            await sandbox.hibernate();
 
             return {
                 sandbox_id,
@@ -824,7 +795,6 @@ export class CodesandboxService {
 
             // Kill the shell after we've captured the output
             await shell.kill();
-            await sandbox.hibernate();
 
             return {
                 sandbox_id,
@@ -886,7 +856,6 @@ export class CodesandboxService {
 
             // Kill the shell after we've captured the output
             await shell.kill();
-            await sandbox.hibernate();
 
             return {
                 sandbox_id,
