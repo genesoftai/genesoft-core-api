@@ -96,6 +96,19 @@ export class GithubService {
         );
     }
 
+    async linkRepositoryToProject(projectId: string, repo: any) {
+        const githubRepository = await this.githubRepositoryRepository.save({
+            project_id: projectId,
+            type: "link",
+            repo_id: repo.id.toString(),
+            owner: repo.owner.login,
+            name: repo.name,
+            full_name: repo.full_name,
+            is_active: true,
+        });
+        return githubRepository;
+    }
+
     async createRepositoryFromTemplate({
         projectTemplateName,
         description,
@@ -979,15 +992,37 @@ export class GithubService {
             // Don't throw the error to prevent blocking repository creation
         }
     }
-    
-    async getRepoAccessTokenUrl(repoId: string) {
-        const repo = await this.githubRepositoryRepository.findOne({
-            where: {
-                id: repoId,
-            },
-        });
-        // todo get intallationId and generate temporary token
-        // from github app api
-        return `https://github.com/${repo.owner}/${repo.name}`;
+
+    async getRepoAccessTokenUrl(owner: string, repo: string) {
+        // Call external API to get repository URL with access token
+        try {
+            const apiUrl =
+                "https://prime-zulema-genesoft-a6d86b7d.koyeb.app/api/repo-url";
+            const { data } = await lastValueFrom(
+                this.httpService
+                    .get(`${apiUrl}?owner=${owner}&repo=${repo}`)
+                    .pipe(
+                        catchError((error: AxiosError) => {
+                            this.logger.error({
+                                message: `${this.serviceName}.getRepoAccessTokenUrl: Error getting repo URL with token`,
+                                metadata: { error: error.response?.data },
+                            });
+                            throw error;
+                        }),
+                    ),
+            );
+            if (data && data.repoUrl) {
+                this.logger.log({
+                    message: `${this.serviceName}.getRepoAccessTokenUrl: Successfully retrieved repo URL with token`,
+                });
+                return data.repoUrl;
+            }
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.getRepoAccessTokenUrl: Failed to get repo URL with token`,
+                metadata: { error },
+            });
+            // Fall back to the default URL if the API call fails
+        }
     }
 }

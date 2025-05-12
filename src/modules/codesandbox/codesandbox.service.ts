@@ -41,7 +41,7 @@ export class CodesandboxService {
     }
 
     async getConnection(sandboxId: string) {
-        if ( this.sandboxClients.has(sandboxId) ) {
+        if (this.sandboxClients.has(sandboxId)) {
             return this.sandboxClients.get(sandboxId);
         }
         return this.createConnection(sandboxId);
@@ -55,7 +55,7 @@ export class CodesandboxService {
         const { sandbox_id, repository_url, branch } = payload;
         this.runCommandOnSandbox({
             sandbox_id,
-            command: `git clone -b ${branch} ${repository_url} .`,
+            command: `git clone -b ${branch} ${repository_url} app`,
         });
     }
 
@@ -125,7 +125,7 @@ export class CodesandboxService {
 
     async startSandbox(id: string) {
         // const data = await this.sdk.sandbox.start(id);
-        const sandbox = await this.getConnection(id)
+        const sandbox = await this.getConnection(id);
 
         // Listen to setup progress
         sandbox.setup.onSetupProgressUpdate((progress) => {
@@ -165,7 +165,7 @@ export class CodesandboxService {
     }
 
     async stopSandbox(id: string) {
-        const sandbox = await this.getConnection(id)
+        const sandbox = await this.getConnection(id);
         try {
             await sandbox.shutdown();
             return {
@@ -216,17 +216,20 @@ export class CodesandboxService {
         }
     }
 
-
     async getFileTreeFromSandbox(id: string, path: string = "/") {
-        const ignoreDir = ['node_modules']
+        const ignoreDir = ["node_modules"];
         const sandbox = await this.getConnection(id);
         const entries = await sandbox.fs.readdir(path);
         const files = [];
         for (const entry of entries) {
-            const fullPath = path === "/" ? `/${entry.name}` : `${path}/${entry.name}`;
-            
+            const fullPath =
+                path === "/" ? `/${entry.name}` : `${path}/${entry.name}`;
+
             if (entry.type === "directory" && !ignoreDir.includes(entry.name)) {
-                const subFiles = await this.getFileTreeFromSandbox(id, fullPath);
+                const subFiles = await this.getFileTreeFromSandbox(
+                    id,
+                    fullPath,
+                );
                 files.push(...subFiles);
             } else {
                 files.push({
@@ -238,7 +241,6 @@ export class CodesandboxService {
         }
         return files;
     }
-
 
     /**
      * Write text content to a file in the sandbox
@@ -279,7 +281,7 @@ export class CodesandboxService {
      */
     async readFileOnSandbox(payload: ReadFileOnSandboxDto) {
         const { sandbox_id, path } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
 
         try {
             const content = await sandbox.fs.readTextFile(path);
@@ -306,7 +308,7 @@ export class CodesandboxService {
      */
     async deleteFileOnSandbox(payload: DeleteFileOnSandboxDto) {
         const { sandbox_id, path } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             await sandbox.fs.remove(path);
             return {
@@ -331,7 +333,7 @@ export class CodesandboxService {
      */
     async listFilesOnSandbox(payload: ListFilesOnSandboxDto) {
         const { sandbox_id, path } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const files = await sandbox.fs.readdir(path);
             return {
@@ -355,7 +357,7 @@ export class CodesandboxService {
      */
     async uploadFileOnSandbox(payload: UploadFileOnSandboxDto) {
         const { sandbox_id, path, content } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             await sandbox.fs.writeFile(path, content);
             return {
@@ -381,7 +383,7 @@ export class CodesandboxService {
      */
     async downloadFileFromSandbox(payload: DownloadFileOnSandboxDto) {
         const { sandbox_id, path } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const { downloadUrl } = await sandbox.fs.download(path);
             return {
@@ -406,7 +408,7 @@ export class CodesandboxService {
      */
     async renameFileOnSandbox(payload: RenameFileOnSandboxDto) {
         const { sandbox_id, old_path, new_path } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             await sandbox.fs.rename(old_path, new_path);
             return {
@@ -428,7 +430,7 @@ export class CodesandboxService {
     }
 
     async getPortInfoOnSandbox(sandbox_id: string, port: number) {
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
 
         try {
             // Get all opened ports
@@ -468,7 +470,7 @@ export class CodesandboxService {
 
     async runCommandOnSandbox(payload: RunCommandOnSandboxDto) {
         const { sandbox_id, command } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command with a timeout of 180 seconds
             const shellPromise = sandbox.shells.run(command);
@@ -511,7 +513,7 @@ export class CodesandboxService {
 
     async runCommandOnSandboxWithoutWaiting(payload: RunCommandOnSandboxDto) {
         const { sandbox_id, command } = payload;
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command
             sandbox.shells.run(command);
@@ -536,7 +538,7 @@ export class CodesandboxService {
     async runTaskOnSandbox(payload: RunTaskOnSandboxDto) {
         const { sandbox_id, task } = payload;
 
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             // Create a promise that will resolve with the task result or reject after 1 minute
             const taskPromise = sandbox.tasks.runTask(task);
@@ -581,7 +583,7 @@ export class CodesandboxService {
     async runTaskOnSandboxAsBackgroundProcess(payload: RunTaskOnSandboxDto) {
         const { sandbox_id, task } = payload;
 
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const result = await sandbox.tasks.runTask(task);
             return {
@@ -602,7 +604,7 @@ export class CodesandboxService {
     }
 
     async runBuildTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const task = await sandbox.tasks.getTask("build");
             if (!task) {
@@ -667,7 +669,7 @@ export class CodesandboxService {
     }
 
     async runDevTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const task = await sandbox.tasks.getTask("dev");
             if (!task) {
@@ -734,7 +736,7 @@ export class CodesandboxService {
     }
 
     async runInstallTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const task = await sandbox.tasks.getTask("install");
             if (!task) {
@@ -794,7 +796,7 @@ export class CodesandboxService {
     }
 
     async runStartTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id)
+        const sandbox = await this.getConnection(sandbox_id);
         try {
             const task = await sandbox.tasks.getTask("start");
             if (!task) {
@@ -855,7 +857,7 @@ export class CodesandboxService {
 
     async killAllShells(sandbox_id: string) {
         try {
-            const sandbox = await this.getConnection(sandbox_id)
+            const sandbox = await this.getConnection(sandbox_id);
             const shells = await sandbox.shells.getShells();
             for (const shell of shells) {
                 await shell.kill();

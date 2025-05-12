@@ -121,6 +121,26 @@ export class CodebaseService {
         }
     }
 
+    async createCodebaseForGitProject(projectId: string) {
+        try {
+            const codebase = this.codebaseRepository.create({
+                project_id: projectId,
+            });
+            // For Git projects, we'll start with an empty understanding since the codebase will be populated from the Git repository
+            codebase.understanding = "This is a Git-based project. The codebase will be populated from the connected Git repository.";
+            return this.codebaseRepository.save(codebase);
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createCodebaseForGitProject: Error creating codebase for git project`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
     async getRepositoryTreesFromProject(projectId: string) {
         try {
             const githubRepository =
