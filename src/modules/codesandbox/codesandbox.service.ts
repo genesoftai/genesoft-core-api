@@ -53,7 +53,7 @@ export class CodesandboxService {
         branch: string;
     }) {
         const { sandbox_id, repository_url, branch } = payload;
-        this.runCommandOnSandbox({
+        await this.runCommandOnSandbox({
             sandbox_id,
             command: `git clone -b ${branch} ${repository_url} app`,
         });
@@ -930,7 +930,7 @@ export class CodesandboxService {
                 sandbox_id,
             },
         });
-        await this.getConnection(sandox_id);
+        await this.getConnection(sandbox_id);
         try {
             await this.killAllShells(sandbox_id);
             await this.runCommandOnSandboxWithoutWaiting({

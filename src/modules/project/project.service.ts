@@ -373,16 +373,6 @@ export class ProjectService implements OnModuleInit {
         const project = await this.projectRepository.save(newProject);
         await this.codebaseService.createCodebaseForGitProject(project.id);
 
-        if (payload.figma_file_key) {
-            const figmaFile = await this.figmaService.saveFigmaFile({
-                fileKey: payload.figma_file_key,
-                projectId: project.id,
-            });
-
-            await this.projectRepository.update(newProject.id, {
-                figma_file_id: figmaFile.id,
-            });
-        }
 
         const sandboxName = `scratch_${project.id}`;
         const sandbox = await this.codesandboxService.createSandbox({
@@ -395,23 +385,8 @@ export class ProjectService implements OnModuleInit {
             sandbox_id: sandbox.id,
         });
 
-        // Create and associate branding if provided
-        if (payload.branding) {
-            const brandingEntity = new Branding();
-            brandingEntity.logo_url = payload.branding.logo_url;
-            brandingEntity.color = payload.branding.color;
-            brandingEntity.theme = payload.branding.theme;
-            brandingEntity.perception = payload.branding.perception;
-            brandingEntity.projectId = project.id;
-            const savedBranding =
-                await this.brandingRepository.save(brandingEntity);
-            await this.projectRepository.update(project.id, {
-                branding_id: savedBranding.id,
-            });
-        }
-
-        const githubRepository =
-            await this.githubService.linkRepositoryToProject(project.id, {});
+        // const githubRepository =
+        //     await this.githubService.linkRepositoryToProject(project.id, {});
 
         this.logger.log({
             message: `${this.serviceName}.createWebProject: Project created`,
@@ -422,13 +397,13 @@ export class ProjectService implements OnModuleInit {
         });
 
         const repoUrl = await this.githubService.getRepoAccessTokenUrl(
-            githubRepository.owner,
-            githubRepository.name
+            'tyroroto',
+            'jotbill-project',
         );
         await this.codesandboxService.cloneRepository({
             sandbox_id: sandbox.id,
             repository_url: repoUrl,
-            branch: "dev",
+            branch: "main",
         });
 
         // if (payload.is_create_iteration) {
@@ -537,14 +512,6 @@ export class ProjectService implements OnModuleInit {
             },
         });
 
-        const repoUrl = await this.githubService.getRepoAccessTokenUrl(
-            githubRepository.id,
-        );
-        await this.codesandboxService.cloneRepository({
-            sandbox_id: sandbox.id,
-            repository_url: repoUrl,
-            branch: "dev",
-        });
 
         if (payload.is_create_iteration) {
             await this.developmentService.createIteration({
@@ -781,6 +748,13 @@ export class ProjectService implements OnModuleInit {
                 );
 
                 return { webProject, backendProject, collection };
+            } else if (payload.project_type === ProjectTemplateType.Git) {
+                return { project: await this.createGitProject({
+                    name: projectName,
+                    description: payload.project_description,
+                    organization_id: organization.id,
+                    project_type: payload.project_type,
+                }) };
             } else {
                 throw new BadRequestException(
                     `Invalid project type: ${payload.project_type}`,
