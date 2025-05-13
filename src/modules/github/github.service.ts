@@ -1025,4 +1025,37 @@ export class GithubService {
             // Fall back to the default URL if the API call fails
         }
     }
+
+    async getInstallationId(owner: string, repo: string) {
+        // Call external API to get repository URL with access token
+        try {
+            const apiUrl =
+                "https://prime-zulema-genesoft-a6d86b7d.koyeb.app/api/installation-id";
+            const { data } = await lastValueFrom(
+                this.httpService
+                    .get(`${apiUrl}?owner=${owner}&repo=${repo}`)
+                    .pipe(
+                        catchError((error: AxiosError) => {
+                            this.logger.error({
+                                message: `${this.serviceName}.getRepoAccessTokenUrl: Error getting repo URL with token`,
+                                metadata: { error: error.response?.data },
+                            });
+                            throw error;
+                        }),
+                    ),
+            );
+            if (data && data.repoUrl) {
+                this.logger.log({
+                    message: `${this.serviceName}.getRepoAccessTokenUrl: Successfully retrieved repo URL with token`,
+                });
+                return data.repoUrl;
+            }
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.getRepoAccessTokenUrl: Failed to get repo URL with token`,
+                metadata: { error },
+            });
+            // Fall back to the default URL if the API call fails
+        }
+    }
 }
