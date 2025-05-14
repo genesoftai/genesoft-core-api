@@ -31,4 +31,7 @@ export class Iteration {
 
     @UpdateDateColumn({ name: "updated_at" })
     updated_at: Date;
+
+    @Column({ name: "branch", type: "text", nullable: true })
+    branch: string;
 }
