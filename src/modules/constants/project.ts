@@ -18,6 +18,7 @@ enum ProjectTemplateType {
     Web = "web",
     WebAndBackend = "web-and-backend",
     Backend = "backend",
+    Git = "git",
 }
 
 enum ProjectTemplateTypeInProjectTable {

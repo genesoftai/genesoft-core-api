@@ -352,11 +352,69 @@ export class ProjectService implements OnModuleInit {
         } else if (payload.project_type === ProjectTemplateType.Backend) {
             // Create backend only project
             return this.createBackendProject(payload);
+        } else if (payload.project_type === ProjectTemplateType.Git) {
+            return this.createGitProject(payload);
         } else {
             throw new BadRequestException(
                 `Invalid project type: ${payload.project_type}`,
             );
         }
+    }
+
+    async createGitProject(payload: CreateProjectDto): Promise<Project> {
+        const newProject = this.projectRepository.create({
+            organization_id: payload.organization_id,
+            name: payload.name,
+            description: payload.description,
+            purpose: payload.purpose,
+            target_audience: payload.target_audience,
+            project_template_type: "git",
+        });
+        const project = await this.projectRepository.save(newProject);
+        await this.codebaseService.createCodebaseForGitProject(project.id);
+
+
+        const sandboxName = `scratch_${project.id}`;
+        const sandbox = await this.codesandboxService.createSandbox({
+            template: CodesandboxTemplateId.Scratch,
+            title: sandboxName,
+            description: `Scratch project for ${sandboxName}`,
+        });
+
+        await this.projectRepository.update(project.id, {
+            sandbox_id: sandbox.id,
+        });
+
+        // const githubRepository =
+        //     await this.githubService.linkRepositoryToProject(project.id, {});
+
+        this.logger.log({
+            message: `${this.serviceName}.createWebProject: Project created`,
+            metadata: {
+                projectId: project.id,
+                timestamp: new Date(),
+            },
+        });
+
+        const repoUrl = await this.githubService.getRepoAccessTokenUrl(
+            'tyroroto',
+            'jotbill-project',
+        );
+        await this.codesandboxService.cloneRepository({
+            sandbox_id: sandbox.id,
+            repository_url: repoUrl,
+            branch: "main",
+        });
+
+        // if (payload.is_create_iteration) {
+        //     await this.developmentService.createIteration({
+        //         project_id: project.id,
+        //         type: IterationType.Project,
+        //         sandbox_id: sandbox.id,
+        //         project_template_type: ProjectTemplateType.Web,
+        //     });
+        // }
+        return project;
     }
 
     async createWebProject(payload: CreateProjectDto): Promise<Project> {
@@ -390,6 +448,7 @@ export class ProjectService implements OnModuleInit {
         }
 
         const sandboxName = `nextjs-web_${project.id}`;
+
         const sandbox = await this.codesandboxService.createSandbox({
             template: CodesandboxTemplateId.NewNextJsShadcn,
             title: sandboxName,
@@ -452,6 +511,7 @@ export class ProjectService implements OnModuleInit {
                 email: "khemmapich@gmail.com",
             },
         });
+
 
         if (payload.is_create_iteration) {
             await this.developmentService.createIteration({
@@ -688,6 +748,13 @@ export class ProjectService implements OnModuleInit {
                 );
 
                 return { webProject, backendProject, collection };
+            } else if (payload.project_type === ProjectTemplateType.Git) {
+                return { project: await this.createGitProject({
+                    name: projectName,
+                    description: payload.project_description,
+                    organization_id: organization.id,
+                    project_type: payload.project_type,
+                }) };
             } else {
                 throw new BadRequestException(
                     `Invalid project type: ${payload.project_type}`,
