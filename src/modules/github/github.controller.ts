@@ -282,10 +282,11 @@ export class GithubController {
 
     @Get("installation")
     @UseGuards(AuthGuard)
-    getInstallationId(@Query() query: {
+    async getInstallationId(@Query() query: {
         owner: string;
         repo: string;
     }) {
+        Logger.log(query);
         return this.githubService.getInstallationId(query.owner, query.repo);
     }
 }

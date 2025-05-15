@@ -120,6 +120,20 @@ export class CreateProjectDto {
     figma_file_key?: string;
 }
 
+export class CreateProjectFromGithubDto extends CreateProjectDto {
+    @IsNotEmpty()
+    @IsString()
+    github_repo_owner: string;
+
+    @IsNotEmpty()
+    @IsString()
+    github_repo_name: string;
+
+    @IsNotEmpty()
+    @IsString()
+    github_installation_id: string;
+}
+
 export class CreateProjectFromOnboardingDto {
     @IsNotEmpty()
     @IsUUID()
@@ -153,4 +167,16 @@ export class CreateProjectFromOnboardingDto {
     @IsOptional()
     @IsString()
     figma_file_key?: string;
+
+    @IsOptional()
+    @IsString()
+    github_repo_owner?: string;
+
+    @IsOptional()
+    @IsString()
+    github_repo_name?: string; 
+
+    @IsOptional()
+    @IsString()
+    github_installation_id?: string;
 }

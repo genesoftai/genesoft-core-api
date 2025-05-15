@@ -96,14 +96,16 @@ export class GithubService {
         );
     }
 
-    async linkRepositoryToProject(projectId: string, repo: any) {
+    async linkRepositoryToProject(projectId: string, repo: {
+        owner: string;
+        name: string;
+    }, installationId: string) {
         const githubRepository = await this.githubRepositoryRepository.save({
             project_id: projectId,
             type: "link",
-            repo_id: repo.id.toString(),
-            owner: repo.owner.login,
+            owner: repo.owner,
             name: repo.name,
-            full_name: repo.full_name,
+            installation_id: installationId,
             is_active: true,
         });
         return githubRepository;
@@ -1044,11 +1046,11 @@ export class GithubService {
                         }),
                     ),
             );
-            if (data && data.repoUrl) {
+            if (data) {
                 this.logger.log({
                     message: `${this.serviceName}.getRepoAccessTokenUrl: Successfully retrieved repo URL with token`,
                 });
-                return data.repoUrl;
+                return data;
             }
         } catch (error) {
             this.logger.error({
