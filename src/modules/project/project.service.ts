@@ -13,6 +13,7 @@ import { In, MoreThan, Repository } from "typeorm";
 import { Project } from "./entity/project.entity";
 import {
     CreateProjectDto,
+    CreateProjectFromGithubDto,
     CreateProjectFromOnboardingDto,
 } from "./dto/create-project.dto";
 import { Page } from "./entity/page.entity";
@@ -353,7 +354,7 @@ export class ProjectService implements OnModuleInit {
             // Create backend only project
             return this.createBackendProject(payload);
         } else if (payload.project_type === ProjectTemplateType.Git) {
-            return this.createGitProject(payload);
+            return this.createGitProject(payload as CreateProjectFromGithubDto);
         } else {
             throw new BadRequestException(
                 `Invalid project type: ${payload.project_type}`,
@@ -361,7 +362,7 @@ export class ProjectService implements OnModuleInit {
         }
     }
 
-    async createGitProject(payload: CreateProjectDto): Promise<Project> {
+    async createGitProject(payload: CreateProjectFromGithubDto): Promise<Project> {
         const newProject = this.projectRepository.create({
             organization_id: payload.organization_id,
             name: payload.name,
@@ -385,8 +386,13 @@ export class ProjectService implements OnModuleInit {
             sandbox_id: sandbox.id,
         });
 
-        // const githubRepository =
-        //     await this.githubService.linkRepositoryToProject(project.id, {});
+        const linkedRepo = await this.githubService.linkRepositoryToProject(project.id,
+              {
+                owner: payload.github_repo_owner,
+                name: payload.github_repo_name,
+              },
+             payload.github_installation_id);
+        Logger.log(`Project linked to github repo ${project.id} - ${linkedRepo.id}`, 'CreateProjectService');
 
         this.logger.log({
             message: `${this.serviceName}.createWebProject: Project created`,
@@ -397,23 +403,15 @@ export class ProjectService implements OnModuleInit {
         });
 
         const repoUrl = await this.githubService.getRepoAccessTokenUrl(
-            'tyroroto',
-            'jotbill-project',
+            payload.github_repo_owner,
+            payload.github_repo_name,
         );
+
         await this.codesandboxService.cloneRepository({
             sandbox_id: sandbox.id,
             repository_url: repoUrl,
             branch: "main",
         });
-
-        // if (payload.is_create_iteration) {
-        //     await this.developmentService.createIteration({
-        //         project_id: project.id,
-        //         type: IterationType.Project,
-        //         sandbox_id: sandbox.id,
-        //         project_template_type: ProjectTemplateType.Web,
-        //     });
-        // }
         return project;
     }
 
@@ -754,6 +752,10 @@ export class ProjectService implements OnModuleInit {
                     description: payload.project_description,
                     organization_id: organization.id,
                     project_type: payload.project_type,
+                    github_installation_id: payload.github_installation_id,
+                    github_repo_owner: payload.github_repo_owner,
+                    github_repo_name: payload.github_repo_name,
+                    
                 }) };
             } else {
                 throw new BadRequestException(
