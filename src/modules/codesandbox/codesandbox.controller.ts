@@ -73,23 +73,9 @@ export class CodesandboxController {
         return this.codesandboxService.writeFileOnSandbox(payload);
     }
 
-    @Post("files/write/fast")
-    async writeFileWithoutHibernate(@Body() payload: WriteFileOnSandboxDto) {
-        return this.codesandboxService.writeFileOnSandboxWithoutHibernate(
-            payload,
-        );
-    }
-
     @Post("files/read")
     async readFile(@Body() payload: ReadFileOnSandboxDto) {
         return this.codesandboxService.readFileOnSandbox(payload);
-    }
-
-    @Post("files/read/fast")
-    async readFileWithoutHibernate(@Body() payload: ReadFileOnSandboxDto) {
-        return this.codesandboxService.readFileOnSandboxWithoutHibernate(
-            payload,
-        );
     }
 
     @Delete("files/delete")

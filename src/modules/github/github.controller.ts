@@ -279,4 +279,14 @@ export class GithubController {
             status: "success",
         };
     }
+
+    @Get("installation")
+    @UseGuards(AuthGuard)
+    async getInstallationId(@Query() query: {
+        owner: string;
+        repo: string;
+    }) {
+        Logger.log(query);
+        return this.githubService.getInstallationId(query.owner, query.repo);
+    }
 }

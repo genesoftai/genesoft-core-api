@@ -8,7 +8,6 @@ import { GithubService } from "../github/github.service";
 import { Project } from "../project/entity/project.entity";
 import { GithubRepository } from "../github/entity/github-repository.entity";
 import { CodesandboxService } from "../codesandbox/codesandbox.service";
-import { GetFileDto } from "./dto/get-file.dto";
 import { UpdateFileDto } from "./dto/update-file.dto";
 
 @Injectable()
@@ -122,6 +121,26 @@ export class CodebaseService {
         }
     }
 
+    async createCodebaseForGitProject(projectId: string) {
+        try {
+            const codebase = this.codebaseRepository.create({
+                project_id: projectId,
+            });
+            // For Git projects, we'll start with an empty understanding since the codebase will be populated from the Git repository
+            codebase.understanding = "This is a Git-based project. The codebase will be populated from the connected Git repository.";
+            return this.codebaseRepository.save(codebase);
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.createCodebaseForGitProject: Error creating codebase for git project`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
     async getRepositoryTreesFromProject(projectId: string) {
         try {
             const githubRepository =
@@ -147,6 +166,17 @@ export class CodebaseService {
             });
             throw error;
         }
+    }
+
+    async getFileTreeFromProject(projectId: string) {
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+        if (!project.sandbox_id) {
+            throw new Error("Sandbox not found");
+        }
+        const fileTree = await this.codesandboxService.getFileTreeFromSandbox(project.sandbox_id);
+        return fileTree;
     }
 
     async getFileContentFromProject(projectId: string, path: string) {
@@ -193,17 +223,9 @@ export class CodebaseService {
 
     async updateRepositoryFile(payload: UpdateFileDto) {
         const { projectId, path, content, message } = payload;
-        const committer = {
-            name: "khemmapichpanyana",
-            email: "khemmapich@gmail.com",
-        };
         const project = await this.projectRepository.findOne({
             where: { id: projectId },
         });
-        const githubRepository = await this.githubRepositoryRepository.findOne({
-            where: { project_id: projectId },
-        });
-        // TODO: also update on codesandbox, if not successful, throw error
         try {
             let updatedFileOnSandbox;
             if (project.sandbox_id) {
@@ -214,28 +236,11 @@ export class CodebaseService {
                         content,
                     });
             }
-            // TODO: update on github
-            let updatedFileOnGithub;
-            if (githubRepository.name) {
-                updatedFileOnGithub =
-                    await this.githubService.updateRepositoryContent({
-                        repository: githubRepository.name,
-                        branch: "dev",
-                        path,
-                        content,
-                        message:
-                            message ||
-                            `Updated ${path} for ${projectId} by user`,
-                        committer,
-                        ref: "dev",
-                    });
-            }
 
             return {
                 status: "success",
                 message: "File updated",
                 updatedFileOnSandbox,
-                updatedFileOnGithub,
             };
         } catch (error) {
             this.logger.error({
