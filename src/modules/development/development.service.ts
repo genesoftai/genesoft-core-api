@@ -137,7 +137,6 @@ export class DevelopmentService {
                     });
                     const response = await lastValueFrom(
                         this.httpService.post(
-                            // `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/core`,
                             `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/frontend-team-ai-agents/conversation`,
                             {
                                 project_id: payload.project_id,
@@ -163,7 +162,7 @@ export class DevelopmentService {
                     });
                     const response = await lastValueFrom(
                         this.httpService.post(
-                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/project`,
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/backend-team-ai-agents/create-project`,
                             {
                                 project_id: payload.project_id,
                                 input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
@@ -191,7 +190,7 @@ export class DevelopmentService {
                     });
                     const response = await lastValueFrom(
                         this.httpService.post(
-                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/core`,
+                            `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/backend-team-ai-agents/conversation`,
                             {
                                 project_id: payload.project_id,
                                 input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
@@ -263,7 +262,7 @@ export class DevelopmentService {
 
             await lastValueFrom(
                 this.httpService.post(
-                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-development-agent/development/project`,
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/frontend-team-ai-agents/create-project`,
                     {
                         project_id: webProject.id,
                         input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
@@ -303,7 +302,7 @@ export class DevelopmentService {
 
             await lastValueFrom(
                 this.httpService.post(
-                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/core-backend-development-agent/development/project`,
+                    `${this.aiAgentConfigurationService.genesoftAiAgentServiceBaseUrl}/api/multi-agents/development/backend-team-ai-agents/create-project`,
                     {
                         project_id: backendProject.id,
                         input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,

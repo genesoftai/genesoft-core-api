@@ -878,6 +878,97 @@ export class CodesandboxService {
         }
     }
 
+    async runCommandToGetLogsOnSandbox(
+        sandbox_id: string,
+        command: string,
+        end_of_logs_keywords: string[],
+    ) {
+        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        try {
+            // Run the command
+            const shell = sandbox.shells.run(command);
+
+            this.logger.log({
+                message: `${this.serviceName}.runCommandToGetLogsOnSandbox: Running command on sandbox`,
+                metadata: {
+                    sandbox_id,
+                    command,
+                    shell,
+                },
+            });
+
+            let allOutput = "";
+            let isResolved = false;
+
+            const output = await new Promise((resolve) => {
+                const timeoutId = setTimeout(() => {
+                    if (allOutput && !isResolved) {
+                        isResolved = true;
+                        resolve(allOutput);
+                    }
+                }, 180000); // 3 minutes (180 seconds) timeout
+
+                // Set up checking interval to verify if command has completed
+                const checkInterval = setInterval(() => {
+                    if (isResolved) {
+                        clearInterval(checkInterval);
+                        return;
+                    }
+                }, 5000); // Check every 5 seconds
+
+                shell.onOutput((output) => {
+                    allOutput += output + "\n";
+
+                    if (
+                        end_of_logs_keywords.some((keyword) =>
+                            output.includes(keyword),
+                        )
+                        // output.includes("ready in") ||
+                        // output.includes("Local:") ||
+                        // output.includes("localhost:") ||
+                        // output.includes("started server on") ||
+                        // output.includes(
+                        //     "Nest application successfully started",
+                        // ) ||
+                        // output.includes("Command failed with exit code") ||
+                        // output.includes("errors. Watching for file changes") ||
+                        // output.includes(
+                        //     "npm ERR! A complete log of this run can be found in",
+                        // )
+                    ) {
+                        clearTimeout(timeoutId);
+                        clearInterval(checkInterval);
+                        isResolved = true;
+                        resolve(allOutput);
+                    }
+                });
+            });
+
+            // Kill the shell after we've captured the output
+            shell.kill();
+
+            return {
+                sandbox_id,
+                command,
+                output,
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.runCommandToGetLogsOnSandbox: Error running command on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            return {
+                sandbox_id,
+                command,
+                output: "Can't execute command on sandbox",
+                exitCode: 1,
+            };
+        }
+    }
+
     async killAllShells(sandbox_id: string) {
         try {
             const sandbox = await this.sdk.sandbox.open(sandbox_id);

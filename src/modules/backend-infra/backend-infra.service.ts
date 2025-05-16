@@ -74,7 +74,7 @@ export class BackendInfraService implements OnModuleInit {
             ? `https://codesandbox.io/p/devbox/nextjs-web-${projectId}-${project?.sandbox_id}`
             : null;
         const port = 8000;
-        const codesandboxPreviewUrl = `https://${project?.sandbox_id}-${port}.csb.app`;
+        const codesandboxPreviewUrl = `https://${project?.sandbox_id}-${port}.csb.app/api/api-docs`;
 
         return {
             developmentStatus,

@@ -9,6 +9,7 @@ import {
     RunTaskOnSandboxDto,
     RunInstallTaskOnSandboxDto,
     RunStartTaskOnSandboxDto,
+    RunCommandToGetLogsOnSandboxDto,
 } from "./dto/run-sandbox.dto";
 import {
     WriteFileOnSandboxDto,
@@ -119,6 +120,17 @@ export class CodesandboxController {
     @Post("command/run")
     async runCommand(@Body() payload: RunCommandOnSandboxDto) {
         return this.codesandboxService.runCommandOnSandbox(payload);
+    }
+
+    @Post("command/run/logs")
+    async runCommandToGetLogs(
+        @Body() payload: RunCommandToGetLogsOnSandboxDto,
+    ) {
+        return this.codesandboxService.runCommandToGetLogsOnSandbox(
+            payload.sandbox_id,
+            payload.command,
+            payload.end_of_logs_keywords,
+        );
     }
 
     @Post("command/run/background")
