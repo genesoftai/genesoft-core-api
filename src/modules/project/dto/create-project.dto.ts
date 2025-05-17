@@ -6,6 +6,7 @@ import {
     ValidateNested,
     IsNotEmpty,
     IsBoolean,
+    IsNumber,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -130,8 +131,8 @@ export class CreateProjectFromGithubDto extends CreateProjectDto {
     github_repo_name: string;
 
     @IsNotEmpty()
-    @IsString()
-    github_installation_id: string;
+    @IsNumber()
+    github_installation_id: number;
 }
 
 export class CreateProjectFromOnboardingDto {
@@ -177,6 +178,6 @@ export class CreateProjectFromOnboardingDto {
     github_repo_name?: string; 
 
     @IsOptional()
-    @IsString()
-    github_installation_id?: string;
+    @IsNumber()
+    github_installation_id?: number;
 }

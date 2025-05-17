@@ -52,6 +52,7 @@ export class CodesandboxService {
         repository_url: string;
         branch: string;
     }) {
+
         const { sandbox_id, repository_url, branch } = payload;
         await this.runCommandOnSandbox({
             sandbox_id,
@@ -469,6 +470,12 @@ export class CodesandboxService {
     }
 
     async runCommandOnSandbox(payload: RunCommandOnSandboxDto) {
+        this.logger.log({
+            message: `${this.serviceName}.runCommandOnSandbox: Running command on sandbox`,
+            metadata: {
+                payload,
+            },
+        });
         const { sandbox_id, command } = payload;
         const sandbox = await this.getConnection(sandbox_id);
         try {

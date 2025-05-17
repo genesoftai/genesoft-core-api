@@ -99,7 +99,7 @@ export class GithubService {
     async linkRepositoryToProject(projectId: string, repo: {
         owner: string;
         name: string;
-    }, installationId: string) {
+    }, installationId: number) {
         const githubRepository = await this.githubRepositoryRepository.save({
             project_id: projectId,
             type: "link",
