@@ -40,6 +40,10 @@ export class Project {
     @Column({ name: "sandbox_id", type: "text", nullable: true })
     sandbox_id: string;
 
+ 
+    @Column({ name: "project_type", type: "text", nullable: true })
+    project_type: string;
+
     @Column({ name: "project_template_type", type: "text", nullable: true })
     project_template_type: string;
 

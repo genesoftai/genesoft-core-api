@@ -20,6 +20,9 @@ export class GithubRepository {
     @Column({ name: "repo_id" })
     repo_id: string;
 
+    @Column({ name: "installation_id" })
+    installation_id: number;
+
     @Column()
     owner: string;
 
@@ -46,4 +49,5 @@ export class GithubRepository {
 
     @Column({ name: "production_branch", type: "text", nullable: true })
     production_branch: string;
+
 }
