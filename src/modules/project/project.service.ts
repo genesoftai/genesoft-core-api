@@ -390,6 +390,9 @@ export class ProjectService implements OnModuleInit {
               {
                 owner: payload.github_repo_owner,
                 name: payload.github_repo_name,
+                branch: payload.github_repo_branch,
+                type: payload.github_repo_type,
+                id: payload.github_repo_id,
               },
              payload.github_installation_id);
         Logger.log(`Project linked to github repo ${project.id} - ${linkedRepo.id}`, 'CreateProjectService');
@@ -410,7 +413,7 @@ export class ProjectService implements OnModuleInit {
         await this.codesandboxService.cloneRepository({
             sandbox_id: sandbox.id,
             repository_url: repoUrl,
-            branch: "main",
+            branch: payload.github_repo_branch,
         });
         return project;
     }
@@ -755,7 +758,9 @@ export class ProjectService implements OnModuleInit {
                     github_installation_id: payload.github_installation_id,
                     github_repo_owner: payload.github_repo_owner,
                     github_repo_name: payload.github_repo_name,
-                    
+                    github_repo_branch: payload.github_repo_branch,
+                    github_repo_type: payload.github_repo_type,
+                    github_repo_id: payload.github_repo_id.toString(),
                 }) };
             } else {
                 throw new BadRequestException(

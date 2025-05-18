@@ -133,6 +133,19 @@ export class CreateProjectFromGithubDto extends CreateProjectDto {
     @IsNotEmpty()
     @IsNumber()
     github_installation_id: number;
+
+
+    @IsOptional()
+    @IsString()
+    github_repo_branch?: string;
+
+    @IsOptional()
+    @IsString()
+    github_repo_type?: string;
+
+    @IsOptional()
+    @IsString()
+    github_repo_id?: string;
 }
 
 export class CreateProjectFromOnboardingDto {
@@ -180,4 +193,16 @@ export class CreateProjectFromOnboardingDto {
     @IsOptional()
     @IsNumber()
     github_installation_id?: number;
+
+    @IsOptional()
+    @IsString()
+    github_repo_branch?: string;
+
+    @IsOptional()
+    @IsString()
+    github_repo_type?: string;
+
+    @IsOptional()
+    @IsNumber()
+    github_repo_id?: number;
 }

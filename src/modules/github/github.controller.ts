@@ -289,4 +289,15 @@ export class GithubController {
         Logger.log(query);
         return this.githubService.getInstallationId(query.owner, query.repo);
     }
+
+    @Get("branches")
+    @UseGuards(AuthGuard)
+    async getAllBranches(@Query() query: {
+        installationId: number;
+        owner: string;
+        repo: string;
+    }) {
+        return this.githubService.getAllBranches(query.installationId, query.owner, query.repo);
+    }
 }
+
