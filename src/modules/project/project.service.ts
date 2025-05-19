@@ -403,16 +403,16 @@ export class ProjectService implements OnModuleInit {
             },
         });
 
-        const repoUrl = await this.githubService.getRepoAccessTokenUrl(
-            payload.github_repo_owner,
-            payload.github_repo_name,
-        );
+        // const repoUrl = await this.githubService.getRepoAccessTokenUrl(
+        //     payload.github_repo_owner,
+        //     payload.github_repo_name,
+        // );
 
-        await this.codesandboxService.cloneRepository({
-            sandbox_id: sandbox.id,
-            repository_url: repoUrl,
-            branch: payload.github_repo_branch,
-        });
+        // await this.codesandboxService.cloneRepository({
+        //     sandbox_id: sandbox.id,
+        //     repository_url: repoUrl,
+        //     branch: payload.github_repo_branch,
+        // });
         return project;
     }
 
