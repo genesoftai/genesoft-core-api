@@ -900,11 +900,11 @@ export class CodesandboxService {
             // const installTask = await this.runInstallTaskOnSandbox(sandbox_id);
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm install",
+                command: "cd app && pnpm install",
             });
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm run dev",
+                command: "cd app && pnpm run dev",
             });
             this.logger.log({
                 message: `${this.serviceName}.setupSandboxForWebProject: Setup sandbox for web project finished`,
@@ -944,11 +944,11 @@ export class CodesandboxService {
             await this.killAllShells(sandbox_id);
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm install",
+                command: "cd app && pnpm install",
             });
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm run start:dev",
+                command: "cd app && pnpm run start:dev",
             });
             this.logger.log({
                 message: `${this.serviceName}.setupSandboxForBackendProject: Setup sandbox for backend project finished`,
