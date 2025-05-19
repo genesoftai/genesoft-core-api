@@ -39,8 +39,6 @@ import { GithubService } from "../github/github.service";
 import {
     formatBasicInfo,
     formatBranding,
-    formatFeatures,
-    formatPages,
 } from "@/utils/project/documentation";
 import { Iteration } from "../development/entity/iteration.entity";
 import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
