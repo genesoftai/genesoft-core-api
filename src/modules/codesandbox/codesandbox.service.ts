@@ -476,10 +476,11 @@ export class CodesandboxService {
                 payload,
             },
         });
-        const { sandbox_id, command } = payload;
+        let { sandbox_id, command } = payload;
         const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command with a timeout of 180 seconds
+            command = `cd app && ${command}`;
             const shellPromise = sandbox.shells.run(command);
             const timeoutPromise: Promise<{
                 sandbox_id: string;
@@ -519,10 +520,11 @@ export class CodesandboxService {
     }
 
     async runCommandOnSandboxWithoutWaiting(payload: RunCommandOnSandboxDto) {
-        const { sandbox_id, command } = payload;
+        let { sandbox_id, command } = payload;
         const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command
+            command = `cd app && ${command}`;
             sandbox.shells.run(command);
 
             return {
