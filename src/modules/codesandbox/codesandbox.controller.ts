@@ -58,6 +58,64 @@ export class CodesandboxController {
         return this.codesandboxService.getPortInfoOnSandbox(id, port);
     }
 
+    @Post(":id/pull")
+    async pull(
+        @Param("id") id: string,
+    ) {
+        try {
+            return this.codesandboxService.runCommandOnSandbox({
+                sandbox_id: id,
+                command: "git pull",
+            });
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
+
+    @Post(":id/push")
+    async push(
+        @Param("id") id: string,
+    ) {
+        try {
+            return this.codesandboxService.runCommandOnSandbox({
+                sandbox_id: id,
+                command: "git push",
+            });
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
+
+    @Post(":id/add")
+    async add(
+        @Param("id") id: string,
+        @Body() payload: { path: string },
+    ) {
+        try {
+            return this.codesandboxService.runCommandOnSandbox({
+                sandbox_id: id,
+                command: `git add ${payload.path}`,
+            });
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
+
+    @Post(":id/commit")
+    async commit(
+        @Param("id") id: string,
+        @Body() payload: { message: string },
+    ) {
+        try {
+            return this.codesandboxService.runCommandOnSandbox({
+                sandbox_id: id,
+                command: `git commit -m '${payload.message}'`,
+            });
+        } catch (error) {
+            throw new Error(`Failed to decode token: ${error.message}`);
+        }
+    }
+    
     @Post(":id/setup/web")
     async setupSandboxForWebProject(@Param("id") id: string) {
         return this.codesandboxService.setupSandboxForWebProject(id);
@@ -168,4 +226,6 @@ export class CodesandboxController {
     async killAllShells(@Body() payload: KillAllShellsDto) {
         return this.codesandboxService.killAllShells(payload.sandbox_id);
     }
+
+
 }

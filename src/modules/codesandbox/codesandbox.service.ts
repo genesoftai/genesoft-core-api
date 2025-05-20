@@ -52,6 +52,7 @@ export class CodesandboxService {
         repository_url: string;
         branch: string;
     }) {
+
         const { sandbox_id, repository_url, branch } = payload;
         await this.runCommandOnSandbox({
             sandbox_id,
@@ -469,10 +470,17 @@ export class CodesandboxService {
     }
 
     async runCommandOnSandbox(payload: RunCommandOnSandboxDto) {
-        const { sandbox_id, command } = payload;
+        this.logger.log({
+            message: `${this.serviceName}.runCommandOnSandbox: Running command on sandbox`,
+            metadata: {
+                payload,
+            },
+        });
+        let { sandbox_id, command } = payload;
         const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command with a timeout of 180 seconds
+            command = `cd app && ${command}`;
             const shellPromise = sandbox.shells.run(command);
             const timeoutPromise: Promise<{
                 sandbox_id: string;
@@ -512,10 +520,11 @@ export class CodesandboxService {
     }
 
     async runCommandOnSandboxWithoutWaiting(payload: RunCommandOnSandboxDto) {
-        const { sandbox_id, command } = payload;
+        let { sandbox_id, command } = payload;
         const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command
+            command = `cd app && ${command}`;
             sandbox.shells.run(command);
 
             return {
@@ -982,11 +991,11 @@ export class CodesandboxService {
             // const installTask = await this.runInstallTaskOnSandbox(sandbox_id);
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm install",
+                command: "cd app && pnpm install",
             });
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm run dev",
+                command: "cd app && pnpm run dev",
             });
             this.logger.log({
                 message: `${this.serviceName}.setupSandboxForWebProject: Setup sandbox for web project finished`,
@@ -1026,11 +1035,11 @@ export class CodesandboxService {
             await this.killAllShells(sandbox_id);
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm install",
+                command: "cd app && pnpm install",
             });
             await this.runCommandOnSandboxWithoutWaiting({
                 sandbox_id,
-                command: "pnpm run start:dev",
+                command: "cd app && pnpm run start:dev",
             });
             this.logger.log({
                 message: `${this.serviceName}.setupSandboxForBackendProject: Setup sandbox for backend project finished`,

@@ -36,12 +36,7 @@ import { AWSConfigurationService } from "../configuration/aws";
 import { GithubRepository } from "../github/entity/github-repository.entity";
 import { ProjectTemplateName, ProjectTemplateType } from "../constants/project";
 import { GithubService } from "../github/github.service";
-import {
-    formatBasicInfo,
-    formatBranding,
-    formatFeatures,
-    formatPages,
-} from "@/utils/project/documentation";
+import { formatBasicInfo, formatBranding } from "@/utils/project/documentation";
 import { Iteration } from "../development/entity/iteration.entity";
 import { KoyebProject } from "@/modules/backend-infra/entity/koyeb-project.entity";
 import { Supabase } from "../supabase/entity/supabase.entity";
@@ -392,6 +387,9 @@ export class ProjectService implements OnModuleInit {
             {
                 owner: payload.github_repo_owner,
                 name: payload.github_repo_name,
+                branch: payload.github_repo_branch,
+                type: payload.github_repo_type,
+                id: payload.github_repo_id,
             },
             payload.github_installation_id,
         );
@@ -408,16 +406,16 @@ export class ProjectService implements OnModuleInit {
             },
         });
 
-        const repoUrl = await this.githubService.getRepoAccessTokenUrl(
-            payload.github_repo_owner,
-            payload.github_repo_name,
-        );
+        // const repoUrl = await this.githubService.getRepoAccessTokenUrl(
+        //     payload.github_repo_owner,
+        //     payload.github_repo_name,
+        // );
 
-        await this.codesandboxService.cloneRepository({
-            sandbox_id: sandbox.id,
-            repository_url: repoUrl,
-            branch: "main",
-        });
+        // await this.codesandboxService.cloneRepository({
+        //     sandbox_id: sandbox.id,
+        //     repository_url: repoUrl,
+        //     branch: payload.github_repo_branch,
+        // });
         return project;
     }
 
@@ -761,6 +759,9 @@ export class ProjectService implements OnModuleInit {
                         github_installation_id: payload.github_installation_id,
                         github_repo_owner: payload.github_repo_owner,
                         github_repo_name: payload.github_repo_name,
+                        github_repo_branch: payload.github_repo_branch,
+                        github_repo_type: payload.github_repo_type,
+                        github_repo_id: payload.github_repo_id.toString(),
                     }),
                 };
             } else {
