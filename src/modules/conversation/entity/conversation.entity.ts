@@ -34,4 +34,7 @@ export class Conversation {
 
     @UpdateDateColumn({ name: "updated_at", type: "timestamp" })
     updated_at: Date;
+
+    @Column({ name: "github_branch_id", nullable: true })
+    github_branch_id: string;
 }

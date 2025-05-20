@@ -36,6 +36,7 @@ import { CollectionModule } from "./modules/collection/collection.module";
 import { CodebaseModule } from "./modules/codebase/codebase.module";
 import { OnboardingConversationModule } from "./modules/onboarding-conversation/onboarding-conversation.module";
 import { FigmaModule } from "./modules/figma/figma.module";
+import { GithubManagementModule } from "./modules/github-management/github-management.module";
 
 @Module({
     imports: [
@@ -92,6 +93,7 @@ import { FigmaModule } from "./modules/figma/figma.module";
         CodebaseModule,
         OnboardingConversationModule,
         FigmaModule,
+        GithubManagementModule,
     ],
     controllers: [AppController],
     providers: [AppService, Logger],

@@ -17,6 +17,9 @@ export class FigmaFile {
     @Column({ name: "figma_file_key", type: "text" })
     figma_file_key: string;
 
+    @Column({ name: "figma_file_url", type: "text" })
+    figma_file_url: string;
+
     @CreateDateColumn({ name: "created_at" })
     created_at: Date;
 

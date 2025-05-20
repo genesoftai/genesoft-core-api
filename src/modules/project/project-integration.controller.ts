@@ -1,23 +1,30 @@
-import { BadRequestException, Post, Get, Param, Controller, Body } from "@nestjs/common";
+import {
+    BadRequestException,
+    Post,
+    Get,
+    Param,
+    Controller,
+    Body,
+} from "@nestjs/common";
 import { ProjectDbManagerService } from "../project-db/project-db-manager.service";
 import { ProjectService } from "./project.service";
 import { SubscriptionService } from "../subscription/subscription.service";
 import { BackendInfraService } from "../backend-infra/backend-infra.service";
 
 @Controller("projects")
-export class ProjectIntegrationController  {
+export class ProjectIntegrationController {
     constructor(
-            private readonly projectDbManagerService: ProjectDbManagerService,
-            private readonly subscriptionService: SubscriptionService,
-            private readonly projectService: ProjectService,
-            private readonly backendInfraService: BackendInfraService
+        private readonly projectDbManagerService: ProjectDbManagerService,
+        private readonly subscriptionService: SubscriptionService,
+        private readonly projectService: ProjectService,
+        private readonly backendInfraService: BackendInfraService,
     ) {}
 
     @Post(":id/database")
     async createProjectDatabase(@Param("id") id: string) {
         return this.projectDbManagerService.createProjectDatabase(id);
     }
-    
+
     @Get(":id/database/disk-usage")
     async getProjectDatabaseDiskUsage(@Param("id") id: string) {
         return this.projectDbManagerService.getDatabaseDiskUsage(id);

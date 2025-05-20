@@ -43,6 +43,7 @@ import { AppConfigurationService } from "@/modules/configuration/app/app.service
 import { Collection } from "../collection/entity/collection.entity";
 import { ConversationService } from "@/modules/conversation/conversation.service";
 import { IterationStep } from "./entity/iteration-step.entity";
+import { GithubBranch } from "../github-management/entity/github-branch.entity";
 @Injectable()
 export class DevelopmentService {
     private readonly logger = new Logger(DevelopmentService.name);
@@ -82,6 +83,8 @@ export class DevelopmentService {
         private conversationService: ConversationService,
         @InjectRepository(IterationStep)
         private iterationStepRepository: Repository<IterationStep>,
+        @InjectRepository(GithubBranch)
+        private githubBranchRepository: Repository<GithubBranch>,
     ) {
         this.freeTierIterationsLimit =
             this.appConfigurationService.freeTierIterationsLimit;
@@ -105,6 +108,13 @@ export class DevelopmentService {
             const iterationType = payload.type;
             const templateType = payload.project_template_type || "";
             const caseKey = `${iterationType}_${templateType}`;
+            let branch = "dev";
+            if (payload.github_branch_id) {
+                const githubBranch = await this.githubBranchRepository.findOne({
+                    where: { id: payload.github_branch_id },
+                });
+                branch = githubBranch.name;
+            }
 
             switch (caseKey) {
                 case `${IterationType.Project}_${ProjectTemplateType.Web}`: {
@@ -119,7 +129,7 @@ export class DevelopmentService {
                                 input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
                                 iteration_id: savedIteration.id,
                                 frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                                branch: "dev",
+                                branch,
                                 sandbox_id: payload.sandbox_id || "",
                             },
                         ),
@@ -143,7 +153,7 @@ export class DevelopmentService {
                                 input: `Develop the project according to the project documentation about overview and branding. Don't start from scratch but plan tasks based on existing code in the frontend github repository. Please use your creativity based on project documentation to satisfy user requirements.`,
                                 iteration_id: savedIteration.id,
                                 frontend_repo_name: `${ProjectTemplateName.NextJsWeb}_${payload.project_id}`,
-                                branch: "dev",
+                                branch,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },
@@ -168,7 +178,7 @@ export class DevelopmentService {
                                 input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
                                 iteration_id: savedIteration.id,
                                 backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                                branch: "dev",
+                                branch,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                                 is_create_web_project:
@@ -196,7 +206,7 @@ export class DevelopmentService {
                                 input: `Develop the project according to technical requirements from software developer. Don't start from scratch but plan tasks based on existing code in the backend github repository. Please make it satisfy user requirements to be a good backend service for user's web application.`,
                                 iteration_id: savedIteration.id,
                                 backend_repo_name: `${ProjectTemplateName.NestJsApi}_${payload.project_id}`,
-                                branch: "dev",
+                                branch,
                                 conversation_id: payload.conversation_id,
                                 sandbox_id: payload.sandbox_id || "",
                             },

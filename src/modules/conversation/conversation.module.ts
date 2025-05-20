@@ -19,6 +19,8 @@ import { Iteration } from "@/modules/development/entity/iteration.entity";
 import { IterationTask } from "@/modules/development/entity/iteration-task.entity";
 import { File } from "@/modules/metadata/entity/file.entity";
 import { AWSConfigurationModule } from "@/modules/configuration/aws";
+import { GithubBranch } from "../github-management/entity/github-branch.entity";
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -29,6 +31,7 @@ import { AWSConfigurationModule } from "@/modules/configuration/aws";
             Iteration,
             IterationTask,
             File,
+            GithubBranch,
         ]),
         UserModule,
         GithubModule,

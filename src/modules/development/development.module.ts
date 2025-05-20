@@ -22,6 +22,7 @@ import { AppConfigurationModule } from "../configuration/app";
 import { Collection } from "../collection/entity/collection.entity";
 import { ConversationModule } from "@/modules/conversation/conversation.module";
 import { IterationStep } from "./entity/iteration-step.entity";
+import { GithubBranch } from "../github-management/entity/github-branch.entity";
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -34,6 +35,7 @@ import { IterationStep } from "./entity/iteration-step.entity";
             Subscription,
             Collection,
             IterationStep,
+            GithubBranch,
         ]),
         HttpModule,
         AiAgentConfigurationModule,

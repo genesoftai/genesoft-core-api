@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Query,
+} from "@nestjs/common";
 import { FigmaService } from "./figma.service";
-import { SaveFigmaFileDto } from "./dto/save-figma-file.dto";
+import {
+    SaveFigmaFileDto,
+    UpdateFigmaFileForProjectDto,
+} from "./dto/save-figma-file.dto";
 
 @Controller("figma")
 export class FigmaController {
@@ -9,6 +20,13 @@ export class FigmaController {
     @Post("file")
     async saveFigmaFile(@Body() payload: SaveFigmaFileDto) {
         return this.figmaService.saveFigmaFile(payload);
+    }
+
+    @Patch("file/project/:projectId")
+    async updateFigmaFileForProject(
+        @Body() payload: UpdateFigmaFileForProjectDto,
+    ) {
+        return this.figmaService.updateFigmaFileForProject(payload);
     }
 
     @Get("file/project/:projectId")

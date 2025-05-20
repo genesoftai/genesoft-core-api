@@ -11,3 +11,17 @@ export class SaveFigmaFileDto {
     @IsNotEmpty()
     projectId: string;
 }
+
+export class UpdateFigmaFileForProjectDto {
+    @IsString()
+    @IsNotEmpty()
+    fileUrl: string;
+
+    @IsString()
+    @IsNotEmpty()
+    fileKey: string;
+
+    @IsString()
+    @IsNotEmpty()
+    projectId: string;
+}

@@ -43,6 +43,7 @@ import { AWSConfigurationService } from "@/modules/configuration/aws";
 import { CallGeminiPayload } from "@/modules/types/llm/gemini";
 import { CallBackendDeveloperAgent } from "@/modules/types/llm/backend-agent";
 import { CallFrontendDeveloperAgent } from "@/modules/types/llm/frontend-agent";
+import { GithubBranch } from "../github-management/entity/github-branch.entity";
 
 export interface ConversationMessageForWeb extends ConversationMessage {
     sender: {
@@ -86,6 +87,8 @@ export class ConversationService {
         @InjectRepository(File)
         private fileRepository: Repository<File>,
         private awsConfigurationService: AWSConfigurationService,
+        @InjectRepository(GithubBranch)
+        private githubBranchRepository: Repository<GithubBranch>,
     ) {}
 
     async createConversation(
@@ -1024,6 +1027,7 @@ export class ConversationService {
                     ? ProjectTemplateType.Backend
                     : ProjectTemplateType.Web,
                 sandbox_id: project?.sandbox_id,
+                github_branch_id: payload.github_branch_id,
             });
 
             // 2. Update the conversation status to submitted
@@ -1077,6 +1081,92 @@ export class ConversationService {
                 project_id: conversation.project_id,
                 page_id: conversation.page_id,
                 feature_id: conversation.feature_id,
+            });
+
+            return { newConversation, interation };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.submitConversation: Error`,
+                metadata: { error },
+            });
+            throw error;
+        }
+    }
+
+    async submitConversationForGithubRepository(
+        payload: SubmitConversationDto,
+    ) {
+        try {
+            const conversation = await this.findConversationById(
+                payload.conversation_id,
+            );
+
+            if (conversation.status === "submitted") {
+                throw new BadRequestException(
+                    "Conversation is already submitted",
+                );
+            }
+
+            const conversationName =
+                await this.llmService.generateConversationName(
+                    conversation.messages,
+                );
+
+            const project = await this.projectService.getProjectById(
+                conversation.project_id,
+            );
+
+            const organizationId = project.organization_id;
+
+            const monthlyIterations =
+                await this.developmentService.getMonthlyIterationsOfOrganization(
+                    organizationId,
+                );
+
+            this.logger.log({
+                message: `${this.serviceName}.submitConversation: Monthly Iterations`,
+                metadata: { monthlyIterations },
+            });
+
+            if (
+                monthlyIterations.tier === "free" &&
+                monthlyIterations.exceeded
+            ) {
+                throw new BadRequestException(
+                    "You have exceeded the maximum number of sprints for free tier. Please upgrade to a startup plan to continue.",
+                );
+            }
+
+            const branch = await this.githubBranchRepository.findOne({
+                where: { id: payload.github_branch_id },
+            });
+
+            if (!branch) {
+                throw new BadRequestException("Github branch not found");
+            }
+
+            const interation = await this.developmentService.createIteration({
+                conversation_id: conversation.id,
+                project_id: conversation.project_id,
+                type: IterationType.CoreDevelopment,
+                is_supabase_integration: false,
+                project_template_type: project.project_template_type.startsWith(
+                    "backend",
+                )
+                    ? ProjectTemplateType.Backend
+                    : ProjectTemplateType.Web,
+                sandbox_id: branch.sandbox_id,
+                github_branch_id: payload.github_branch_id,
+            });
+
+            await this.conversationRepository.update(conversation.id, {
+                name: conversationName,
+                iteration_id: interation.id,
+                status: "submitted",
+            });
+
+            const newConversation = await this.createConversation({
+                project_id: conversation.project_id,
             });
 
             return { newConversation, interation };

@@ -40,6 +40,10 @@ export class CreateIterationDto {
     @IsString()
     @IsOptional()
     collection_id?: string;
+
+    @IsString()
+    @IsOptional()
+    github_branch_id?: string;
 }
 
 export class CreateProjectIterationsForCollectionDto {

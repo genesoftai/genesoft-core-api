@@ -832,4 +832,34 @@ export class LlmService {
 
         return result.ai_agent;
     }
+
+    async createBranchName(message: string): Promise<string> {
+        const BranchNameFormatter = z.object({
+            branch_name: z
+                .string()
+                .describe(
+                    "The name of the branch. Make it short and concise in few sentences separated by `/` and connect words with `-`. Example: `feature/add-new-feature`",
+                ),
+        });
+        const gemini25Flash = new ChatGoogleGenerativeAI({
+            model: this.gemini25Flash,
+        }).withStructuredOutput(BranchNameFormatter);
+
+        const gemini25FlashWrapper = wrapSDK(gemini25Flash, {
+            name: "createBranchName",
+            run_type: "llm",
+        });
+        const result = await gemini25FlashWrapper.invoke([
+            new SystemMessage(
+                `You are a great software engineer who can generate a branch name on github based on the user's message.
+                The branch name should be short and concise in few sentences separated by "/" and connect words with "-".
+                Example: feature/add-new-feature, fix/fix-bug-a-on-a-page, chore/update-readme, refactor/refactor-code-to-be-more-readable, etc.
+                `,
+            ),
+            new HumanMessage({
+                content: message,
+            }),
+        ]);
+        return result.branch_name;
+    }
 }

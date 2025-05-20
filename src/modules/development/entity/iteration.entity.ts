@@ -34,4 +34,7 @@ export class Iteration {
 
     @Column({ name: "branch", type: "text", nullable: true })
     branch: string;
+
+    @Column({ name: "github_branch_id", nullable: true })
+    github_branch_id: string;
 }

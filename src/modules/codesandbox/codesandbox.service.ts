@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CodeSandbox, Sandbox, SandboxClient, VMTier } from "@codesandbox/sdk";
+import { CodeSandbox, Sandbox, VMTier } from "@codesandbox/sdk";
 import { ThirdPartyConfigurationService } from "../configuration/third-party/third-party.service";
 import { CreateSandboxDto } from "./dto/create-sandbox.dto";
 import { CodesandboxTemplateId } from "../constants/codesandbox";

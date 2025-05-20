@@ -1,5 +1,5 @@
 import { HttpService } from "@nestjs/axios";
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { catchError, lastValueFrom, map } from "rxjs";
 import { ThirdPartyConfigurationService } from "../configuration/third-party";
 import {
@@ -10,7 +10,11 @@ import {
 import { FigmaFile } from "./entity/figma-file.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { SaveFigmaFileDto } from "./dto/save-figma-file.dto";
+import {
+    SaveFigmaFileDto,
+    UpdateFigmaFileForProjectDto,
+} from "./dto/save-figma-file.dto";
+import { Project } from "../project/entity/project.entity";
 
 @Injectable()
 export class FigmaService {
@@ -22,6 +26,8 @@ export class FigmaService {
         private readonly thirdPartyConfigurationService: ThirdPartyConfigurationService,
         @InjectRepository(FigmaFile)
         private readonly figmaFileRepository: Repository<FigmaFile>,
+        @InjectRepository(Project)
+        private readonly projectRepository: Repository<Project>,
     ) {}
 
     async getFigmaFile(fileKey: string) {
@@ -100,6 +106,46 @@ export class FigmaService {
             figma_file_key: fileKey,
             project_id: projectId,
         });
+    }
+
+    async updateFigmaFileForProject(payload: UpdateFigmaFileForProjectDto) {
+        const { fileKey, projectId, fileUrl } = payload;
+        const project = await this.projectRepository.findOne({
+            where: { id: projectId },
+        });
+
+        if (!project) {
+            throw new NotFoundException("Project not found");
+        }
+
+        const figmaFile = await this.figmaFileRepository.findOne({
+            where: {
+                project_id: projectId,
+            },
+        });
+        if (!figmaFile) {
+            const newFigmaFile = await this.figmaFileRepository.save({
+                figma_file_key: fileKey,
+                project_id: projectId,
+                figma_file_url: fileUrl,
+            });
+            const updatedProject = await this.projectRepository.update(
+                projectId,
+                {
+                    figma_file_id: newFigmaFile.id,
+                },
+            );
+            return { project: updatedProject, figmaFile: newFigmaFile };
+        }
+
+        const updatedFigmaFile = await this.figmaFileRepository.update(
+            figmaFile.id,
+            {
+                figma_file_key: fileKey,
+                figma_file_url: fileUrl,
+            },
+        );
+        return { project, figmaFile: updatedFigmaFile };
     }
 
     async getFigmaFileByProjectId(projectId: string) {
