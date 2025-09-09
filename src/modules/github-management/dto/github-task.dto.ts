@@ -12,6 +12,10 @@ export class StartGithubTaskDto {
     userId: string;
 
     @IsString()
+    @IsNotEmpty()
+    baseBranch: string;
+
+    @IsString()
     @IsOptional()
     message?: string;
 

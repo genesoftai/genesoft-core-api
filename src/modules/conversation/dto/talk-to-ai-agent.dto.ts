@@ -55,4 +55,30 @@ export class TalkToBackendDeveloperDto {
     @ValidateNested()
     @Type(() => CreateMessageDto)
     message: CreateMessageDto;
+
+    @IsOptional()
+    @IsString()
+    branch?: string;
+}
+
+export class SendMessageInAskModeToAiAgentDto {
+    @IsNotEmpty()
+    @IsString()
+    github_branch_id: string;
+
+    @IsNotEmpty()
+    @ValidateNested()
+    @Type(() => CreateMessageDto)
+    message: CreateMessageDto;
+}
+
+export class SubmitTaskToAiAgentDto {
+    @IsNotEmpty()
+    @IsString()
+    github_branch_id: string;
+
+    @IsNotEmpty()
+    @ValidateNested()
+    @Type(() => CreateMessageDto)
+    message: CreateMessageDto;
 }

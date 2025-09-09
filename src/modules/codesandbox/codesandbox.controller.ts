@@ -1,14 +1,20 @@
-import { Body, Controller, Get, Param, Post, Delete } from "@nestjs/common";
-import { CodesandboxService } from "./codesandbox.service";
-import { CreateSandboxDto } from "./dto/create-sandbox.dto";
 import {
-    KillAllShellsDto,
-    RunBuildTaskOnSandboxDto,
+    Body,
+    Controller,
+    Get,
+    Param,
+    Post,
+    Delete,
+    Query,
+} from "@nestjs/common";
+import { CodesandboxService } from "./codesandbox.service";
+import {
+    CreateSandboxDto,
+    CreateSandboxFromGitDto,
+} from "./dto/create-sandbox.dto";
+import {
+    KillAllTerminalsDto,
     RunCommandOnSandboxDto,
-    RunDevTaskOnSandboxDto,
-    RunTaskOnSandboxDto,
-    RunInstallTaskOnSandboxDto,
-    RunStartTaskOnSandboxDto,
     RunCommandToGetLogsOnSandboxDto,
 } from "./dto/run-sandbox.dto";
 import {
@@ -19,6 +25,7 @@ import {
     UploadFileOnSandboxDto,
     DownloadFileOnSandboxDto,
     RenameFileOnSandboxDto,
+    CopyFileOnSandboxDto,
 } from "./dto/file-systems.dto";
 
 @Controller("codesandbox")
@@ -30,14 +37,25 @@ export class CodesandboxController {
         return this.codesandboxService.createSandbox(payload);
     }
 
+    @Post("git")
+    async createSandboxFromGit(@Body() payload: CreateSandboxFromGitDto) {
+        return this.codesandboxService.createSandboxFromGit(payload);
+    }
+
+    @Get("file")
+    async readFileFromSandbox(
+        @Query("path") path: string,
+        @Query("sandboxId") sandboxId: string,
+    ) {
+        return this.codesandboxService.readFileOnSandbox({
+            sandbox_id: sandboxId,
+            path,
+        });
+    }
+
     @Get(":id")
     async getSandbox(@Param("id") id: string) {
         return this.codesandboxService.getSandbox(id);
-    }
-
-    @Post(":id/start")
-    async startSandbox(@Param("id") id: string) {
-        return this.codesandboxService.startSandbox(id);
     }
 
     @Post(":id/stop")
@@ -50,6 +68,11 @@ export class CodesandboxController {
         return this.codesandboxService.restartSandbox(id);
     }
 
+    @Get(":id/tree")
+    async getFileTreeFromSandbox(@Param("id") id: string) {
+        return this.codesandboxService.getFileTreeFromSandbox(id);
+    }
+
     @Get(":id/port/:port")
     async getPortInfoOnSandbox(
         @Param("id") id: string,
@@ -59,9 +82,7 @@ export class CodesandboxController {
     }
 
     @Post(":id/pull")
-    async pull(
-        @Param("id") id: string,
-    ) {
+    async pull(@Param("id") id: string) {
         try {
             return this.codesandboxService.runCommandOnSandbox({
                 sandbox_id: id,
@@ -73,9 +94,7 @@ export class CodesandboxController {
     }
 
     @Post(":id/push")
-    async push(
-        @Param("id") id: string,
-    ) {
+    async push(@Param("id") id: string) {
         try {
             return this.codesandboxService.runCommandOnSandbox({
                 sandbox_id: id,
@@ -87,10 +106,7 @@ export class CodesandboxController {
     }
 
     @Post(":id/add")
-    async add(
-        @Param("id") id: string,
-        @Body() payload: { path: string },
-    ) {
+    async add(@Param("id") id: string, @Body() payload: { path: string }) {
         try {
             return this.codesandboxService.runCommandOnSandbox({
                 sandbox_id: id,
@@ -115,15 +131,15 @@ export class CodesandboxController {
             throw new Error(`Failed to decode token: ${error.message}`);
         }
     }
-    
-    @Post(":id/setup/web")
-    async setupSandboxForWebProject(@Param("id") id: string) {
-        return this.codesandboxService.setupSandboxForWebProject(id);
+
+    @Post(":id/connection/open")
+    async openConnection(@Param("id") id: string) {
+        return this.codesandboxService.createConnection(id);
     }
 
-    @Post(":id/setup/backend")
-    async setupSandboxForBackendProject(@Param("id") id: string) {
-        return this.codesandboxService.setupSandboxForBackendProject(id);
+    @Post(":id/connection/close")
+    async closeConnection(@Param("id") id: string) {
+        return this.codesandboxService.closeConnection(id);
     }
 
     @Post("files/write")
@@ -161,6 +177,11 @@ export class CodesandboxController {
         return this.codesandboxService.renameFileOnSandbox(payload);
     }
 
+    @Post("files/copy")
+    async copyFile(@Body() payload: CopyFileOnSandboxDto) {
+        return this.codesandboxService.copyFileOnSandbox(payload);
+    }
+
     @Post("command/run")
     async runCommand(@Body() payload: RunCommandOnSandboxDto) {
         return this.codesandboxService.runCommandOnSandbox(payload);
@@ -177,55 +198,8 @@ export class CodesandboxController {
         );
     }
 
-    @Post("command/run/background")
-    async runCommandWithoutWaiting(@Body() payload: RunCommandOnSandboxDto) {
-        return this.codesandboxService.runCommandOnSandboxWithoutWaiting(
-            payload,
-        );
+    @Post("terminals/kill/all")
+    async killAllTerminals(@Body() payload: KillAllTerminalsDto) {
+        return this.codesandboxService.killAllTerminals(payload.sandbox_id);
     }
-
-    @Post("task/run")
-    async runTask(@Body() payload: RunTaskOnSandboxDto) {
-        return this.codesandboxService.runTaskOnSandbox(payload);
-    }
-
-    @Post("task/run/background")
-    async runTaskAsBackgroundProcess(@Body() payload: RunTaskOnSandboxDto) {
-        return this.codesandboxService.runTaskOnSandboxAsBackgroundProcess(
-            payload,
-        );
-    }
-
-    @Post("task/run/build")
-    async runBuildTask(@Body() payload: RunBuildTaskOnSandboxDto) {
-        return this.codesandboxService.runBuildTaskOnSandbox(
-            payload.sandbox_id,
-        );
-    }
-
-    @Post("task/run/dev")
-    async runDevTask(@Body() payload: RunDevTaskOnSandboxDto) {
-        return this.codesandboxService.runDevTaskOnSandbox(payload.sandbox_id);
-    }
-
-    @Post("task/run/install")
-    async runInstallTask(@Body() payload: RunInstallTaskOnSandboxDto) {
-        return this.codesandboxService.runInstallTaskOnSandbox(
-            payload.sandbox_id,
-        );
-    }
-
-    @Post("task/run/start")
-    async runStartTask(@Body() payload: RunStartTaskOnSandboxDto) {
-        return this.codesandboxService.runStartTaskOnSandbox(
-            payload.sandbox_id,
-        );
-    }
-
-    @Post("shells/kill/all")
-    async killAllShells(@Body() payload: KillAllShellsDto) {
-        return this.codesandboxService.killAllShells(payload.sandbox_id);
-    }
-
-
 }

@@ -12,6 +12,9 @@ export class Codebase {
     understanding: string;
 
     @Column({ type: "text", nullable: true })
+    instruction: string;
+
+    @Column({ type: "text", nullable: true })
     created_at: Date;
 
     @Column({ type: "timestamp", nullable: true })

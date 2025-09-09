@@ -102,7 +102,7 @@ export class GithubService {
             id: string;
             owner: string;
             name: string;
-            branch: string;
+            branch?: string;
             type: string;
         },
         installationId: number,
@@ -1006,7 +1006,7 @@ export class GithubService {
         }
     }
 
-    async getRepoAccessTokenUrl(owner: string, repo: string) {
+    async getRepoAccessToken(owner: string, repo: string) {
         // Call external API to get repository URL with access token
         try {
             const apiUrl =
@@ -1028,7 +1028,10 @@ export class GithubService {
                 this.logger.log({
                     message: `${this.serviceName}.getRepoAccessTokenUrl: Successfully retrieved repo URL with token`,
                 });
-                return data.repoUrl;
+                const token = data.repoUrl
+                    ?.split("@")[0]
+                    ?.split("access-token:")[1];
+                return token;
             }
         } catch (error) {
             this.logger.error({
@@ -1050,7 +1053,7 @@ export class GithubService {
                     .pipe(
                         catchError((error: AxiosError) => {
                             this.logger.error({
-                                message: `${this.serviceName}.getRepoAccessTokenUrl: Error getting repo URL with token`,
+                                message: `${this.serviceName}.getInstallationId: Error getting repo URL with token`,
                                 metadata: { error: error.response?.data },
                             });
                             throw error;
@@ -1059,13 +1062,13 @@ export class GithubService {
             );
             if (data) {
                 this.logger.log({
-                    message: `${this.serviceName}.getRepoAccessTokenUrl: Successfully retrieved repo URL with token`,
+                    message: `${this.serviceName}.getInstallationId: Successfully retrieved repo URL with token`,
                 });
                 return data;
             }
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.getRepoAccessTokenUrl: Failed to get repo URL with token`,
+                message: `${this.serviceName}.getInstallationId: Failed to get repo URL with token`,
                 metadata: { error },
             });
             // Fall back to the default URL if the API call fails
@@ -1085,7 +1088,7 @@ export class GithubService {
                     .pipe(
                         catchError((error: AxiosError) => {
                             this.logger.error({
-                                message: `${this.serviceName}.getRepoAccessTokenUrl: Error getting repo URL with token`,
+                                message: `${this.serviceName}.getAllBranches: Error getting repo URL with token`,
                                 metadata: { error: error.response?.data },
                             });
                             throw error;
@@ -1094,13 +1097,13 @@ export class GithubService {
             );
             if (data) {
                 this.logger.log({
-                    message: `${this.serviceName}.getRepoAccessTokenUrl: Successfully retrieved repo URL with token`,
+                    message: `${this.serviceName}.getAllBranches: Successfully retrieved repo URL with token`,
                 });
                 return data;
             }
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.getRepoAccessTokenUrl: Failed to get repo URL with token`,
+                message: `${this.serviceName}.getAllBranches: Failed to get repo URL with token`,
                 metadata: { error },
             });
             throw error;

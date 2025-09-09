@@ -24,4 +24,8 @@ export class CreateConversationDto {
     @IsString()
     @IsOptional()
     status?: string;
+
+    @IsString()
+    @IsOptional()
+    github_branch_id?: string;
 }

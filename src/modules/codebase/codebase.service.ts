@@ -74,6 +74,31 @@ export class CodebaseService {
         }
     }
 
+    async updateCodebaseInstruction(projectId: string, instruction: string) {
+        this.logger.log({
+            message: `${this.serviceName}.updateCodebaseInstruction: Updating codebase instruction`,
+            metadata: {
+                projectId,
+                instruction,
+            },
+        });
+        try {
+            const codebase = await this.getCodebase(projectId);
+            await this.codebaseRepository.update(codebase.id, {
+                instruction,
+            });
+            return {
+                status: "success",
+                message: "Codebase instruction updated",
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.updateCodebaseInstruction: Error updating codebase instruction`,
+            });
+            throw error;
+        }
+    }
+
     async deleteCodebase(projectId: string) {
         try {
             return this.codebaseRepository.delete(projectId);
@@ -127,7 +152,8 @@ export class CodebaseService {
                 project_id: projectId,
             });
             // For Git projects, we'll start with an empty understanding since the codebase will be populated from the Git repository
-            codebase.understanding = "This is a Git-based project. The codebase will be populated from the connected Git repository.";
+            codebase.understanding =
+                "This is a Git-based project. The codebase will be populated from the connected Git repository.";
             return this.codebaseRepository.save(codebase);
         } catch (error) {
             this.logger.error({
@@ -175,7 +201,9 @@ export class CodebaseService {
         if (!project.sandbox_id) {
             throw new Error("Sandbox not found");
         }
-        const fileTree = await this.codesandboxService.getFileTreeFromSandbox(project.sandbox_id);
+        const fileTree = await this.codesandboxService.getFileTreeFromSandbox(
+            project.sandbox_id,
+        );
         return fileTree;
     }
 

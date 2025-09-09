@@ -366,21 +366,10 @@ export class ProjectService implements OnModuleInit {
             description: payload.description,
             purpose: payload.purpose,
             target_audience: payload.target_audience,
-            project_template_type: "git",
+            project_template_type: payload.github_repo_type,
         });
         const project = await this.projectRepository.save(newProject);
         await this.codebaseService.createCodebaseForGitProject(project.id);
-
-        const sandboxName = `scratch_${project.id}`;
-        const sandbox = await this.codesandboxService.createSandbox({
-            template: CodesandboxTemplateId.Scratch,
-            title: sandboxName,
-            description: `Scratch project for ${sandboxName}`,
-        });
-
-        await this.projectRepository.update(project.id, {
-            sandbox_id: sandbox.id,
-        });
 
         const linkedRepo = await this.githubService.linkRepositoryToProject(
             project.id,
@@ -635,10 +624,15 @@ export class ProjectService implements OnModuleInit {
                 });
             }
 
-            const projectName = await this.llmService.generateProjectName(
-                payload.project_description,
-                payload.backend_requirements,
-            );
+            let projectName = "";
+            if (payload.github_repo_name && payload.github_repo_owner) {
+                projectName = `${payload.github_repo_owner}/${payload.github_repo_name}`;
+            } else {
+                projectName = await this.llmService.generateProjectName(
+                    payload.project_description,
+                    payload.backend_requirements,
+                );
+            }
 
             if (payload.project_type === ProjectTemplateType.Web) {
                 const project = await this.createWebProject({
@@ -750,19 +744,25 @@ export class ProjectService implements OnModuleInit {
 
                 return { webProject, backendProject, collection };
             } else if (payload.project_type === ProjectTemplateType.Git) {
+                const project = await this.createGitProject({
+                    name: projectName,
+                    description: payload.project_description,
+                    organization_id: organization.id,
+                    project_type: payload.project_type,
+                    github_installation_id: payload.github_installation_id,
+                    github_repo_owner: payload.github_repo_owner,
+                    github_repo_name: payload.github_repo_name,
+                    github_repo_branch: payload.github_repo_branch,
+                    github_repo_type: payload.github_repo_type,
+                    github_repo_id: payload.github_repo_id.toString(),
+                });
+                const githubRepository =
+                    await this.githubRepoRepository.findOne({
+                        where: { project_id: project.id },
+                    });
                 return {
-                    project: await this.createGitProject({
-                        name: projectName,
-                        description: payload.project_description,
-                        organization_id: organization.id,
-                        project_type: payload.project_type,
-                        github_installation_id: payload.github_installation_id,
-                        github_repo_owner: payload.github_repo_owner,
-                        github_repo_name: payload.github_repo_name,
-                        github_repo_branch: payload.github_repo_branch,
-                        github_repo_type: payload.github_repo_type,
-                        github_repo_id: payload.github_repo_id.toString(),
-                    }),
+                    project,
+                    githubRepository,
                 };
             } else {
                 throw new BadRequestException(

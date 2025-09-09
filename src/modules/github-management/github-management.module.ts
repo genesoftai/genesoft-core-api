@@ -1,4 +1,4 @@
-import { Logger, Module } from "@nestjs/common";
+import { forwardRef, Logger, Module } from "@nestjs/common";
 import { GithubManagementService } from "./github-management.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { GithubBranch } from "./entity/github-branch.entity";
@@ -14,18 +14,27 @@ import { CodesandboxModule } from "../codesandbox/codesandbox.module";
 import { CollectionModule } from "../collection/collection.module";
 import { ConversationModule } from "../conversation/conversation.module";
 import { LlmModule } from "../llm/llm.module";
-
+import { GithubModule } from "../github/github.module";
+import { Iteration } from "../development/entity/iteration.entity";
+import { Conversation } from "../conversation/entity/conversation.entity";
 @Module({
     imports: [
-        TypeOrmModule.forFeature([GithubRepository, Project, GithubBranch]),
+        TypeOrmModule.forFeature([
+            GithubRepository,
+            Project,
+            GithubBranch,
+            Iteration,
+            Conversation,
+        ]),
         OrganizationModule,
         HttpModule,
         GithubConfigurationModule,
         AppConfigurationModule,
         CodesandboxModule,
         CollectionModule,
-        ConversationModule,
         LlmModule,
+        GithubModule,
+        forwardRef(() => ConversationModule),
     ],
     controllers: [GithubManagementController],
     providers: [Logger, GithubManagementService],

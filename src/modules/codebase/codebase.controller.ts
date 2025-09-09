@@ -9,7 +9,6 @@ import {
     Query,
 } from "@nestjs/common";
 import { CodebaseService } from "./codebase.service";
-import { GetFileDto } from "./dto/get-file.dto";
 import { UpdateFileDto } from "./dto/update-file.dto";
 
 @Controller("codebase")
@@ -76,5 +75,16 @@ export class CodebaseController {
             content: payload.content,
             message: payload.message,
         });
+    }
+
+    @Put(":projectId/instruction")
+    async updateCodebaseInstruction(
+        @Param("projectId") projectId: string,
+        @Body() body: { instruction: string },
+    ) {
+        return this.codebaseService.updateCodebaseInstruction(
+            projectId,
+            body.instruction,
+        );
     }
 }

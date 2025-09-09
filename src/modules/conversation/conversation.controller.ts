@@ -14,10 +14,12 @@ import { UpdateConversationDto } from "./dto/update-conversation.dto";
 import { CreateMessageDto } from "./dto/create-message.dto";
 import { ConversationMessage } from "./entity/message.entity";
 import {
+    SendMessageInAskModeToAiAgentDto,
+    SubmitTaskToAiAgentDto,
     TalkToBackendDeveloperDto,
     TalkToProjectManagerDto,
     TalkToWebAiAgentsDto,
-} from "./dto/talk-to-project-manger.dto";
+} from "./dto/talk-to-ai-agent.dto";
 import { SubmitConversationDto } from "./dto/submit-conversation.dto";
 
 @Controller("conversation")
@@ -115,6 +117,11 @@ export class ConversationController {
         return this.conversationService.getMessagesForConversation(id);
     }
 
+    @Get(":id/message/latest")
+    getLatestMessage(@Param("id") id: string): Promise<ConversationMessage> {
+        return this.conversationService.getLatestMessageByConversationId(id);
+    }
+
     @Get("page/:pageId/active")
     getActiveConversationByPageId(
         @Param("pageId") pageId: string,
@@ -139,6 +146,35 @@ export class ConversationController {
             projectId,
         );
     }
+
+    @Get("branch/:github_branch_id")
+    getConversationByBranchId(
+        @Param("github_branch_id") github_branch_id: string,
+    ) {
+        return this.conversationService.getConversationByBranchId(
+            github_branch_id,
+        );
+    }
+
+    @Post("message/ask")
+    talkToUserAsk(@Body() payload: SendMessageInAskModeToAiAgentDto) {
+        return this.conversationService.sendMessageByUserInAskMode(payload);
+    }
+
+    @Post("message/task")
+    submitTask(@Body() payload: SubmitTaskToAiAgentDto) {
+        return this.conversationService.submitTask(payload);
+    }
+
+    @Get("message/branch/:github_branch_id")
+    getMessagesByBranchId(@Param("github_branch_id") github_branch_id: string) {
+        return this.conversationService.getMessagesByBranchId(github_branch_id);
+    }
+
+    // @Post("message/task")
+    // talkToUser(@Body() payload: SendMessageToAiAgentDto) {
+    //     return this.conversationService.sendMessageByUser(payload);
+    // }
 
     @Post("talk/web-ai-agents")
     talkToWebAiAgents(@Body() payload: TalkToWebAiAgentsDto) {

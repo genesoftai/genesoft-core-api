@@ -28,4 +28,7 @@ export class GithubBranch {
 
     @Column({ name: "sandbox_id", nullable: true })
     sandbox_id: string;
+
+    @Column({ name: "base_branch", nullable: true })
+    base_branch: string;
 }

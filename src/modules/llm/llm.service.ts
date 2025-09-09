@@ -26,13 +26,14 @@ import {
     AI_AGENT_SELECTION_PROMPT,
     ONBOARDING_CONVERSATION_PROMPT,
 } from "../constants/onboarding-conversation";
+import { GoogleGeminiModel } from "../constants/llm";
 
 @Injectable()
 export class LlmService {
     private readonly serviceName = LlmService.name;
     private readonly logger = new Logger(this.serviceName);
     private readonly exa: Exa;
-    private readonly gemini25Flash = "gemini-2.5-flash-preview-04-17";
+    private readonly gemini25Flash = GoogleGeminiModel.Gemini_2_5_Flash;
 
     constructor(
         private readonly thirdPartyConfigurationService: ThirdPartyConfigurationService,

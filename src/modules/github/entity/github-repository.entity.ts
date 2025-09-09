@@ -49,5 +49,4 @@ export class GithubRepository {
 
     @Column({ name: "production_branch", type: "text", nullable: true })
     production_branch: string;
-
 }

@@ -1,9 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CodeSandbox, Sandbox, VMTier } from "@codesandbox/sdk";
+import { CodeSandbox, VMTier, WebSocketSession } from "@codesandbox/sdk";
 import { ThirdPartyConfigurationService } from "../configuration/third-party/third-party.service";
-import { CreateSandboxDto } from "./dto/create-sandbox.dto";
+import {
+    CreateSandboxDto,
+    CreateSandboxFromGitDto,
+} from "./dto/create-sandbox.dto";
 import { CodesandboxTemplateId } from "../constants/codesandbox";
 import {
+    CopyFileOnSandboxDto,
     DeleteFileOnSandboxDto,
     DownloadFileOnSandboxDto,
     ListFilesOnSandboxDto,
@@ -12,15 +16,19 @@ import {
     UploadFileOnSandboxDto,
     WriteFileOnSandboxDto,
 } from "./dto/file-systems.dto";
-import {
-    RunCommandOnSandboxDto,
-    RunTaskOnSandboxDto,
-} from "./dto/run-sandbox.dto";
+import { RunCommandOnSandboxDto } from "./dto/run-sandbox.dto";
 import { HttpService } from "@nestjs/axios";
+import { GithubService } from "../github/github.service";
+import { InjectRepository } from "@nestjs/typeorm";
+import { GithubRepository } from "../github/entity/github-repository.entity";
+import { Repository } from "typeorm";
+import { GenesoftGithubAgentUsername } from "../constants/github";
+import { GenesoftGithubAgentUserEmail } from "../constants/github";
+import { formatGithubRepositoryTreeFromSandbox } from "@/utils/sandbox/tree";
 
 @Injectable()
 export class CodesandboxService {
-    sandboxClients: Map<string, Sandbox> = new Map();
+    sandboxClients: Map<string, WebSocketSession> = new Map();
     sdk: CodeSandbox;
     private readonly logger = new Logger(CodesandboxService.name);
     private readonly serviceName = CodesandboxService.name;
@@ -28,6 +36,9 @@ export class CodesandboxService {
     constructor(
         private readonly thirdPartyConfigurationService: ThirdPartyConfigurationService,
         private readonly httpService: HttpService,
+        private readonly githubService: GithubService,
+        @InjectRepository(GithubRepository)
+        private readonly githubRepositoryRepository: Repository<GithubRepository>,
     ) {
         this.sdk = new CodeSandbox(
             this.thirdPartyConfigurationService.codesandboxApiKey,
@@ -35,16 +46,104 @@ export class CodesandboxService {
     }
 
     async createConnection(sandboxId: string) {
-        const sandbox = await this.sdk.sandbox.open(sandboxId);
-        this.sandboxClients.set(sandboxId, sandbox);
-        return sandbox;
+        this.logger.log({
+            message: `${this.serviceName}: Creating connection to sandbox`,
+            metadata: {
+                sandboxId,
+            },
+        });
+        const sandbox = await this.sdk.sandboxes.resume(sandboxId);
+        const session = await sandbox.connect({
+            id: sandboxId,
+            permission: "write",
+        });
+        this.logger.log({
+            message: `${this.serviceName}: Connection to sandbox created`,
+            metadata: {
+                sandboxId,
+            },
+        });
+        this.sandboxClients.set(sandboxId, session);
+        return session;
+    }
+
+    async closeConnection(sandboxId: string) {
+        const sandbox = this.sandboxClients.get(sandboxId);
+        if (sandbox) {
+            await sandbox.disconnect();
+            this.sandboxClients.delete(sandboxId);
+        }
+        this.logger.log({
+            message: `${this.serviceName}: Closed connection to sandbox`,
+            metadata: {
+                sandboxId,
+            },
+        });
+        return {
+            status: "closed",
+            sandboxId,
+            message: "Connection closed",
+        };
     }
 
     async getConnection(sandboxId: string) {
         if (this.sandboxClients.has(sandboxId)) {
-            return this.sandboxClients.get(sandboxId);
+            this.logger.log({
+                message: `${this.serviceName}: Connection to sandbox already exists`,
+                metadata: {
+                    sandboxId,
+                },
+            });
+            const sandbox = this.sandboxClients.get(sandboxId);
+            if (sandbox.state === "DISCONNECTED") {
+                await sandbox.reconnect();
+                return sandbox;
+            }
+            return sandbox;
         }
+        this.logger.log({
+            message: `${this.serviceName}: Creating connection to sandbox`,
+            metadata: {
+                sandboxId,
+            },
+        });
         return this.createConnection(sandboxId);
+    }
+
+    async getSandboxSession(
+        sandboxId: string,
+        permission: "read" | "write" = "write",
+        repositoryId?: string,
+    ) {
+        const sandbox = await this.sdk.sandboxes.resume(sandboxId);
+        if (repositoryId) {
+            const githubRepository =
+                await this.githubRepositoryRepository.findOne({
+                    where: {
+                        id: repositoryId,
+                    },
+                });
+            const accessToken = await this.githubService.getRepoAccessToken(
+                githubRepository.owner,
+                githubRepository.name,
+            );
+            const session = await sandbox.connect({
+                id: sandboxId,
+                permission,
+                git: {
+                    accessToken,
+                    email: GenesoftGithubAgentUserEmail,
+                    name: GenesoftGithubAgentUsername,
+                },
+            });
+            return session;
+        } else {
+            const session = await sandbox.connect({
+                id: sandboxId,
+                permission: "write",
+            });
+            return session;
+        }
     }
 
     async cloneRepository(payload: {
@@ -52,7 +151,6 @@ export class CodesandboxService {
         repository_url: string;
         branch: string;
     }) {
-
         const { sandbox_id, repository_url, branch } = payload;
         await this.runCommandOnSandbox({
             sandbox_id,
@@ -61,11 +159,11 @@ export class CodesandboxService {
     }
 
     async createSandbox(payload: CreateSandboxDto) {
-        const sandbox = await this.sdk.sandbox.create({
-            template: payload.template ?? CodesandboxTemplateId.NewNextJsShadcn,
+        const sandbox = await this.sdk.sandboxes.create({
+            source: "template",
+            id: payload.template ?? CodesandboxTemplateId.NewNextJsShadcn,
             title: payload.title ?? "Next.js Shadcn",
             description: payload.description ?? "A sandbox for Next.js Shadcn",
-            autoConnect: true,
             vmTier: VMTier.Micro,
             hibernationTimeoutSeconds: 60 * 5,
             privacy: "public",
@@ -78,22 +176,6 @@ export class CodesandboxService {
                 id: sandbox.id,
             },
         });
-        // // Listen to setup progress
-        // sandbox.setup.onSetupProgressUpdate((progress) => {
-        //     console.log(
-        //         `Setup progress: ${progress.currentStepIndex + 1}/${progress.steps.length}`,
-        //     );
-        //     console.log(
-        //         `Current step: ${progress.steps[progress.currentStepIndex].name}`,
-        //     );
-        // });
-
-        // // Get current progress
-        // const progress = await sandbox.setup.getProgress();
-        // console.log(`Setup state: ${progress.state}`);
-        // const result = await sandbox.setup.waitForFinish();
-
-        // await sandbox.hibernate();
 
         return {
             id,
@@ -101,17 +183,109 @@ export class CodesandboxService {
         };
     }
 
+    async createSandboxFromGit(payload: CreateSandboxFromGitDto) {
+        const githubRepository = await this.githubRepositoryRepository.findOne({
+            where: {
+                id: payload.repositoryId,
+            },
+        });
+        const accessToken = await this.githubService.getRepoAccessToken(
+            githubRepository.owner,
+            githubRepository.name,
+        );
+        const repositoryUrl = `https://github.com/${githubRepository.owner}/${githubRepository.name}.git`;
+
+        this.logger.log({
+            message: `${this.serviceName}: Creating sandbox from git`,
+            metadata: {
+                githubRepository,
+                repositoryUrl,
+                branch: payload.branch,
+                accessToken,
+                GenesoftGithubAgentUserName: GenesoftGithubAgentUsername,
+                GenesoftGithubAgentUserEmail,
+            },
+        });
+
+        // const sandbox = await this.sdk.sandboxes.create({
+        //     title: `${githubRepository.owner}/${githubRepository.name}_${payload.branch}`,
+        //     description: `Sandbox for Genesoft AI Agents to working on Github repository: ${githubRepository.name}`,
+        //     source: "git",
+        //     url: repositoryUrl,
+        //     branch: payload.branch,
+        //     vmTier: VMTier.Micro,
+        //     hibernationTimeoutSeconds: 60 * 5,
+        //     privacy: "public",
+        //     config: {
+        //         accessToken,
+        //         email: GenesoftGithubAgentUserEmail,
+        //         name: GenesoftGithubAgentUserName,
+        //     },
+        //     async setup(session) {
+        //         console.log("Sandbox Created", {
+        //             id: session.id,
+        //         });
+        //         await session.fs.remove("README.md");
+        //         console.log("Removed README.md");
+        //         await session.commands.run("git checkout " + payload.branch);
+        //         console.log("Checked out branch", payload.branch);
+        //     },
+        // });
+
+        const sandbox = await this.sdk.sandboxes.create({
+            title: `${githubRepository.owner}/${githubRepository.name}_${payload.branch}`,
+            description: `Sandbox for Genesoft AI Agents to working on Github repository: ${githubRepository.name}`,
+            source: "template",
+            vmTier: VMTier.Micro,
+            hibernationTimeoutSeconds: 60 * 5,
+            privacy: "public",
+        });
+
+        const sandboxId = sandbox.id;
+        this.logger.log({
+            message: `${this.serviceName}: Sandbox created`,
+            metadata: {
+                sandboxId,
+            },
+        });
+
+        const session = await sandbox.connect({
+            id: sandboxId,
+            permission: "write",
+            git: {
+                accessToken,
+                email: GenesoftGithubAgentUserEmail,
+                name: GenesoftGithubAgentUsername,
+            },
+        });
+
+        await session.fs.remove("README.md");
+        console.log("Removed README.md");
+        await session.commands.run(
+            `git remote set-url origin ${repositoryUrl}`,
+        );
+        console.log("Set remote url", repositoryUrl);
+        await session.commands.run("git fetch --all");
+        console.log("Fetched all");
+        await session.commands.run(`git checkout ${payload.branch}`);
+        console.log("Checked out branch", payload.branch);
+
+        await session.disconnect();
+
+        return {
+            id: sandboxId,
+            status: "created",
+            source: "git",
+            url: repositoryUrl,
+            branch: payload.branch,
+        };
+    }
+
     async getSandbox(id: string) {
-        const sandbox = await this.sdk.sandbox.open(id);
+        const sandbox = this.sandboxClients.get(id);
 
         try {
-            const setup = sandbox.setup;
-
-            const ports = sandbox.ports.getOpenedPorts();
-            return {
-                setup,
-                ports,
-            };
+            return sandbox;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}ใ: Error getting sandbox`,
@@ -124,51 +298,10 @@ export class CodesandboxService {
         }
     }
 
-    async startSandbox(id: string) {
-        // const data = await this.sdk.sandbox.start(id);
-        const sandbox = await this.getConnection(id);
-
-        // Listen to setup progress
-        sandbox.setup.onSetupProgressUpdate((progress) => {
-            console.log(
-                `Setup progress: ${progress.currentStepIndex + 1}/${progress.steps.length}`,
-            );
-            console.log(
-                `Current step: ${progress.steps[progress.currentStepIndex].name}`,
-            );
-        });
-
-        // Get current progress
-        const progress = await sandbox.setup.getProgress();
-        console.log(`Setup state: ${progress.state}`);
-
-        // Wait for setup to finish
-        const result = await sandbox.setup.waitForFinish();
-        if (result.state === "FINISHED") {
-            console.log("Setup completed successfully");
-        }
-
-        try {
-            return {
-                id,
-                status: "started",
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}: Error starting sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            throw error;
-        }
-    }
-
     async stopSandbox(id: string) {
         const sandbox = await this.getConnection(id);
         try {
-            await sandbox.shutdown();
+            await sandbox.disconnect();
             return {
                 id,
                 status: "stopped",
@@ -194,7 +327,7 @@ export class CodesandboxService {
                     id,
                 },
             });
-            await this.startSandbox(id);
+            await this.createConnection(id);
             this.logger.log({
                 message: `${this.serviceName}: Sandbox started`,
                 metadata: {
@@ -218,29 +351,62 @@ export class CodesandboxService {
     }
 
     async getFileTreeFromSandbox(id: string, path: string = "/") {
-        const ignoreDir = ["node_modules"];
+        const ignoreDir = ["node_modules", ".git"];
+        const workspacePath = `/project/workspace${path}`;
         const sandbox = await this.getConnection(id);
-        const entries = await sandbox.fs.readdir(path);
+        this.logger.log({
+            message: `${this.serviceName}.getFileTreeFromSandbox: Sandbox connected`,
+            metadata: {
+                // sandbox,
+            },
+        });
+
+        const entries = await sandbox.fs.readdir(workspacePath);
+        this.logger.log({
+            message: `${this.serviceName}.getFileTreeFromSandbox: Entries read`,
+            metadata: {
+                id,
+                path,
+                entries,
+            },
+        });
+
+        // return entries;
         const files = [];
         for (const entry of entries) {
+            this.logger.log({
+                message: `${this.serviceName}.getFileTreeFromSandbox: Entry found`,
+                metadata: {
+                    entry,
+                },
+            });
             const fullPath =
                 path === "/" ? `/${entry.name}` : `${path}/${entry.name}`;
 
             if (entry.type === "directory" && !ignoreDir.includes(entry.name)) {
+                // Add the directory to the files list
+                files.push({
+                    path: fullPath,
+                    type: "tree",
+                    name: entry.name,
+                });
+
+                // Get files from subdirectory
                 const subFiles = await this.getFileTreeFromSandbox(
                     id,
                     fullPath,
                 );
-                files.push(...subFiles);
-            } else {
+                files.push(...subFiles.files);
+            } else if (!ignoreDir.includes(entry.name)) {
                 files.push({
                     path: fullPath,
-                    type: "file",
+                    type: "blob",
                     name: entry.name,
                 });
             }
         }
-        return files;
+        const formatted = formatGithubRepositoryTreeFromSandbox(files);
+        return { files, formatted };
     }
 
     /**
@@ -282,6 +448,13 @@ export class CodesandboxService {
      */
     async readFileOnSandbox(payload: ReadFileOnSandboxDto) {
         const { sandbox_id, path } = payload;
+        this.logger.log({
+            message: `${this.serviceName}.readFileOnSandbox: Reading file on sandbox`,
+            metadata: {
+                sandbox_id,
+                path,
+            },
+        });
         const sandbox = await this.getConnection(sandbox_id);
 
         try {
@@ -337,11 +510,7 @@ export class CodesandboxService {
         const sandbox = await this.getConnection(sandbox_id);
         try {
             const files = await sandbox.fs.readdir(path);
-            return {
-                sandbox_id,
-                path,
-                files,
-            };
+            return files;
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.listFilesOnSandbox: Error listing files on sandbox`,
@@ -430,32 +599,43 @@ export class CodesandboxService {
         }
     }
 
+    /**
+     * Copy a file within the sandbox
+     */
+    async copyFileOnSandbox(payload: CopyFileOnSandboxDto) {
+        const { sandbox_id, original_path, copied_file_path } = payload;
+        const sandbox = await this.getConnection(sandbox_id);
+        try {
+            await sandbox.fs.copy(original_path, copied_file_path);
+            return {
+                sandbox_id,
+                original_path,
+                copied_file_path,
+                status: "file_copied",
+            };
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.copyFileOnSandbox: Error copying file on sandbox`,
+                metadata: {
+                    error: error.message,
+                    stack: error.stack,
+                },
+            });
+            throw error;
+        }
+    }
+
     async getPortInfoOnSandbox(sandbox_id: string, port: number) {
         const sandbox = await this.getConnection(sandbox_id);
 
         try {
             // Get all opened ports
-            const openPorts = sandbox.ports.getOpenedPorts();
-            let hostname = "";
-            for (const port of openPorts) {
-                console.log(`Port ${port.port} is open at ${port.hostname}`);
-                if (port.port.toString() === port.toString()) {
-                    hostname = port.hostname;
-                }
-            }
-            if (!hostname) {
-                throw new Error("No hostname found");
-            }
-
-            const result = await this.httpService.get(
-                `http://${hostname}:${port}`,
-            );
+            const portInfo = sandbox.ports.get(port);
 
             return {
                 sandbox_id,
                 port,
-                openPorts,
-                result,
+                portInfo,
             };
         } catch (error) {
             this.logger.error({
@@ -476,12 +656,12 @@ export class CodesandboxService {
                 payload,
             },
         });
-        let { sandbox_id, command } = payload;
+        const { sandbox_id, command } = payload;
         const sandbox = await this.getConnection(sandbox_id);
         try {
             // Run the command with a timeout of 180 seconds
-            command = `cd app && ${command}`;
-            const shellPromise = sandbox.shells.run(command);
+
+            const commandPromise = sandbox.commands.run(command);
             const timeoutPromise: Promise<{
                 sandbox_id: string;
                 command: string;
@@ -500,12 +680,12 @@ export class CodesandboxService {
                 );
             });
 
-            const shell = await Promise.race([shellPromise, timeoutPromise]);
+            const output = await Promise.race([commandPromise, timeoutPromise]);
             return {
                 sandbox_id,
                 command,
-                output: shell?.output,
-                exitCode: shell?.exitCode,
+                output,
+                exitCode: 0,
             };
         } catch (error) {
             this.logger.error({
@@ -515,351 +695,11 @@ export class CodesandboxService {
                     stack: error.stack,
                 },
             });
-            throw error;
-        }
-    }
-
-    async runCommandOnSandboxWithoutWaiting(payload: RunCommandOnSandboxDto) {
-        let { sandbox_id, command } = payload;
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            // Run the command
-            command = `cd app && ${command}`;
-            sandbox.shells.run(command);
-
             return {
                 sandbox_id,
                 command,
-                status: "command_running",
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runCommandOnSandboxWithoutWaiting: Error running command on sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            throw error;
-        }
-    }
-
-    async runTaskOnSandbox(payload: RunTaskOnSandboxDto) {
-        const { sandbox_id, task } = payload;
-
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            // Create a promise that will resolve with the task result or reject after 1 minute
-            const taskPromise = sandbox.tasks.runTask(task);
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(
-                    () =>
-                        reject(
-                            new Error(
-                                "Task execution timed out after 1 minute",
-                            ),
-                        ),
-                    60000,
-                );
-            });
-
-            const result = await Promise.race([taskPromise, timeoutPromise]);
-
-            this.logger.log({
-                message: `${this.serviceName}.runTaskOnSandbox: Task ${task} running on sandbox ${sandbox_id}`,
-                metadata: {
-                    result,
-                },
-            });
-            return result;
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runTaskOnSandbox: Error running task on sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                task,
-                status: "task_failed",
-                error: error.message,
-            };
-        }
-    }
-
-    async runTaskOnSandboxAsBackgroundProcess(payload: RunTaskOnSandboxDto) {
-        const { sandbox_id, task } = payload;
-
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            const result = await sandbox.tasks.runTask(task);
-            return {
-                sandbox_id,
-                task,
-                status: "task_running",
-                result,
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runTaskOnSandboxAsBackgroundProcess: Error running task on sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-        }
-    }
-
-    async runBuildTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            const task = await sandbox.tasks.getTask("build");
-            if (!task) {
-                throw new Error("Build task not found");
-            }
-            const taskResult = await sandbox.tasks.runTask(task.id);
-            const shell = await sandbox.shells.open(taskResult.shellId);
-
-            let allOutput = "";
-
-            const output = await new Promise((resolve) => {
-                shell.onOutput((output) => {
-                    // Accumulate all output
-                    allOutput += output + "\n";
-
-                    if (shell.exitCode) {
-                        resolve(allOutput);
-                    }
-
-                    // Check if build is complete
-                    if (
-                        output.includes("✓ built in") ||
-                        output.includes("Build failed") ||
-                        output.includes("Command failed with exit code") ||
-                        output.includes(
-                            "npm ERR! A complete log of this run can be found in",
-                        )
-                    ) {
-                        resolve(allOutput);
-                    }
-                });
-
-                // Set a timeout in case the build doesn't complete normally
-                setTimeout(() => {
-                    if (allOutput) {
-                        resolve(allOutput);
-                    }
-                }, 180000); // 180 seconds timeout
-            });
-
-            // Kill the shell after we've captured the output
-            await shell.kill();
-            return {
-                sandbox_id,
-                task,
-                output,
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runBuildTaskOnSandbox: Error getting run build task info`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                task: "build",
-                output: "Can't get build task info",
-            };
-        }
-    }
-
-    async runDevTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            const task = await sandbox.tasks.getTask("dev");
-            if (!task) {
-                throw new Error("Dev task not found");
-            }
-            const taskResult = await sandbox.tasks.runTask(task.id);
-            const shell = await sandbox.shells.open(taskResult.shellId);
-
-            let allOutput = "";
-
-            const output = await new Promise((resolve) => {
-                shell.onOutput((output) => {
-                    // Accumulate all output
-                    allOutput += output + "\n";
-
-                    // Check if dev server is ready
-                    if (
-                        output.includes("ready in") ||
-                        output.includes("Local:") ||
-                        output.includes("localhost:") ||
-                        output.includes("started server on") ||
-                        output.includes(
-                            "Nest application successfully started",
-                        ) ||
-                        output.includes("Command failed with exit code") ||
-                        output.includes("erros. Watching for file changes") ||
-                        output.includes(
-                            "npm ERR! A complete log of this run can be found in",
-                        )
-                    ) {
-                        resolve(allOutput);
-                    }
-                });
-
-                // Set a timeout in case the dev server doesn't report ready
-                setTimeout(() => {
-                    if (allOutput) {
-                        resolve(allOutput);
-                    }
-                }, 120000); // 120 seconds timeout
-            });
-
-            // Kill the shell after we've captured the output
-            await shell.kill();
-            return {
-                sandbox_id,
-                task,
-                output,
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runDevTaskOnSandbox: Error running dev task on sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                task: "dev",
-                output: "Can't get dev task info",
-            };
-        }
-    }
-
-    async runInstallTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            const task = await sandbox.tasks.getTask("install");
-            if (!task) {
-                throw new Error("Install task not found");
-            }
-            const taskResult = await sandbox.tasks.runTask(task.id);
-            const shell = await sandbox.shells.open(taskResult.shellId);
-
-            let allOutput = "";
-
-            const output = await new Promise((resolve) => {
-                shell.onOutput((output) => {
-                    // Accumulate all output
-                    allOutput += output + "\n";
-
-                    // Check if dev server is ready
-                    if (
-                        output.includes("Done in") ||
-                        output.includes("Command failed with exit code") ||
-                        output.includes(
-                            "npm ERR! A complete log of this run can be found in",
-                        )
-                    ) {
-                        resolve(allOutput);
-                    }
-                });
-
-                // Set a timeout in case the dev server doesn't report ready
-                setTimeout(() => {
-                    if (allOutput) {
-                        resolve(allOutput);
-                    }
-                }, 180000); // 180 seconds timeout
-            });
-
-            // Kill the shell after we've captured the output
-            await shell.kill();
-            return {
-                sandbox_id,
-                task,
-                output,
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runInstallTaskOnSandbox: Error running install task on sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                task: "install",
-                output: "Can't get install task info",
-            };
-        }
-    }
-
-    async runStartTaskOnSandbox(sandbox_id: string) {
-        const sandbox = await this.getConnection(sandbox_id);
-        try {
-            const task = await sandbox.tasks.getTask("start");
-            if (!task) {
-                throw new Error("Start task not found");
-            }
-            const taskResult = await sandbox.tasks.runTask(task.id);
-            const shell = await sandbox.shells.open(taskResult.shellId);
-
-            let allOutput = "";
-
-            const output = await new Promise((resolve) => {
-                shell.onOutput((output) => {
-                    // Accumulate all output
-                    allOutput += output + "\n";
-
-                    // Check if dev server is ready
-                    if (
-                        output.includes("✓ Ready in") ||
-                        output.includes(
-                            "Nest application successfully started",
-                        ) ||
-                        output.includes("Command failed with exit code")
-                    ) {
-                        resolve(allOutput);
-                    }
-                });
-
-                // Set a timeout in case the dev server doesn't report ready
-                setTimeout(() => {
-                    if (allOutput) {
-                        resolve(allOutput);
-                    }
-                }, 30000); // 30 seconds timeout
-            });
-
-            // Kill the shell after we've captured the output
-            await shell.kill();
-            return {
-                sandbox_id,
-                task,
-                output,
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.runStartTaskOnSandbox: Error running start task on sandbox`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                task: "start",
-                output: "Can't get start task info",
+                output: error.message,
+                exitCode: 1,
             };
         }
     }
@@ -869,21 +709,21 @@ export class CodesandboxService {
         command: string,
         end_of_logs_keywords: string[],
     ) {
-        const sandbox = await this.sdk.sandbox.open(sandbox_id);
+        const sandbox = await this.getConnection(sandbox_id);
+        let allOutput = "";
         try {
             // Run the command
-            const shell = sandbox.shells.run(command);
+            const shell = await sandbox.commands.runBackground(command);
 
             this.logger.log({
                 message: `${this.serviceName}.runCommandToGetLogsOnSandbox: Running command on sandbox`,
                 metadata: {
                     sandbox_id,
                     command,
-                    shell,
+                    commandPromise: shell,
                 },
             });
 
-            let allOutput = "";
             let isResolved = false;
 
             const output = await new Promise((resolve) => {
@@ -909,18 +749,6 @@ export class CodesandboxService {
                         end_of_logs_keywords.some((keyword) =>
                             output.includes(keyword),
                         )
-                        // output.includes("ready in") ||
-                        // output.includes("Local:") ||
-                        // output.includes("localhost:") ||
-                        // output.includes("started server on") ||
-                        // output.includes(
-                        //     "Nest application successfully started",
-                        // ) ||
-                        // output.includes("Command failed with exit code") ||
-                        // output.includes("errors. Watching for file changes") ||
-                        // output.includes(
-                        //     "npm ERR! A complete log of this run can be found in",
-                        // )
                     ) {
                         clearTimeout(timeoutId);
                         clearInterval(checkInterval);
@@ -949,120 +777,33 @@ export class CodesandboxService {
             return {
                 sandbox_id,
                 command,
-                output: "Can't execute command on sandbox",
+                output: allOutput || error.message,
                 exitCode: 1,
             };
         }
     }
 
-    async killAllShells(sandbox_id: string) {
+    async killAllTerminals(sandbox_id: string) {
         try {
             const sandbox = await this.getConnection(sandbox_id);
-            const shells = await sandbox.shells.getShells();
-            for (const shell of shells) {
-                await shell.kill();
+            const terminals = await sandbox.terminals.getAll();
+            for (const terminal of terminals) {
+                await terminal.kill();
             }
             this.logger.log({
-                message: `${this.serviceName}: Killed all shells`,
+                message: `${this.serviceName}.killAllTerminals: Killed all terminals`,
                 metadata: {
                     sandbox_id,
                 },
             });
         } catch (error) {
             this.logger.error({
-                message: `${this.serviceName}.killAllShells: Error killing all shells`,
+                message: `${this.serviceName}.killAllTerminals: Error killing all terminals`,
                 metadata: {
                     error: error.message,
                     stack: error.stack,
                 },
             });
-        }
-    }
-
-    async setupSandboxForWebProject(sandbox_id: string) {
-        this.logger.log({
-            message: `${this.serviceName}.setupSandboxForWebProject: Setting up sandbox for web project`,
-            metadata: {
-                sandbox_id,
-            },
-        });
-        try {
-            const killShells = await this.killAllShells(sandbox_id);
-            // const installTask = await this.runInstallTaskOnSandbox(sandbox_id);
-            await this.runCommandOnSandboxWithoutWaiting({
-                sandbox_id,
-                command: "cd app && pnpm install",
-            });
-            await this.runCommandOnSandboxWithoutWaiting({
-                sandbox_id,
-                command: "cd app && pnpm run dev",
-            });
-            this.logger.log({
-                message: `${this.serviceName}.setupSandboxForWebProject: Setup sandbox for web project finished`,
-                metadata: {
-                    sandbox_id,
-                },
-            });
-            return {
-                sandbox_id,
-                status: "setup_finished",
-                killShells,
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.setupSandboxForWebProject: Error setting up sandbox for web iteration`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                status: "setup_failed",
-            };
-        }
-    }
-
-    async setupSandboxForBackendProject(sandbox_id: string) {
-        this.logger.log({
-            message: `${this.serviceName}.setupSandboxForBackendProject: Setting up sandbox for backend project`,
-            metadata: {
-                sandbox_id,
-            },
-        });
-        await this.getConnection(sandbox_id);
-        try {
-            await this.killAllShells(sandbox_id);
-            await this.runCommandOnSandboxWithoutWaiting({
-                sandbox_id,
-                command: "cd app && pnpm install",
-            });
-            await this.runCommandOnSandboxWithoutWaiting({
-                sandbox_id,
-                command: "cd app && pnpm run start:dev",
-            });
-            this.logger.log({
-                message: `${this.serviceName}.setupSandboxForBackendProject: Setup sandbox for backend project finished`,
-                metadata: {
-                    sandbox_id,
-                },
-            });
-            return {
-                sandbox_id,
-                status: "setup_finished",
-            };
-        } catch (error) {
-            this.logger.error({
-                message: `${this.serviceName}.setupSandboxForBackendProject: Error setting up sandbox for web iteration`,
-                metadata: {
-                    error: error.message,
-                    stack: error.stack,
-                },
-            });
-            return {
-                sandbox_id,
-                status: "setup_failed",
-            };
         }
     }
 }

@@ -20,6 +20,8 @@ import { IterationTask } from "@/modules/development/entity/iteration-task.entit
 import { File } from "@/modules/metadata/entity/file.entity";
 import { AWSConfigurationModule } from "@/modules/configuration/aws";
 import { GithubBranch } from "../github-management/entity/github-branch.entity";
+import { GithubManagementModule } from "../github-management/github-management.module";
+import { IterationStep } from "../development/entity/iteration-step.entity";
 
 @Module({
     imports: [
@@ -32,6 +34,7 @@ import { GithubBranch } from "../github-management/entity/github-branch.entity";
             IterationTask,
             File,
             GithubBranch,
+            IterationStep,
         ]),
         UserModule,
         GithubModule,
@@ -42,6 +45,7 @@ import { GithubBranch } from "../github-management/entity/github-branch.entity";
         forwardRef(() => PageModule),
         forwardRef(() => FeatureModule),
         AWSConfigurationModule,
+        forwardRef(() => GithubManagementModule),
     ],
     controllers: [ConversationController],
     providers: [ConversationService, MessageService, Logger],

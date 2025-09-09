@@ -1,5 +1,7 @@
 import {
     BadRequestException,
+    forwardRef,
+    Inject,
     Injectable,
     Logger,
     NotFoundException,
@@ -9,24 +11,27 @@ import { Repository } from "typeorm";
 import { GithubBranch } from "./entity/github-branch.entity";
 import { HttpService } from "@nestjs/axios";
 import { GithubConfigurationService } from "../configuration/github";
-import { lastValueFrom } from "rxjs";
-import { catchError, map } from "rxjs/operators";
+import { lastValueFrom, of } from "rxjs";
+import { catchError, concatMap, map, retry } from "rxjs/operators";
 import { AxiosError } from "axios";
 import { CreateBranchDto } from "./dto/create-branch.dto";
 import { GithubRepository } from "../github/entity/github-repository.entity";
 import { CodesandboxService } from "../codesandbox/codesandbox.service";
-import { CodesandboxTemplateId } from "../constants/codesandbox";
 import { Project } from "../project/entity/project.entity";
 import { CollectionService } from "../collection/collection.service";
 import { ConversationService } from "../conversation/conversation.service";
 import { StartGithubTaskDto } from "./dto/github-task.dto";
 import { LlmService } from "../llm/llm.service";
+import { GithubService } from "../github/github.service";
+import { Iteration } from "../development/entity/iteration.entity";
+import { Conversation } from "../conversation/entity/conversation.entity";
+import { CreatePRDto } from "./dto/github-pr.dto";
+import { GenesoftGithubAgentUsername } from "../constants/github";
 
 @Injectable()
 export class GithubManagementService {
     private readonly serviceName: string;
     private readonly githubApiBaseEndpoint: string;
-    private readonly githubAccessToken: string;
 
     constructor(
         @InjectRepository(GithubRepository)
@@ -40,14 +45,18 @@ export class GithubManagementService {
         private readonly logger: Logger,
         private readonly codesandboxService: CodesandboxService,
         private readonly collectionService: CollectionService,
-        private readonly conversationService: ConversationService,
         private readonly llmService: LlmService,
+        private readonly githubService: GithubService,
+        @InjectRepository(Iteration)
+        private readonly iterationRepository: Repository<Iteration>,
+        @InjectRepository(Conversation)
+        private readonly conversationRepository: Repository<Conversation>,
+        @Inject(forwardRef(() => ConversationService))
+        private readonly conversationService: ConversationService,
     ) {
         this.serviceName = GithubManagementService.name;
         this.githubApiBaseEndpoint =
             this.githubConfigurationService.githubBaseApiEndpoint;
-        this.githubAccessToken =
-            this.githubConfigurationService.githubAccessToken;
     }
 
     async getAllGithubRepositoriesByOrganizationId(organizationId: string) {
@@ -206,6 +215,16 @@ export class GithubManagementService {
             throw new NotFoundException("Repository not found");
         }
 
+        const token = await this.githubService.getRepoAccessToken(
+            repository.owner,
+            repository.name,
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.getAllBranchesOnGithub: Repo access token URL`,
+            metadata: { token },
+        });
+
         const result = await lastValueFrom(
             this.httpService
                 .get(
@@ -213,7 +232,7 @@ export class GithubManagementService {
                     {
                         headers: {
                             Accept: "application/vnd.github+json",
-                            Authorization: `Bearer ${this.githubAccessToken}`,
+                            Authorization: `Bearer ${token}`,
                             "X-GitHub-Api-Version": "2022-11-28",
                         },
                     },
@@ -246,6 +265,11 @@ export class GithubManagementService {
             if (!repository) {
                 throw new NotFoundException("Repository not found");
             }
+            const githubAccessToken =
+                await this.githubService.getRepoAccessToken(
+                    repository.owner,
+                    repository.name,
+                );
 
             // TODO: Get github app access token by organization id
 
@@ -256,7 +280,7 @@ export class GithubManagementService {
                     .get(baseBranchUrl, {
                         headers: {
                             Accept: "application/vnd.github+json",
-                            Authorization: `Bearer ${this.githubAccessToken}`,
+                            Authorization: `Bearer ${githubAccessToken}`,
                             "X-GitHub-Api-Version": "2022-11-28",
                         },
                     })
@@ -284,7 +308,7 @@ export class GithubManagementService {
                         {
                             headers: {
                                 Accept: "application/vnd.github+json",
-                                Authorization: `Bearer ${this.githubAccessToken}`,
+                                Authorization: `Bearer ${githubAccessToken}`,
                                 "X-GitHub-Api-Version": "2022-11-28",
                             },
                         },
@@ -366,10 +390,9 @@ export class GithubManagementService {
                 metadata: { newBranch: newBranchOnGithub },
             });
 
-            const sandbox = await this.codesandboxService.createSandbox({
-                title: `${repository.owner}/${repository.name}/${branchName}`,
-                description: `Sandbox for ${branchName} branch of ${repository.owner}/${repository.name}`,
-                template: CodesandboxTemplateId.Scratch,
+            const sandbox = await this.codesandboxService.createSandboxFromGit({
+                repositoryId,
+                branch: branchName,
             });
 
             this.logger.log({
@@ -381,6 +404,7 @@ export class GithubManagementService {
                 github_repository_id: repositoryId,
                 name: branchName,
                 sandbox_id: sandbox.id,
+                base_branch: baseBranch,
             });
 
             this.logger.log({
@@ -417,10 +441,19 @@ export class GithubManagementService {
         });
 
         if (!branchName) {
+            const branches = await this.getBranches(repositoryId);
+            const branchNames = branches
+                .map((branch) => branch.name)
+                .join(", ");
+
             const createBranchNameMessage = `
+            Here are the branches existing on the repository:
+            ${branchNames}
+
             This is user's message:
             ${message}
-
+            
+            Please skip the branches that are already on the repository.
             Please create branch name based on the user's message to use to indicate the task that user wants to do:
             `;
 
@@ -440,7 +473,7 @@ export class GithubManagementService {
         const newBranch = await this.createBranch({
             repositoryId,
             branchName,
-            baseBranch: repository.development_branch,
+            baseBranch: payload.baseBranch,
         });
 
         // TODO: start new conversation with user message
@@ -448,6 +481,7 @@ export class GithubManagementService {
             project_id: repository.project_id,
             name: `Start Github Task for branch: ${branchName}`,
             status: "active",
+            github_branch_id: newBranch.id,
         });
 
         await this.conversationService.addMessageToConversation(
@@ -461,10 +495,208 @@ export class GithubManagementService {
         );
 
         const submittedConversation =
-            await this.conversationService.submitConversation({
-                conversation_id: conversation.id,
-            });
+            await this.conversationService.submitConversationForGithubRepository(
+                {
+                    conversation_id: conversation.id,
+                    github_branch_id: newBranch.id,
+                },
+            );
 
         return { ...submittedConversation, newBranch };
+    }
+
+    async getTasksByRepositoryId(repositoryId: string) {
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: { id: repositoryId },
+        });
+
+        const projectId = repository.project_id;
+
+        const conversations = await this.conversationRepository.find({
+            where: { project_id: projectId, status: "submitted" },
+        });
+
+        if (!repository) {
+            throw new NotFoundException("Repository not found");
+        }
+
+        this.logger.log({
+            message: `${this.serviceName}.getIterationsByRepositoryId: Getting iterations for repository`,
+            metadata: { repositoryId, projectId },
+        });
+
+        const tasks = await Promise.all(
+            conversations.map(async (conversation) => {
+                const iteration = await this.iterationRepository.findOne({
+                    where: {
+                        id: conversation.iteration_id,
+                    },
+                });
+
+                return { ...conversation, iteration };
+            }),
+        );
+
+        return tasks;
+    }
+
+    async createPR(payload: CreatePRDto) {
+        const { repositoryId, branchId } = payload;
+
+        const branch = await this.githubBranchRepository.findOne({
+            where: { id: branchId },
+        });
+
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: { id: repositoryId },
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}.createPullRequest: Repository and branch found`,
+            metadata: { repository, branch },
+        });
+
+        if (!repository) {
+            throw new NotFoundException("Repository not found");
+        }
+
+        const accessToken = await this.githubService.getRepoAccessToken(
+            repository.owner,
+            repository.name,
+        );
+
+        const url = `${this.githubApiBaseEndpoint}/repos/${repository.owner}/${repository.name}/pulls`;
+        const headers = {
+            Authorization: `Bearer ${accessToken}`,
+        };
+
+        const conversation = await this.conversationRepository.findOne({
+            where: { github_branch_id: branch.id },
+        });
+
+        this.logger.log({
+            message: `${this.serviceName}.createPullRequest: Conversation found`,
+            metadata: { conversation },
+        });
+
+        const body = {
+            title: `[Genesoft] ${conversation?.name || branch.name}`,
+            head: `${GenesoftGithubAgentUsername}:${branch.name}`,
+            base: branch.base_branch,
+        };
+
+        this.logger.log({
+            message: `${this.serviceName}.createPullRequest: Creating pull request`,
+            metadata: { url, body },
+        });
+
+        const { data } = await lastValueFrom(
+            this.httpService
+                .post(url, body, {
+                    headers,
+                })
+                .pipe(
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.createPullRequest: Error creating pull request`,
+                            metadata: { error },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.createPullRequest: Successfully created pull request`,
+            metadata: {
+                ...payload,
+                data,
+            },
+        });
+
+        return data;
+    }
+
+    async getIterationsByBranchId(branchId: string) {
+        // Get the branch to find the project_id
+        const branch = await this.githubBranchRepository.findOne({
+            where: { id: branchId },
+        });
+
+        if (!branch) {
+            throw new BadRequestException("Branch not found");
+        }
+
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: { id: branch.github_repository_id },
+        });
+
+        if (!repository) {
+            throw new BadRequestException("Repository not found");
+        }
+
+        // Create a map of iterations by ID for faster lookups
+        const iterations = await this.iterationRepository.find({
+            where: { github_branch_id: branchId },
+            order: { created_at: "ASC" },
+        });
+
+        const iterationMap = new Map();
+        iterations.forEach((iteration) => {
+            iterationMap.set(iteration.id, iteration);
+        });
+
+        // Get conversations and attach iterations in one pass
+        const conversation = await this.conversationRepository.findOne({
+            where: {
+                project_id: repository.project_id,
+                github_branch_id: branchId,
+            },
+            order: { created_at: "DESC" },
+        });
+
+        return {
+            conversation,
+            iterations,
+        };
+    }
+
+    async getRepositoryTree(repositoryId: string, branch: string) {
+        const repository = await this.githubRepositoryRepository.findOne({
+            where: { id: repositoryId },
+        });
+        const accessToken = await this.githubService.getRepoAccessToken(
+            repository.owner,
+            repository.name,
+        );
+
+        this.logger.log({
+            message: `${this.serviceName}.getRepositoryTree: Get Repository Tree`,
+            metadata: { repository, branch },
+        });
+
+        const url = `${this.githubApiBaseEndpoint}/repos/${repository.owner}/${repository.name}/git/trees/${branch}?recursive=1`;
+        const headers = {
+            Authorization: `Bearer ${accessToken}`,
+        };
+
+        const response = await lastValueFrom(
+            this.httpService
+                .get(url, {
+                    headers,
+                })
+                .pipe(
+                    concatMap((res) => of(res.data)),
+                    retry(2),
+                    catchError((error: AxiosError) => {
+                        this.logger.error({
+                            message: `${this.serviceName}.getRepositoryTrees: Error get repository trees`,
+                            metadata: { error: error.response.data },
+                        });
+                        throw error;
+                    }),
+                ),
+        );
+        return response;
     }
 }

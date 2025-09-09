@@ -18,10 +18,12 @@ import { GENESOFT_LOGO_IMAGE_URL } from "@/modules/constants/genesoft";
 import { GENESOFT_SUPPORT_EMAIL } from "@/modules/constants/genesoft";
 import { AiAgentId, AiAgentName } from "@/modules/constants/agent";
 import {
+    SendMessageInAskModeToAiAgentDto,
+    SubmitTaskToAiAgentDto,
     TalkToBackendDeveloperDto,
     TalkToProjectManagerDto,
     TalkToWebAiAgentsDto,
-} from "./dto/talk-to-project-manger.dto";
+} from "./dto/talk-to-ai-agent.dto";
 import { GithubRepository } from "@/modules/github/entity/github-repository.entity";
 import { ProjectService } from "@/modules/project/project.service";
 import { GithubService } from "@/modules/github/github.service";
@@ -44,6 +46,9 @@ import { CallGeminiPayload } from "@/modules/types/llm/gemini";
 import { CallBackendDeveloperAgent } from "@/modules/types/llm/backend-agent";
 import { CallFrontendDeveloperAgent } from "@/modules/types/llm/frontend-agent";
 import { GithubBranch } from "../github-management/entity/github-branch.entity";
+import { GithubManagementService } from "../github-management/github-management.service";
+import { GoogleGeminiModel } from "../constants/llm";
+import { IterationStep } from "../development/entity/iteration-step.entity";
 
 export interface ConversationMessageForWeb extends ConversationMessage {
     sender: {
@@ -84,11 +89,15 @@ export class ConversationService {
         private iterationRepository: Repository<Iteration>,
         @InjectRepository(IterationTask)
         private iterationTaskRepository: Repository<IterationTask>,
+        @InjectRepository(IterationStep)
+        private iterationStepRepository: Repository<IterationStep>,
         @InjectRepository(File)
         private fileRepository: Repository<File>,
         private awsConfigurationService: AWSConfigurationService,
         @InjectRepository(GithubBranch)
         private githubBranchRepository: Repository<GithubBranch>,
+        @Inject(forwardRef(() => GithubManagementService))
+        private githubManagementService: GithubManagementService,
     ) {}
 
     async createConversation(
@@ -483,7 +492,7 @@ export class ConversationService {
             const messageType = payload.message.message_type;
             const geminiPayload: CallGeminiPayload = {
                 payload: {
-                    model: "gemini-2.0-flash",
+                    model: GoogleGeminiModel.Gemini_2_5_Flash,
                     messages,
                     nodeName: "talkToProjectManager",
                 },
@@ -665,7 +674,7 @@ export class ConversationService {
             const messageType = payload.message.message_type;
             const geminiPayload: CallFrontendDeveloperAgent = {
                 payload: {
-                    model: "gemini-2.0-flash",
+                    model: GoogleGeminiModel.Gemini_2_5_Flash,
                     messages,
                     nodeName: "talkToFrontendDeveloper",
                 },
@@ -775,12 +784,6 @@ export class ConversationService {
                     return `[${message.sender_type.toUpperCase()}] ${message.content}`;
                 },
             );
-
-            const projectDocumentation =
-                await this.projectService.getOverallProjectDocumentation(
-                    payload.project_id,
-                );
-
             const backendRepository =
                 await this.githubRepositoryRepository.findOne({
                     where: {
@@ -790,14 +793,29 @@ export class ConversationService {
                 });
 
             const backendRepoTreeResponse =
-                await this.githubService.getRepositoryTrees({
-                    repository: backendRepository.name,
-                    branch: "dev",
-                });
+                await this.githubManagementService.getRepositoryTree(
+                    backendRepository.id,
+                    payload.branch || "dev",
+                );
 
             const backendRepoTree = formatGithubRepositoryTree(
                 backendRepoTreeResponse,
             );
+
+            // TODO: add all summarize iteration tasks with iteration steps as context
+            // TODO: get all past iterations of this brach, and use summary of iteration tasks and iteration steps of each iteration as context
+            // const iterationTasks = await this.iterationTaskRepository.find({
+            //     where: { iteration_id: existingConversation.iteration_id },
+            // });
+
+            // const iterationTaskSteps = await Promise.all(
+            //     iterationTasks.map((task) => {
+            //         return this.iterationStepRepository.find({
+            //             where: { iteration_task_id: task.id },
+            //             order: { created_at: "ASC" },
+            //         });
+            //     }),
+            // );
 
             const userInput = `
             These are historical messages between users and you as a backend developer:
@@ -807,49 +825,33 @@ export class ConversationService {
             `;
 
             const systemMessage = `
-            You are a Senior Backend Developer with extensive experience in NestJS and modern backend architecture. 
+            You are a Senior Backend Developer with extensive experience in modern backend architecture and frameworks. 
             Your role is to:
             1. Provide technical guidance on backend implementation details, API design, and database architecture
             2. Explain complex backend concepts clearly to other software engineers
-            3. Discuss technical tradeoffs and best practices for NestJS applications
+            3. Discuss technical tradeoffs and best practices
             4. Offer code-level suggestions and architectural recommendations
             5. Help troubleshoot backend issues and optimize performance
-            6. Share insights about NestJS modules, dependency injection, middleware, and other framework-specific features
-
-           <tech_stack>
-                - Framework: NestJS
-                - Language: TypeScript
-                - Database: PostgreSQL (or specify based on project, e.g., MongoDB, MySQL)
-                - ORM: TypeORM (or specify, e.g., Prisma, Mongoose)
-                - Authentication: JWT, Passport.js (or other specified methods)
-                - API Specification: OpenAPI (Swagger)
-                - Validation: class-validator, class-transformer
-                - Testing: Jest, Supertest
-                - Containerization: Docker (optional but recommended)
-                - Caching: Redis (optional)
-                - Asynchronous Tasks: Queues (e.g., BullMQ) (optional)
-                - Logging: Nestjs Logger (setup with nest-winston, winston)
-            </tech_stack>
-
+            6. Share insights about backend modules, dependency injection, middleware, and other backend concepts
 
             Please engage in detailed technical discussions while providing practical, implementation-focused advice.
             `;
 
             const userGuide = `
             These are important technical capabilities of the Genesoft backend:
-            - NestJS modules are organized following domain-driven design principles
+            - Backend modules are organized following domain-driven design principles
             - API endpoints follow RESTful conventions with proper status codes and error handling
-            - Database migrations are handled automatically through TypeORM
-            - Authentication uses JWT with refresh token rotation
+            - Database migrations are handled automatically through ORM tools
+            - Authentication uses industry-standard token-based approaches
             - Rate limiting and security middleware are implemented at the application level
-            - Logging uses Winston with structured JSON format
-            - Environment configuration uses NestJS ConfigModule with validation
-            - Testing includes unit, integration and e2e tests with Jest
+            - Structured logging with contextual information
+            - Environment configuration with validation
+            - Comprehensive testing strategy with various test types
             
             Feel free to discuss implementation details, architectural patterns, and code organization strategies.
             `;
 
-            const answerInstructions = `You can use technical terms freely as you're speaking with a software engineer. Provide code examples when relevant, discuss architectural patterns, and don't shy away from technical depth. Feel free to reference specific NestJS features, TypeORM capabilities, or backend design patterns. Your answers should be technically precise while remaining practical and implementation-focused. Make it user friendly and easy to understand like you are the great colleague user want to work with.`;
+            const answerInstructions = `You can use technical terms freely as you're speaking with a software engineer. Provide code examples when relevant, discuss architectural patterns, and don't shy away from technical depth. Feel free to reference specific features, ORM capabilities, or backend design patterns. Your answers should be technically precise while remaining practical and implementation-focused. Make it user friendly and easy to understand like you are the great colleague user want to work with.`;
 
             const formatInstructions = `Use markdown formatting to enhance your explanations:
             - Code blocks with syntax highlighting for code examples
@@ -862,10 +864,6 @@ export class ConversationService {
                 {
                     role: "user",
                     content: systemMessage,
-                },
-                {
-                    role: "user",
-                    content: projectDocumentation,
                 },
                 {
                     role: "user",
@@ -891,7 +889,7 @@ export class ConversationService {
             const messageType = payload.message.message_type;
             const geminiPayload: CallBackendDeveloperAgent = {
                 payload: {
-                    model: "gemini-2.0-flash",
+                    model: GoogleGeminiModel.Gemini_2_5_Flash,
                     messages,
                     nodeName: "talkToBackendDeveloper",
                 },
@@ -1141,27 +1139,32 @@ export class ConversationService {
                 where: { id: payload.github_branch_id },
             });
 
+            this.logger.log({
+                message: `${this.serviceName}.submitConversationForGithubRepository: Github Branch`,
+                metadata: { branch },
+            });
+
             if (!branch) {
                 throw new BadRequestException("Github branch not found");
             }
 
-            const interation = await this.developmentService.createIteration({
+            const iteration = await this.developmentService.createIteration({
                 conversation_id: conversation.id,
                 project_id: conversation.project_id,
                 type: IterationType.CoreDevelopment,
                 is_supabase_integration: false,
                 project_template_type: project.project_template_type.startsWith(
-                    "backend",
+                    "web",
                 )
-                    ? ProjectTemplateType.Backend
-                    : ProjectTemplateType.Web,
+                    ? ProjectTemplateType.Web
+                    : ProjectTemplateType.Backend,
                 sandbox_id: branch.sandbox_id,
                 github_branch_id: payload.github_branch_id,
             });
 
             await this.conversationRepository.update(conversation.id, {
                 name: conversationName,
-                iteration_id: interation.id,
+                iteration_id: iteration.id,
                 status: "submitted",
             });
 
@@ -1169,7 +1172,7 @@ export class ConversationService {
                 project_id: conversation.project_id,
             });
 
-            return { newConversation, interation };
+            return { newConversation, interation: iteration };
         } catch (error) {
             this.logger.error({
                 message: `${this.serviceName}.submitConversation: Error`,
@@ -1177,5 +1180,187 @@ export class ConversationService {
             });
             throw error;
         }
+    }
+
+    async sendMessageByUserInAskMode(
+        payload: SendMessageInAskModeToAiAgentDto,
+    ) {
+        try {
+            const { github_branch_id, message } = payload;
+
+            const branch = await this.githubBranchRepository.findOne({
+                where: { id: github_branch_id },
+            });
+
+            if (!branch) {
+                throw new BadRequestException("Github branch not found");
+            }
+
+            const repository = await this.githubRepositoryRepository.findOne({
+                where: { id: branch.github_repository_id },
+            });
+
+            const project = await this.projectService.getProjectById(
+                repository.project_id,
+            );
+
+            if (!repository) {
+                throw new BadRequestException("Github repository not found");
+            }
+
+            const conversation = await this.conversationRepository.findOne({
+                where: {
+                    project_id: repository.project_id,
+                    github_branch_id: branch.id,
+                },
+            });
+
+            if (!conversation) {
+                throw new BadRequestException("Conversation not found");
+            }
+
+            // TODO: ask ai agent function
+            if (project.project_template_type.startsWith("web")) {
+                // TODO: ask ai agent function for web
+                const result = await this.talkToWebAiAgents({
+                    project_id: repository.project_id,
+                    conversation_id: conversation.id,
+                    message,
+                });
+                return result;
+            } else {
+                // TODO: ask ai agent function for backend
+                const result = await this.talkToBackendDeveloper({
+                    project_id: repository.project_id,
+                    conversation_id: conversation.id,
+                    message,
+                    branch: branch.name,
+                });
+                return result;
+            }
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.sendMessageByUser: Error`,
+                metadata: { error },
+            });
+            throw error;
+        }
+    }
+
+    async submitTask(payload: SubmitTaskToAiAgentDto) {
+        try {
+            const { github_branch_id, message } = payload;
+
+            const branch = await this.githubBranchRepository.findOne({
+                where: { id: github_branch_id },
+            });
+
+            if (!branch) {
+                throw new BadRequestException("Github branch not found");
+            }
+
+            const repository = await this.githubRepositoryRepository.findOne({
+                where: { id: branch.github_repository_id },
+            });
+
+            const project = await this.projectService.getProjectById(
+                repository.project_id,
+            );
+
+            if (!repository) {
+                throw new BadRequestException("Github repository not found");
+            }
+
+            const conversation = await this.conversationRepository.findOne({
+                where: {
+                    project_id: repository.project_id,
+                    github_branch_id: branch.id,
+                },
+            });
+
+            if (!conversation) {
+                throw new BadRequestException("Conversation not found");
+            }
+            await this.addMessageToConversation(conversation.id, {
+                sender_type: "user",
+                message_type: "task_text",
+                content: message.content,
+                sender_id: message.sender_id,
+                file_ids: message.file_ids,
+                reference_link_ids: message.reference_link_ids,
+            });
+
+            // TODO: ask ai agent function
+            if (project.project_template_type.startsWith("web")) {
+                await this.developmentService.createIteration({
+                    conversation_id: conversation.id,
+                    project_id: repository.project_id,
+                    type: IterationType.CoreDevelopment,
+                    is_supabase_integration: false,
+                    project_template_type: ProjectTemplateType.Web,
+                    sandbox_id: branch.sandbox_id,
+                    github_branch_id: payload.github_branch_id,
+                });
+            } else {
+                await this.developmentService.createIteration({
+                    conversation_id: conversation.id,
+                    project_id: repository.project_id,
+                    type: IterationType.CoreDevelopment,
+                    is_supabase_integration: false,
+                    project_template_type: ProjectTemplateType.Backend,
+                    sandbox_id: branch.sandbox_id,
+                    github_branch_id: payload.github_branch_id,
+                });
+            }
+
+            const updatedConversation = await this.findConversationById(
+                conversation.id,
+            );
+
+            return updatedConversation;
+        } catch (error) {
+            this.logger.error({
+                message: `${this.serviceName}.sendMessageByUser: Error`,
+                metadata: { error },
+            });
+            throw error;
+        }
+    }
+
+    async getConversationByBranchId(branchId: string) {
+        const conversation = await this.conversationRepository.findOne({
+            where: { github_branch_id: branchId },
+        });
+        return conversation;
+    }
+
+    async getMessagesByBranchId(branchId: string) {
+        const conversation = await this.conversationRepository.findOne({
+            where: { github_branch_id: branchId },
+        });
+
+        if (!conversation) {
+            throw new BadRequestException("Conversation not found");
+        }
+
+        const messages = await this.getMessagesByConversationId(
+            conversation.id,
+        );
+
+        return messages;
+    }
+
+    async getLatestMessageByConversationId(conversationId: string) {
+        const messages = await this.messageRepository.find({
+            where: { conversation_id: conversationId },
+            order: { created_at: "DESC" },
+            take: 1,
+        });
+
+        if (!messages || messages.length === 0) {
+            throw new BadRequestException("No messages found");
+        }
+
+        return messages[0];
     }
 }

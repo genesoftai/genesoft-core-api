@@ -81,3 +81,17 @@ export class RenameFileOnSandboxDto {
     @IsString()
     new_path: string;
 }
+
+export class CopyFileOnSandboxDto {
+    @IsNotEmpty()
+    @IsString()
+    sandbox_id: string;
+
+    @IsNotEmpty()
+    @IsString()
+    original_path: string;
+
+    @IsNotEmpty()
+    @IsString()
+    copied_file_path: string;
+}

@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateSandboxDto {
     @IsString()
@@ -17,4 +17,14 @@ export class CreateSandboxDto {
 export class CreateSandboxFromGithubRepositoryDto {
     @IsString()
     githubRepository: string;
+}
+
+export class CreateSandboxFromGitDto {
+    @IsString()
+    @IsNotEmpty()
+    repositoryId: string;
+
+    @IsNotEmpty()
+    @IsString()
+    branch: string;
 }

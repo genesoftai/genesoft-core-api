@@ -1,0 +1,34 @@
+{
+    "message": "run_mcp_ai_agent: mcp_servers",
+    "metadata": {
+        "mcp_servers": {
+            "Sequential Thinking MCP Server": {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@modelcontextprotocol/server-sequential-thinking"
+                ],
+                "env": {},
+                "transport": "stdio"
+            },
+            "Yahoo Finance": {
+                "command": "uvx",
+                "args": ["yfmcp@latest"],
+                "env": {},
+                "transport": "stdio"
+            },
+            "Finance Tools MCP": {
+                "command": "uvx",
+                "args": ["finance-tools-mcp"],
+                "env": {},
+                "transport": "stdio"
+            },
+            "Calculator MCP Server": {
+                "command": "uvx",
+                "args": ["mcp-server-calculator"],
+                "env": {},
+                "transport": "stdio"
+            }
+        }
+    }
+}
